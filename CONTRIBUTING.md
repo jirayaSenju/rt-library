@@ -69,6 +69,22 @@ You must only submit material that you authored or have the legal right to contr
 
 ---
 
+## Development Workflow, Commits, and Versions
+
+Use `main` as the protected integration branch and `dev` as the development branch. Start from the latest `main`; if `dev` does not exist, create it from `main`. Do not commit directly to `main`.
+
+Write commits using [Conventional Commits](https://www.conventionalcommits.org/), with the format `<type>(optional-scope): description`. Common types include `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `build`, `ci`, and `chore`.
+
+Use Semantic Versioning (`MAJOR.MINOR.PATCH`) for application releases, based on Conventional Commit types:
+
+- `feat` requires a `MINOR` version bump.
+- `fix`, `perf`, and `revert` require a `PATCH` version bump.
+- An incompatible change marked with `!` (for example, `feat(api)!:`) or a `BREAKING CHANGE:` footer requires a `MAJOR` bump.
+- Documentation-only changes use `docs:` and do not bump the application version or create a release tag. `test`, `ci`, and maintenance-only commits do not trigger a release by themselves.
+- Use the release version that reflects the highest-impact release-worthy change since the previous release.
+
+For this maintainer's checkout, keep `origin` pointed at `git@jiraya:jirayaSenju/rt-library.git` and use the Git identity `Jiraya Senju <bubble.jiraya@vista.aero>`. SSH selects the GitHub account used for authentication; the commit email determines GitHub's author attribution. Confirm the account with `ssh -T git@jiraya` before pushing.
+
 ## AI-Assisted Contributions
 
 AI-assisted development tools (such as LLMs, copilots, and AI coding assistants) are welcome to assist in drafting contributions to RT-Library. However, all contributors must adhere to the following standards:
@@ -83,11 +99,18 @@ AI-assisted development tools (such as LLMs, copilots, and AI coding assistants)
 
 ## Submitting Pull Requests
 
-1. Create a feature branch from `main`.
-2. Ensure all automated checks pass:
-   ```bash
-   npm test
-   npm run build
-   npm run release:check
-   ```
-3. Open a Pull Request filling out all items in the [Pull Request Template](.github/PULL_REQUEST_TEMPLATE.md).
+1. Update local `main` from `origin/main` and create or synchronize `dev` from it.
+2. Make the change on `dev`, add or update relevant tests, and commit with a Conventional Commit message.
+3. Push `dev` and open a Pull Request targeting `main`, filling out the [Pull Request Template](.github/PULL_REQUEST_TEMPLATE.md).
+4. Wait for every required GitHub Actions check to finish successfully. If a check fails, fix the issue on `dev`, push the correction, and wait for the checks again.
+5. Merge the Pull Request only after all required checks pass. Keep `dev` synchronized with updated `main` before starting the next change.
+
+Run the relevant local checks before opening the Pull Request:
+```bash
+npm test
+npm run build
+npm run audit:licenses
+npm run release:check
+```
+
+Release version updates follow the same `dev` → Pull Request → passing Actions → merge flow. Create and push a release tag only when the commits since the previous release include `feat`, `fix`, `perf`, `revert`, or a non-documentation breaking change. Documentation-only PRs still require passing Actions and a merge, but do not need a version bump or release; see [Release & Versioning Guide](docs/releasing.md).

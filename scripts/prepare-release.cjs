@@ -7,7 +7,7 @@
  * 1. Validates the proposed version format
  * 2. Synchronizes package.json and package-lock.json via npm version --no-git-tag-version
  * 3. Verifies CHANGELOG.md contains the corresponding version header
- * 4. Outputs next manual steps for the maintainer (commit, tag, push)
+ * 4. Outputs the project workflow (commit on dev, PR, then tag after merge)
  * 
  * STRICT RULE: Does NOT execute any Git commit, tag, push, or publication commands.
  */
@@ -78,15 +78,22 @@ function prepareRelease(newVersion) {
   console.log('\n================================================================================');
   console.log('NEXT MANUAL STEPS FOR MAINTAINER:');
   console.log('================================================================================');
-  console.log('1. Review staged files:');
+  console.log('0. Use release preparation only when commits since the previous release include feat, fix, perf, revert, or a non-doc breaking change.');
+  console.log('   For documentation-only changes (docs:), do not bump the app version or create a release tag.');
+  console.log('1. Review version and changelog changes:');
   console.log('   git diff package.json package-lock.json CHANGELOG.md');
   console.log('2. Run local release readiness checks:');
-  console.log('   npm test && npm run build && npm run release:check');
-  console.log('3. Commit and tag manually:');
+  console.log(`   npm test && npm run build && npm run audit:licenses && npm run release:check && npm run release:validate v${cleanVersion}`);
+  console.log('3. Commit the version update on the dev branch and push it:');
+  console.log('   git add package.json package-lock.json CHANGELOG.md');
   console.log(`   git commit -m "chore(release): v${cleanVersion}"`);
+  console.log('   git push -u origin dev');
+  console.log('4. Open a Pull Request from dev to main; wait for all required Actions checks to pass, then merge.');
+  console.log('5. After the merge, update main and create the annotated release tag:');
+  console.log('   git switch main && git pull --ff-only origin main');
+  console.log(`   npm run release:validate v${cleanVersion}`);
   console.log(`   git tag -a v${cleanVersion} -m "Release v${cleanVersion}"`);
-  console.log('4. Push tag to GitHub to trigger automated release workflow:');
-  console.log(`   git push origin main && git push origin v${cleanVersion}`);
+  console.log(`   git push origin v${cleanVersion}`);
   console.log('================================================================================\n');
 }
 
@@ -96,4 +103,3 @@ if (require.main === module) {
 }
 
 module.exports = { prepareRelease };
-
