@@ -1,0 +1,239 @@
+# ==============================================================================
+# RT-LIBRARY .GITIGNORE
+# Comprehensive exclusions for dependencies, local runtime data, databases,
+# scraper profiles, media caches, build artifacts, benchmarks, and secrets.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Package Managers & Dependencies
+# ------------------------------------------------------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------------------------------------------------------
+# 2. Build & Packaging Outputs
+# ------------------------------------------------------------------------------
+dist/
+dist-desktop/
+out/
+release/
+build-output/
+builder-debug.yml
+builder-effective-config.yaml
+build/icons/temp/
+
+# Distributable Binary Installers & Artifacts
+*.AppImage
+*.deb
+*.rpm
+*.exe
+*.msi
+*.dmg
+*.pkg
+*.blockmap
+
+# ------------------------------------------------------------------------------
+# 3. Native Build & Tooling Artifacts (node-gyp / better-sqlite3)
+# ------------------------------------------------------------------------------
+build/Release/
+build/Debug/
+*.node
+
+# ------------------------------------------------------------------------------
+# 4. TypeScript & Vite Build Caches
+# ------------------------------------------------------------------------------
+*.tsbuildinfo
+vite.config.*.timestamp-*
+.vite/
+
+# ------------------------------------------------------------------------------
+# 5. SQLite Databases & WAL Journaling
+# ------------------------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.db-wal
+*.db-shm
+*.backup.sqlite
+*.backup.db
+*.sqlite.bak
+*.db.bak
+
+# ------------------------------------------------------------------------------
+# 6. Runtime User Data & Scratch Dirs
+# ------------------------------------------------------------------------------
+.userData/
+userData/
+runtime-data/
+data/
+scratch/
+
+# ------------------------------------------------------------------------------
+# 7. Scraper Sessions, Profiles & Browser State
+# ------------------------------------------------------------------------------
+scraper-profile/
+playwright-profile/
+browser-profile/
+profiles/
+storage-state/
+storageState/
+cookies/
+sessions/
+cookies.json
+cookies*.json
+storageState.json
+storage-state.json
+*.session
+*.session.json
+auth.json
+browser-state.json
+
+# ------------------------------------------------------------------------------
+# 8. Scraped Data, Topic Dumps & Private Exports
+# ------------------------------------------------------------------------------
+scraped-data/
+scraped/
+catalog-dumps/
+topic-dumps/
+exports/
+local-exports/
+
+# ------------------------------------------------------------------------------
+# 9. Torrent Files & Magnet Link Dumps
+# ------------------------------------------------------------------------------
+*.torrent
+*.magnet
+magnets.txt
+magnet-links.txt
+magnet-dump*
+torrent-dump*
+torrent-export*
+
+# ------------------------------------------------------------------------------
+# 10. Media Cache, Covers & Downloaded Screenshots
+# ------------------------------------------------------------------------------
+covers/
+screenshots/
+artwork/
+image-cache/
+images/cache/
+cache/images/
+cache/
+
+# ------------------------------------------------------------------------------
+# 11. Diagnostics, Crash Dumps & Profiling
+# ------------------------------------------------------------------------------
+diagnostics/
+debug/
+debug-output/
+runtime-diagnostics/
+crash-dumps/
+dumps/
+*.trace
+*.har
+*.cpuprofile
+*.heapprofile
+*.heapsnapshot
+*.clinic-*
+.clinic/
+performance-profiles/
+
+# ------------------------------------------------------------------------------
+# 12. Runtime & Application Logs
+# ------------------------------------------------------------------------------
+logs/
+*.log
+debug.log
+electron.log
+
+# ------------------------------------------------------------------------------
+# 13. Backups
+# ------------------------------------------------------------------------------
+backups/
+backup/
+*.bak
+*.backup
+*.old
+
+# ------------------------------------------------------------------------------
+# 14. Benchmark Raw Results & Execution Dumps
+# ------------------------------------------------------------------------------
+benchmark-results/
+benchmarks/results/
+performance-results/
+*.benchmark.json
+*.benchmark.csv
+benchmark-summary.json
+windows-summary.json
+linux-summary.json
+
+# ------------------------------------------------------------------------------
+# 15. Testing & Code Coverage
+# ------------------------------------------------------------------------------
+test-results/
+playwright-report/
+blob-report/
+coverage/
+.nyc_output/
+.last-run.json
+playwright/.cache/
+.playwright/
+playwright-browsers/
+
+# ------------------------------------------------------------------------------
+# 16. Environment Variables, Secrets & Private Keys
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ------------------------------------------------------------------------------
+# 17. Temporary Files & Editor Swaps
+# ------------------------------------------------------------------------------
+tmp/
+temp/
+.tmp/
+.cache/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ------------------------------------------------------------------------------
+# 18. IDE & Editor Files
+# ------------------------------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.code-workspace
+
+# ------------------------------------------------------------------------------
+# 19. Operating System Artifacts
+# ------------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ------------------------------------------------------------------------------
+# 20. Electron Local Caches
+# ------------------------------------------------------------------------------
+.electron/
+electron-cache/
+electron-builder-cache/

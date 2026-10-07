@@ -1,0 +1,134 @@
+[
+  {
+    "catalog": "gamecube.json",
+    "itemId": "topic_5656732",
+    "url": "https://i106.fastpic.org/thumb/2018/1209/c2/59be9ded59fec8e7e91997087dae49c2.jpeg",
+    "provider": "fastpic"
+  },
+  {
+    "catalog": "wii.json",
+    "itemId": "topic_5129888",
+    "url": "http://i67.fastpic.org/thumb/2015/1208/16/a942122fff5bd258e66ba8dd60c96916.jpeg",
+    "provider": "fastpic"
+  },
+  {
+    "catalog": "3ds.json",
+    "itemId": "topic_5515239",
+    "url": "http://i99.fastpic.org/thumb/2018/0202/36/d8695198e4e99b2580058df7cfd2e636.jpeg",
+    "provider": "fastpic"
+  },
+  {
+    "catalog": "ds.json",
+    "itemId": "topic_2279763",
+    "url": "http://i3.fastpic.org/thumb/2009/1023/53/e8e2934eeba53f8c1f3d06fd51cb3153.jpeg",
+    "provider": "fastpic"
+  },
+  {
+    "catalog": "xbox.json",
+    "itemId": "topic_3821888",
+    "url": "http://i27.fastpic.org/thumb/2011/1116/6e/8b0bd5c184d4524623f817478868b66e.jpeg",
+    "provider": "fastpic"
+  },
+  {
+    "catalog": "gamecube.json",
+    "itemId": "topic_417185",
+    "url": "https://i3.imageban.ru/thumbs/2026.03.20/17c653655e3a9b2a15545070838735ed.jpg",
+    "provider": "imageban"
+  },
+  {
+    "catalog": "wii.json",
+    "itemId": "topic_6720236",
+    "url": "https://i8.imageban.ru/thumbs/2025.09.19/f754fad423e1f5dd7ac1ff092a7a4e4d.jpg",
+    "provider": "imageban"
+  },
+  {
+    "catalog": "3ds.json",
+    "itemId": "topic_5995659",
+    "url": "https://i1.imageban.ru/thumbs/2021.04.27/bdd8b4b23fdc436de984e1123dcb576d.jpg",
+    "provider": "imageban"
+  },
+  {
+    "catalog": "ds.json",
+    "itemId": "topic_5874891",
+    "url": "https://i4.imageban.ru/thumbs/2020.05.22/e28688fe4fa682f1f15ad6a2c369c763.png",
+    "provider": "imageban"
+  },
+  {
+    "catalog": "xbox.json",
+    "itemId": "topic_3444505",
+    "url": "https://i1.imageban.ru/thumbs/2022.07.08/2e61adf5b9e5975c7facbb4c39e2880c.png",
+    "provider": "imageban"
+  },
+  {
+    "catalog": "gamecube.json",
+    "itemId": "topic_1682863",
+    "url": "http://s017.radikal.ru/i441/1303/4b/92d0c0d5863dt.jpg",
+    "provider": "radikal"
+  },
+  {
+    "catalog": "wii.json",
+    "itemId": "topic_5923082",
+    "url": "https://d.radikal.ru/d35/2007/00/d235d8b1108a.png",
+    "provider": "radikal"
+  },
+  {
+    "catalog": "3ds.json",
+    "itemId": "topic_5219440",
+    "url": "http://s017.radikal.ru/i424/1605/c7/1c8684971359t.jpg",
+    "provider": "radikal"
+  },
+  {
+    "catalog": "gamecube.json",
+    "itemId": "topic_600471",
+    "url": "https://thumbs4.imagebam.com/05/9f/3f/ME11MUGG_t.jpg",
+    "provider": "imagebam"
+  },
+  {
+    "catalog": "wii.json",
+    "itemId": "topic_4894692",
+    "url": "https://thumbs4.imagebam.com/2f/ac/81/ME11PH9I_t.jpg",
+    "provider": "imagebam"
+  },
+  {
+    "catalog": "dreamcast.json",
+    "itemId": "topic_5490691",
+    "url": "https://thumbs4.imagebam.com/fb/8f/4c/ME11WWG3_t.jpg",
+    "provider": "imagebam"
+  },
+  {
+    "catalog": "gamecube.json",
+    "itemId": "topic_5471706",
+    "url": "https://i.postimg.cc/qgy9TLb5/01.jpg",
+    "provider": "postimg"
+  },
+  {
+    "catalog": "wii.json",
+    "itemId": "topic_5660611",
+    "url": "https://i.postimg.cc/1nVmrqKN/001.jpg",
+    "provider": "postimg"
+  },
+  {
+    "catalog": "ds.json",
+    "itemId": "topic_5672502",
+    "url": "https://i.postimg.cc/cHMkXZkD/cjs-2.jpg",
+    "provider": "postimg"
+  },
+  {
+    "catalog": "gamecube.json",
+    "itemId": "topic_6915411",
+    "url": "https://i.ibb.co/tpfQn0xL/GGSEA4-2026-09-28-16-06-15.png",
+    "provider": "other"
+  },
+  {
+    "catalog": "wii.json",
+    "itemId": "topic_3883630",
+    "url": "http://pokazal.ru/2011_12_s/c605c88326c26ecdc8de068cba6aceab.jpg",
+    "provider": "other"
+  },
+  {
+    "catalog": "3ds.json",
+    "itemId": "topic_5315652",
+    "url": "http://s001.youpic.su/pictures/1415739600/95a8091a4527a2a62ef00fd36b216add.jpg",
+    "provider": "other"
+  }
+]

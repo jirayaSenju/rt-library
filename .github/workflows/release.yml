@@ -1,0 +1,234 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # 1. Validation Gate
+  # ----------------------------------------------------------------------------
+  validate:
+    name: Validate Release Criteria & Privacy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Test Suite
+        run: npm test
+
+      - name: Build Frontend Bundle
+        run: npm run build
+
+      - name: Audit Third-Party Licenses
+        run: npm run audit:licenses
+
+      - name: Run Publication Readiness & Privacy Scanner
+        run: npm run release:check
+
+      - name: Validate Semantic Versioning & Tag Consistency
+        run: node scripts/validate-release-version.cjs "${{ github.ref_name }}"
+
+  # ----------------------------------------------------------------------------
+  # 2. Linux AppImage Build
+  # ----------------------------------------------------------------------------
+  build-linux:
+    name: Build Linux AppImage
+    needs: [validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Frontend Bundle
+        run: npm run build
+
+      - name: Package Linux Desktop AppImage
+        run: npm run package:linux
+
+      - name: Verify Packaged Runtime Integrity
+        run: npm run package:verify
+
+      - name: Inspect Packaged Archive Contents
+        run: npm run package:inspect
+
+      - name: Upload Linux AppImage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rt-library-linux-${{ github.ref_name }}
+          path: dist-desktop/*.AppImage
+          if-no-files-found: error
+          retention-days: 5
+
+  # ----------------------------------------------------------------------------
+  # 3. Windows NSIS Installer Build
+  # ----------------------------------------------------------------------------
+  build-windows:
+    name: Build Windows NSIS Installer
+    needs: [validate]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Frontend Bundle
+        run: npm run build
+
+      - name: Package Windows NSIS Installer
+        run: npm run package:win
+
+      - name: Verify Packaged Runtime Integrity
+        run: npm run package:verify
+
+      - name: Inspect Packaged Archive Contents
+        run: npm run package:inspect
+
+      - name: Upload Windows Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rt-library-windows-${{ github.ref_name }}
+          path: dist-desktop/*setup.exe
+          if-no-files-found: error
+          retention-days: 5
+
+  # ----------------------------------------------------------------------------
+  # 4. GitHub Release & Checksums Deployment
+  # ----------------------------------------------------------------------------
+  release:
+    name: Publish GitHub Release
+    needs: [validate, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Create Release Assets Directory
+        run: mkdir -p release-assets
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rt-library-linux-${{ github.ref_name }}
+          path: release-assets
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rt-library-windows-${{ github.ref_name }}
+          path: release-assets
+
+      - name: Verify Release Assets Set
+        run: |
+          echo "=== RELEASE ARTIFACTS INVENTORY ==="
+          ls -la release-assets
+          
+          EXPECTED_VERSION="${GITHUB_REF_NAME#v}"
+          echo "Expected Version: ${EXPECTED_VERSION}"
+          
+          APPIMAGE_COUNT=$(ls -1 release-assets/RT-Library-${EXPECTED_VERSION}-linux-*.AppImage 2>/dev/null | wc -l)
+          EXE_COUNT=$(ls -1 release-assets/RT-Library-${EXPECTED_VERSION}-windows-*.exe 2>/dev/null | wc -l)
+          TOTAL_FILES=$(find release-assets -maxdepth 1 -type f | wc -l)
+          
+          if [ "$APPIMAGE_COUNT" -ne 1 ]; then
+            echo "❌ Error: Expected exactly 1 Linux AppImage matching version ${EXPECTED_VERSION}, found ${APPIMAGE_COUNT}"
+            exit 1
+          fi
+          
+          if [ "$EXE_COUNT" -ne 1 ]; then
+            echo "❌ Error: Expected exactly 1 Windows setup EXE matching version ${EXPECTED_VERSION}, found ${EXE_COUNT}"
+            exit 1
+          fi
+          
+          if [ "$TOTAL_FILES" -ne 2 ]; then
+            echo "❌ Error: Expected exactly 2 binary assets in release-assets, found ${TOTAL_FILES}"
+            exit 1
+          fi
+          
+          # Rigorous check for disallowed data, secrets, databases, or cookies
+          FORBIDDEN_FILES=$(find release-assets/ -type f \( \
+            -name "*.sqlite*" -o \
+            -name "*.db*" -o \
+            -name "*.torrent*" -o \
+            -name "cookies*" -o \
+            -name "storageState*" -o \
+            -name "*.env*" -o \
+            -name "*.pem*" -o \
+            -name "*.key*" -o \
+            -name "*.log" \
+          \))
+          
+          if [ -n "$FORBIDDEN_FILES" ]; then
+            echo "❌ Error: Forbidden sensitive/database files detected in release assets:"
+            echo "$FORBIDDEN_FILES"
+            exit 1
+          fi
+          
+          echo "✅ Release assets inventory verified successfully (1 Linux AppImage, 1 Windows setup EXE, 0 forbidden files)."
+
+      - name: Generate SHA-256 Checksums
+        run: |
+          cd release-assets
+          sha256sum RT-Library-*.AppImage RT-Library-*.exe > SHA256SUMS.txt
+          
+          CHECKSUM_ENTRIES=$(wc -l < SHA256SUMS.txt)
+          if [ "$CHECKSUM_ENTRIES" -ne 2 ]; then
+            echo "❌ Error: Expected exactly 2 checksum entries in SHA256SUMS.txt, found ${CHECKSUM_ENTRIES}"
+            exit 1
+          fi
+          
+          echo "=== SHA256SUMS.txt ==="
+          cat SHA256SUMS.txt
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: RT-Library ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: |
+            release-assets/*.AppImage
+            release-assets/*setup.exe
+            release-assets/SHA256SUMS.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

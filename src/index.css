@@ -1,0 +1,858 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  [data-theme="rt-dark"] {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 4%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 142.1 70.6% 45.3%;
+    --primary-foreground: 144.9 80.4% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 142.1 70.6% 45.3%;
+    --radius: 0.75rem;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(255, 255, 255, 0.12);
+    --scrollbar-thumb-hover: rgba(16, 185, 129, 0.4);
+    --neutral-50: 0 0% 100%;
+    --neutral-100: 0 0% 98%;
+    --neutral-200: 240 6% 90%;
+    --neutral-300: 240 5% 84%;
+    --neutral-400: 240 5% 65%;
+    --neutral-500: 240 4% 46%;
+    --neutral-600: 240 5% 34%;
+    --neutral-700: 240 5% 26%;
+    --neutral-800: 240 3.7% 16%;
+    --neutral-900: 240 6% 10%;
+    --neutral-950: 240 10% 4%;
+    --accent-50: 152 76% 96%;
+    --accent-100: 149 80% 90%;
+    --accent-200: 152 76% 80%;
+    --accent-300: 156 72% 67%;
+    --accent-400: 158 64% 52%;
+    --accent-500: 160 84% 39%;
+    --accent-600: 161 94% 30%;
+    --accent-700: 163 94% 24%;
+    --accent-800: 163 88% 20%;
+    --accent-900: 164 86% 16%;
+    --accent-950: 166 91% 9%;
+  }
+
+  [data-theme="rt-light"] {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
+    --card: 0 0% 98%;
+    --card-foreground: 240 10% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+    --primary: 160 84% 35%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 5% 95%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 95%;
+    --muted-foreground: 240 4% 45%;
+    --accent: 240 5% 95%;
+    --accent-foreground: 240 6% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 6% 88%;
+    --input: 240 6% 88%;
+    --ring: 160 84% 35%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --scrollbar-thumb-hover: rgba(5, 150, 105, 0.4);
+    --neutral-50: 240 10% 2%;
+    --neutral-100: 240 10% 4%;
+    --neutral-200: 240 6% 15%;
+    --neutral-300: 240 5% 25%;
+    --neutral-400: 240 4% 45%;
+    --neutral-500: 240 4% 55%;
+    --neutral-600: 240 5% 70%;
+    --neutral-700: 240 5% 82%;
+    --neutral-800: 240 6% 88%;
+    --neutral-900: 240 5% 94%;
+    --neutral-950: 0 0% 98%;
+    --accent-50: 166 91% 9%;
+    --accent-100: 164 86% 16%;
+    --accent-200: 163 88% 20%;
+    --accent-300: 163 94% 24%;
+    --accent-400: 160 84% 32%;
+    --accent-500: 160 84% 39%;
+    --accent-600: 161 94% 30%;
+    --accent-700: 156 72% 67%;
+    --accent-800: 152 76% 80%;
+    --accent-900: 149 80% 90%;
+    --accent-950: 152 76% 96%;
+  }
+
+  [data-theme="dracula"] {
+    --background: 231 15% 18%;
+    --foreground: 60 30% 96%;
+    --card: 230 15% 23%;
+    --card-foreground: 60 30% 96%;
+    --popover: 233 14% 15%;
+    --popover-foreground: 60 30% 96%;
+    --primary: 265 89% 78%;
+    --primary-foreground: 231 15% 18%;
+    --secondary: 232 14% 31%;
+    --secondary-foreground: 60 30% 96%;
+    --muted: 232 14% 31%;
+    --muted-foreground: 225 27% 65%;
+    --accent: 232 14% 31%;
+    --accent-foreground: 135 94% 65%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 60 30% 96%;
+    --border: 232 14% 28%;
+    --input: 232 14% 28%;
+    --ring: 265 89% 78%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(98, 114, 164, 0.35);
+    --scrollbar-thumb-hover: rgba(189, 147, 249, 0.5);
+    --neutral-50: 0 0% 100%;
+    --neutral-100: 60 30% 96%;
+    --neutral-200: 60 25% 90%;
+    --neutral-300: 60 20% 80%;
+    --neutral-400: 225 27% 65%;
+    --neutral-500: 225 25% 55%;
+    --neutral-600: 228 20% 45%;
+    --neutral-700: 232 14% 36%;
+    --neutral-800: 232 14% 28%;
+    --neutral-900: 232 14% 15%;
+    --neutral-950: 231 15% 18%;
+    --accent-50: 265 89% 96%;
+    --accent-100: 265 89% 90%;
+    --accent-200: 265 89% 82%;
+    --accent-300: 265 89% 75%;
+    --accent-400: 265 89% 78%;
+    --accent-500: 265 89% 70%;
+    --accent-600: 265 85% 60%;
+    --accent-700: 265 80% 50%;
+    --accent-800: 265 75% 35%;
+    --accent-900: 265 60% 25%;
+    --accent-950: 265 50% 15%;
+  }
+
+  [data-theme="nord"] {
+    --background: 220 16% 22%;
+    --foreground: 218 27% 94%;
+    --card: 222 16% 28%;
+    --card-foreground: 218 27% 94%;
+    --popover: 220 16% 20%;
+    --popover-foreground: 218 27% 94%;
+    --primary: 193 43% 67%;
+    --primary-foreground: 220 16% 22%;
+    --secondary: 220 17% 32%;
+    --secondary-foreground: 218 27% 94%;
+    --muted: 220 16% 36%;
+    --muted-foreground: 219 28% 78%;
+    --accent: 213 32% 63%;
+    --accent-foreground: 218 27% 94%;
+    --destructive: 354 42% 56%;
+    --destructive-foreground: 218 27% 94%;
+    --border: 220 17% 32%;
+    --input: 220 17% 32%;
+    --ring: 193 43% 67%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(76, 86, 106, 0.4);
+    --scrollbar-thumb-hover: rgba(136, 192, 208, 0.5);
+    --neutral-50: 0 0% 100%;
+    --neutral-100: 218 27% 96%;
+    --neutral-200: 218 27% 92%;
+    --neutral-300: 218 27% 88%;
+    --neutral-400: 219 28% 78%;
+    --neutral-500: 219 20% 68%;
+    --neutral-600: 218 15% 55%;
+    --neutral-700: 220 16% 42%;
+    --neutral-800: 220 17% 32%;
+    --neutral-900: 222 16% 26%;
+    --neutral-950: 220 16% 22%;
+    --accent-50: 193 43% 95%;
+    --accent-100: 193 43% 88%;
+    --accent-200: 193 43% 80%;
+    --accent-300: 193 43% 72%;
+    --accent-400: 193 43% 67%;
+    --accent-500: 193 48% 60%;
+    --accent-600: 193 55% 52%;
+    --accent-700: 193 50% 40%;
+    --accent-800: 193 45% 30%;
+    --accent-900: 193 40% 20%;
+    --accent-950: 193 40% 15%;
+  }
+
+  [data-theme="gruvbox-dark"] {
+    --background: 0 0% 16%;
+    --foreground: 43 58% 86%;
+    --card: 20 5% 23%;
+    --card-foreground: 43 58% 86%;
+    --popover: 30 6% 12%;
+    --popover-foreground: 43 58% 86%;
+    --primary: 39 74% 49%;
+    --primary-foreground: 0 0% 16%;
+    --secondary: 23 7% 29%;
+    --secondary-foreground: 43 58% 86%;
+    --muted: 25 10% 37%;
+    --muted-foreground: 35 17% 65%;
+    --accent: 23 7% 29%;
+    --accent-foreground: 43 58% 86%;
+    --destructive: 2 75% 46%;
+    --destructive-foreground: 43 58% 86%;
+    --border: 23 7% 29%;
+    --input: 23 7% 29%;
+    --ring: 39 74% 49%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(102, 92, 84, 0.4);
+    --scrollbar-thumb-hover: rgba(215, 153, 33, 0.5);
+    --neutral-50: 43 60% 95%;
+    --neutral-100: 43 58% 86%;
+    --neutral-200: 43 45% 76%;
+    --neutral-300: 40 30% 72%;
+    --neutral-400: 35 17% 65%;
+    --neutral-500: 35 15% 55%;
+    --neutral-600: 30 12% 48%;
+    --neutral-700: 25 10% 37%;
+    --neutral-800: 23 7% 29%;
+    --neutral-900: 20 5% 20%;
+    --neutral-950: 0 0% 16%;
+    --accent-50: 39 74% 95%;
+    --accent-100: 39 74% 88%;
+    --accent-200: 39 74% 78%;
+    --accent-300: 39 74% 65%;
+    --accent-400: 39 74% 55%;
+    --accent-500: 39 74% 49%;
+    --accent-600: 39 74% 42%;
+    --accent-700: 39 70% 35%;
+    --accent-800: 39 65% 25%;
+    --accent-900: 39 60% 18%;
+    --accent-950: 39 50% 12%;
+  }
+
+  [data-theme="catppuccin-mocha"] {
+    --background: 240 21% 15%;
+    --foreground: 226 64% 94%;
+    --card: 237 16% 23%;
+    --card-foreground: 226 64% 94%;
+    --popover: 240 21% 12%;
+    --popover-foreground: 226 64% 94%;
+    --primary: 267 84% 81%;
+    --primary-foreground: 240 21% 15%;
+    --secondary: 235 13% 31%;
+    --secondary-foreground: 226 64% 94%;
+    --muted: 235 13% 31%;
+    --muted-foreground: 228 24% 72%;
+    --accent: 235 13% 31%;
+    --accent-foreground: 226 64% 94%;
+    --destructive: 343 81% 75%;
+    --destructive-foreground: 240 21% 15%;
+    --border: 235 13% 31%;
+    --input: 235 13% 31%;
+    --ring: 267 84% 81%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(69, 71, 90, 0.4);
+    --scrollbar-thumb-hover: rgba(203, 166, 247, 0.5);
+    --neutral-50: 0 0% 100%;
+    --neutral-100: 226 64% 94%;
+    --neutral-200: 226 50% 84%;
+    --neutral-300: 227 35% 78%;
+    --neutral-400: 228 24% 72%;
+    --neutral-500: 228 18% 60%;
+    --neutral-600: 230 15% 50%;
+    --neutral-700: 232 12% 40%;
+    --neutral-800: 235 13% 31%;
+    --neutral-900: 237 16% 20%;
+    --neutral-950: 240 21% 15%;
+    --accent-50: 267 84% 96%;
+    --accent-100: 267 84% 92%;
+    --accent-200: 267 84% 86%;
+    --accent-300: 267 84% 83%;
+    --accent-400: 267 84% 81%;
+    --accent-500: 267 80% 75%;
+    --accent-600: 267 75% 68%;
+    --accent-700: 267 70% 55%;
+    --accent-800: 267 65% 40%;
+    --accent-900: 267 55% 25%;
+    --accent-950: 267 45% 15%;
+  }
+
+  [data-theme="tokyo-night"] {
+    --background: 235 19% 13%;
+    --foreground: 230 73% 90%;
+    --card: 231 24% 19%;
+    --card-foreground: 230 73% 90%;
+    --popover: 240 14% 10%;
+    --popover-foreground: 230 73% 90%;
+    --primary: 221 87% 72%;
+    --primary-foreground: 235 19% 13%;
+    --secondary: 229 23% 21%;
+    --secondary-foreground: 230 73% 90%;
+    --muted: 229 23% 21%;
+    --muted-foreground: 229 25% 68%;
+    --accent: 229 23% 21%;
+    --accent-foreground: 230 73% 90%;
+    --destructive: 349 89% 72%;
+    --destructive-foreground: 235 19% 13%;
+    --border: 229 23% 24%;
+    --input: 229 23% 24%;
+    --ring: 221 87% 72%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(41, 46, 66, 0.4);
+    --scrollbar-thumb-hover: rgba(122, 162, 247, 0.5);
+    --neutral-50: 0 0% 100%;
+    --neutral-100: 230 73% 90%;
+    --neutral-200: 230 60% 82%;
+    --neutral-300: 230 45% 75%;
+    --neutral-400: 229 25% 68%;
+    --neutral-500: 229 22% 57%;
+    --neutral-600: 229 20% 45%;
+    --neutral-700: 229 22% 35%;
+    --neutral-800: 229 23% 24%;
+    --neutral-900: 231 24% 19%;
+    --neutral-950: 235 19% 13%;
+    --accent-50: 221 87% 95%;
+    --accent-100: 221 87% 90%;
+    --accent-200: 221 87% 84%;
+    --accent-300: 221 87% 78%;
+    --accent-400: 221 87% 72%;
+    --accent-500: 221 87% 65%;
+    --accent-600: 221 87% 58%;
+    --accent-700: 221 80% 45%;
+    --accent-800: 221 70% 32%;
+    --accent-900: 221 60% 20%;
+    --accent-950: 221 50% 15%;
+  }
+
+  [data-theme="eco-green"] {
+    --background: 150 45% 5.3%;
+    --foreground: 135 47% 93%;
+    --card: 146 40% 8%;
+    --card-foreground: 135 47% 93%;
+    --popover: 144 38% 7%;
+    --popover-foreground: 135 47% 93%;
+    --primary: 142 71% 45%;
+    --primary-foreground: 140 60% 4%;
+    --secondary: 145 41% 15%;
+    --secondary-foreground: 135 52% 90%;
+    --muted: 146 44% 11%;
+    --muted-foreground: 137 15% 68%;
+    --accent: 142 76% 36%;
+    --accent-foreground: 135 100% 97%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 142 41% 24%;
+    --input: 144 44% 17%;
+    --ring: 142 69% 58%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(36, 85, 54, 0.45);
+    --scrollbar-thumb-hover: rgba(34, 197, 94, 0.5);
+  }
+
+  [data-theme="eco-red"] {
+    --background: 0 52% 6%;
+    --foreground: 0 65% 95%;
+    --card: 0 50% 9%;
+    --card-foreground: 0 100% 97%;
+    --popover: 0 50% 7.5%;
+    --popover-foreground: 0 100% 97%;
+    --primary: 0 72% 51%;
+    --primary-foreground: 34 100% 96%;
+    --secondary: 0 55% 15%;
+    --secondary-foreground: 0 82% 95%;
+    --muted: 0 53% 11%;
+    --muted-foreground: 0 27% 71%;
+    --accent: 0 84% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 70% 35%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 54% 27%;
+    --input: 0 53% 17%;
+    --ring: 0 91% 71%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(107, 32, 32, 0.45);
+    --scrollbar-thumb-hover: rgba(220, 38, 38, 0.5);
+  }
+
+  [data-theme="pride"] {
+    --background: 240 6% 7%;
+    --foreground: 240 6% 96%;
+    --card: 240 8% 11%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 8% 10%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 84% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 43% 13%;
+    --secondary-foreground: 32 98% 83%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 258 90% 66%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 26%;
+    --input: 240 4% 16%;
+    --ring: 217 91% 60%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(63, 63, 70, 0.5);
+    --scrollbar-thumb-hover: rgba(139, 92, 246, 0.5);
+  }
+
+  [data-theme="trans-pride"] {
+    --background: 213 26% 8.5%;
+    --foreground: 210 40% 98%;
+    --card: 213 29% 13%;
+    --card-foreground: 210 40% 98%;
+    --popover: 213 30% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 197 95% 67%;
+    --primary-foreground: 203 57% 7%;
+    --secondary: 320 22% 13%;
+    --secondary-foreground: 348 83% 82%;
+    --muted: 208 27% 17%;
+    --muted-foreground: 203 26% 75%;
+    --accent: 348 83% 82%;
+    --accent-foreground: 347 48% 13%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 204 31% 31%;
+    --input: 208 27% 17%;
+    --ring: 197 95% 67%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(54, 83, 103, 0.45);
+    --scrollbar-thumb-hover: rgba(91, 207, 251, 0.5);
+  }
+
+  [data-theme="bi-pride"] {
+    --background: 283 29% 6%;
+    --foreground: 291 38% 96%;
+    --card: 282 33% 9.5%;
+    --card-foreground: 290 40% 97%;
+    --popover: 283 35% 8%;
+    --popover-foreground: 290 40% 97%;
+    --primary: 329 98% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 288 47% 16%;
+    --secondary-foreground: 288 62% 95%;
+    --muted: 286 35% 14%;
+    --muted-foreground: 290 19% 71%;
+    --accent: 304 33% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 292 37% 31%;
+    --input: 291 42% 18%;
+    --ring: 227 100% 71%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(100, 49, 108, 0.45);
+    --scrollbar-thumb-hover: rgba(214, 2, 112, 0.5);
+  }
+
+  [data-theme="lesbian-pride"] {
+    --background: 0 35% 7%;
+    --foreground: 10 100% 98%;
+    --card: 0 27% 10%;
+    --card-foreground: 12 100% 98%;
+    --popover: 0 29% 8.5%;
+    --popover-foreground: 12 100% 98%;
+    --primary: 13 100% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 339 44% 17%;
+    --secondary-foreground: 339 100% 96%;
+    --muted: 0 30% 15%;
+    --muted-foreground: 9 34% 73%;
+    --accent: 324 55% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 1 38% 30%;
+    --input: 0 39% 18%;
+    --ring: 24 100% 67%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(105, 48, 47, 0.45);
+    --scrollbar-thumb-hover: rgba(209, 98, 164, 0.5);
+  }
+
+  [data-theme="nonbinary-pride"] {
+    --background: 255 17% 7%;
+    --foreground: 260 20% 98%;
+    --card: 260 12% 11%;
+    --card-foreground: 0 0% 98%;
+    --popover: 260 13% 9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 273 57% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 268 21% 18%;
+    --secondary-foreground: 280 47% 95%;
+    --muted: 270 12% 16%;
+    --muted-foreground: 273 10% 73%;
+    --accent: 57 100% 59%;
+    --accent-foreground: 55 100% 5%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 269 17% 32%;
+    --input: 269 20% 21%;
+    --ring: 57 100% 59%;
+    --scrollbar-track: transparent;
+    --scrollbar-thumb: rgba(81, 68, 95, 0.45);
+    --scrollbar-thumb-hover: rgba(156, 89, 209, 0.5);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom sleek scrollbar for desktop app */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--scrollbar-track, transparent);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb, rgba(255, 255, 255, 0.12));
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover, rgba(16, 185, 129, 0.4));
+}
+
+/* Scraper Progress Bar Keyframe Animations */
+@keyframes progress-rainbow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-progress-rainbow {
+  animation: progress-rainbow 3s linear infinite;
+}
+
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* Progress Theme Mascot Keyframe Animations (V3-26) */
+@keyframes mascot-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes mascot-float {
+  0%, 100% {
+    transform: translateY(-1.5px);
+  }
+  50% {
+    transform: translateY(2.5px);
+  }
+}
+
+@keyframes mascot-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes mascot-claude-blink {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+    filter: brightness(1.25);
+  }
+}
+
+@keyframes mascot-matrix-scan {
+  0%, 100% {
+    transform: scale(0.95) translateY(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.15) translateY(-2px);
+    opacity: 1;
+    filter: drop-shadow(0 0 5px rgba(0, 255, 102, 0.8));
+  }
+}
+
+@keyframes mascot-synthwave-tilt {
+  0%, 100% {
+    transform: rotate(-5deg) translateY(0);
+  }
+  50% {
+    transform: rotate(5deg) translateY(-3.5px);
+    filter: drop-shadow(0 0 6px rgba(255, 0, 127, 0.8));
+  }
+}
+
+@keyframes mascot-step {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3.5px);
+  }
+}
+
+@keyframes mascot-lava-bob {
+  0%, 100% {
+    transform: scale(1, 1) translateY(0);
+  }
+  50% {
+    transform: scale(1.15, 0.88) translateY(-3.5px);
+    filter: drop-shadow(0 0 6px rgba(234, 88, 12, 0.85));
+  }
+}
+
+@keyframes mascot-sparkle-rotate {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(20deg) scale(1.2);
+    filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.85));
+  }
+}
+
+@keyframes mascot-swim {
+  0%, 100% {
+    transform: rotate(-6deg) translateY(0);
+  }
+  50% {
+    transform: rotate(6deg) translateY(-3px);
+  }
+}
+
+@keyframes mascot-rocket-glide {
+  0%, 100% {
+    transform: rotate(-6deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-14deg) translateY(-3.5px) scale(1.1);
+    filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.85));
+  }
+}
+
+@keyframes mascot-soviet-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.15);
+    filter: brightness(1.3) drop-shadow(0 0 6px rgba(234, 179, 8, 0.8));
+  }
+}
+
+@keyframes mascot-celebrate {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.4) translateY(-6px) rotate(15deg);
+  }
+  70% {
+    transform: scale(1.2) translateY(-2px) rotate(-10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes mascot-indeterminate-sweep {
+  0% {
+    transform: translateX(0%);
+  }
+  50% {
+    transform: translateX(calc(100% - 28px));
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+/* Trail pulse keyframes */
+@keyframes trail-rainbow-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scaleX(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1.15);
+  }
+}
+
+@keyframes trail-spark-pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes trail-bubble-bob {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes trail-pixel-flicker {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-mascot-bounce {
+  animation: mascot-bounce 0.8s ease-in-out infinite;
+}
+
+.animate-mascot-float {
+  animation: mascot-float 1.2s ease-in-out infinite;
+}
+
+.animate-mascot-pulse {
+  animation: mascot-pulse 1s ease-in-out infinite;
+}
+
+.animate-mascot-claude-blink {
+  animation: mascot-claude-blink 1s ease-in-out infinite;
+}
+
+.animate-mascot-matrix-scan {
+  animation: mascot-matrix-scan 1.2s ease-in-out infinite;
+}
+
+.animate-mascot-synthwave-tilt {
+  animation: mascot-synthwave-tilt 1s ease-in-out infinite;
+}
+
+.animate-mascot-step {
+  animation: mascot-step 0.6s steps(2, start) infinite;
+}
+
+.animate-mascot-lava-bob {
+  animation: mascot-lava-bob 1.4s ease-in-out infinite;
+}
+
+.animate-mascot-sparkle-rotate {
+  animation: mascot-sparkle-rotate 1s ease-in-out infinite;
+}
+
+.animate-mascot-swim {
+  animation: mascot-swim 1.2s ease-in-out infinite;
+}
+
+.animate-mascot-rocket-glide {
+  animation: mascot-rocket-glide 1s ease-in-out infinite;
+}
+
+.animate-mascot-soviet-pulse {
+  animation: mascot-soviet-pulse 0.9s ease-in-out infinite;
+}
+
+.animate-mascot-celebrate {
+  animation: mascot-celebrate 0.6s ease-out 2;
+}
+
+.animate-mascot-indeterminate-sweep {
+  animation: mascot-indeterminate-sweep 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.animate-trail-rainbow {
+  animation: trail-rainbow-pulse 0.8s ease-in-out infinite;
+}
+
+.animate-trail-spark {
+  animation: trail-spark-pulse 0.9s ease-in-out infinite;
+}
+
+.animate-trail-bubble {
+  animation: trail-bubble-bob 1.2s ease-in-out infinite;
+}
+
+.animate-trail-pixel {
+  animation: trail-pixel-flicker 0.6s steps(2, start) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-progress-rainbow,
+  .animate-progress-indeterminate,
+  .animate-mascot-bounce,
+  .animate-mascot-float,
+  .animate-mascot-pulse,
+  .animate-mascot-claude-blink,
+  .animate-mascot-matrix-scan,
+  .animate-mascot-synthwave-tilt,
+  .animate-mascot-step,
+  .animate-mascot-lava-bob,
+  .animate-mascot-sparkle-rotate,
+  .animate-mascot-swim,
+  .animate-mascot-rocket-glide,
+  .animate-mascot-soviet-pulse,
+  .animate-mascot-celebrate,
+  .animate-mascot-indeterminate-sweep,
+  .animate-trail-rainbow,
+  .animate-trail-spark,
+  .animate-trail-bubble,
+  .animate-trail-pixel {
+    animation: none !important;
+    transform: none !important;
+  }
+}

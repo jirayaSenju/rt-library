@@ -1,0 +1,33 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { initializeSchema } = require('../electron/database/schema.cjs');
+const dbMain = require('../electron/database/dbMain.cjs');
+const itemsRepo = require('../electron/database/repositories/itemsRepo.cjs');
+const torrentRepo = require('../electron/database/repositories/torrentMetadataRepo.cjs');
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-swarm-filter-'));
+const db = dbMain.initDatabase(dir);
+db.prepare("INSERT INTO categories (id,name) VALUES ('test','Test')").run();
+for (const [id, seeds, leechers] of [['a', 10, 2], ['b', null, null], ['c', 0, 0], ['d', 5, 8]]) {
+  itemsRepo.upsert(db, { id, categoryId: 'test', title: id, cleanTitle: id, details: {} });
+  if (seeds !== null) torrentRepo.upsertMetadata({ itemId: id, infoHash: `${id.repeat(40).slice(0,40)}`, metadataStatus: 'complete' });
+  if (seeds !== null) torrentRepo.updateSwarmStats(id, { seeds, leechers, peers: seeds + leechers, swarmStatus: 'complete', swarmSource: 'tracker' });
+}
+const ids = options => itemsRepo.getPaginated(db, { ...options, categoryId: 'test', limit: 20 }).items.map(item => item.id);
+assert.deepEqual(ids({ sortBy: 'seeds', sortOrder: 'desc' }), ['a', 'd', 'c', 'b']);
+assert.deepEqual(ids({ sortBy: 'seeds', sortOrder: 'asc' }), ['c', 'd', 'a', 'b']);
+assert.deepEqual(ids({ minSeeds: 1 }), ['a', 'd']);
+assert.deepEqual(ids({ maxSeeds: 0 }), ['c']);
+assert.deepEqual(ids({ minLeechers: 5 }), ['d']);
+assert.deepEqual(ids({ hasSeeds: true }), ['a', 'd']);
+assert.equal(itemsRepo.getPaginated(db, { categoryId: 'test', minSeeds: 1, limit: 20 }).total, 2);
+const old = new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString();
+db.prepare('UPDATE torrent_metadata SET swarm_fetched_at = ? WHERE item_id = ?').run(old, 'a');
+assert.equal(torrentRepo.getByItemId('a').swarmStatus, 'stale');
+torrentRepo.updateSwarmStats('a', { seeds: null, leechers: null, peers: null, swarmStatus: 'failed', swarmSource: 'unknown' });
+const failed = torrentRepo.getByItemId('a');
+assert.equal(failed.seeds, 10);
+assert.equal(failed.leechers, 2);
+console.log('PASS swarm filters, NULL ordering, totals and stale status');
+dbMain.closeDatabase();
