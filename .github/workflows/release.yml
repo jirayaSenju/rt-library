@@ -71,8 +71,9 @@ jobs:
         run: npm run build
 
       - name: Package Linux Desktop AppImage
-        run: npm run package:linux
+        run: npx electron-builder --linux AppImage --publish never
         env:
+          # Prevent electron-builder from attempting auto-publish when a tag is detected
           GH_TOKEN: ""
 
       - name: Verify Packaged Runtime Integrity
@@ -113,8 +114,9 @@ jobs:
         run: npm run build
 
       - name: Package Windows NSIS Installer
-        run: npm run package:win
+        run: npx electron-builder --win nsis --publish never
         env:
+          # Prevent electron-builder from attempting auto-publish when a tag is detected
           GH_TOKEN: ""
 
       - name: Verify Packaged Runtime Integrity
