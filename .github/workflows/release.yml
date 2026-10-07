@@ -14,10 +14,80 @@ concurrency:
 
 jobs:
   # ----------------------------------------------------------------------------
+  # 0. Conventional Commit Release Eligibility Gate
+  # ----------------------------------------------------------------------------
+  release-eligibility:
+    name: Check Release Commit Types
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.classify.outputs.should_release }}
+    steps:
+      - name: Checkout Full History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify Conventional Commits since previous release
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          previous_tag="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
+          if [[ -n "$previous_tag" ]]; then
+            commit_range="${previous_tag}..${GITHUB_SHA}"
+            echo "Checking commits since ${previous_tag}."
+          else
+            commit_range="${GITHUB_SHA}"
+            echo "No previous release tag found; checking repository history."
+          fi
+
+          should_release=false
+          release_commit_regex='^(feat|fix|perf|revert)(\([^)]*\))?:[[:space:]]+'
+          breaking_commit_regex='^([[:alnum:]_-]+)(\([^)]*\))?!:[[:space:]]+'
+          conventional_commit_regex='^([[:alnum:]_-]+)(\([^)]*\))?:[[:space:]]+'
+          while IFS= read -r commit; do
+            subject="$(git show -s --format=%s "$commit")"
+            body="$(git show -s --format=%b "$commit")"
+
+            if [[ "$subject" =~ $release_commit_regex ]]; then
+              should_release=true
+              echo "Release enabled by Conventional Commit: ${subject}"
+              break
+            fi
+
+            if [[ "$subject" =~ $breaking_commit_regex ]]; then
+              commit_type="${BASH_REMATCH[1]}"
+              if [[ "$commit_type" != "docs" ]]; then
+                should_release=true
+                echo "Release enabled by breaking Conventional Commit: ${subject}"
+                break
+              fi
+            fi
+
+            if [[ "$subject" =~ $conventional_commit_regex ]]; then
+              commit_type="${BASH_REMATCH[1]}"
+              if [[ "$commit_type" != "docs" ]] && grep -qE '^BREAKING[ -]CHANGE:' <<< "$body"; then
+                should_release=true
+                echo "Release enabled by breaking change footer in: ${subject}"
+                break
+              fi
+            fi
+          done < <(git rev-list "$commit_range")
+
+          if [[ "$should_release" == false ]]; then
+            echo "No release-triggering Conventional Commits found. Documentation-only and maintenance-only changes will not be released."
+          fi
+
+          echo "should_release=${should_release}" >> "$GITHUB_OUTPUT"
+
+  # ----------------------------------------------------------------------------
   # 1. Validation Gate
   # ----------------------------------------------------------------------------
   validate:
     name: Validate Release Criteria & Privacy
+    needs: [release-eligibility]
+    if: needs.release-eligibility.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
@@ -237,4 +307,3 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

@@ -18,33 +18,48 @@ vMAJOR.MINOR.PATCH
 ```
 Example: `v1.0.0`, `v1.1.0`, `v1.0.1`.
 
+### Release eligibility from Conventional Commits
+
+Application releases are created for release-worthy code changes since the previous release:
+
+- `feat` triggers a MINOR release.
+- `fix`, `perf`, or `revert` triggers a PATCH release.
+- A non-documentation breaking change marked with `!` or a `BREAKING CHANGE:` footer triggers a MAJOR release.
+- A documentation-only change uses `docs:`. It does not bump the application version or create a release tag. `test`, `ci`, and maintenance-only commits do not trigger a release by themselves.
+
+The release workflow checks commits between the current tag and the previous release tag. If it finds no release-worthy Conventional Commit, it skips validation builds and publication. Documentation-only work still goes through the normal Pull Request checks and merge flow.
+
 ---
 
-## 2. Release Preparation Workflow (Maintainer)
+## 2. Development and Release Preparation Workflow
 
-All release preparation is performed locally before creating any Git tag.
+Every code or documentation change follows the project workflow: start from `main`, work on the `dev` branch, commit with Conventional Commits, open a Pull Request to `main`, wait for GitHub Actions, and merge only after all required checks pass. If `dev` is absent, create it from the latest `main`. Keep `dev` synchronized with `main` after each merge. Only release-worthy code changes need a version bump and release tag.
 
 ```mermaid
 flowchart TD
-    A["1. Choose Next SemVer Version"] --> B["2. Run npm run release:prepare &lt;version&gt;"]
-    B --> C["3. Update CHANGELOG.md with Release Notes"]
-    C --> D["4. Run Local Verification Suite"]
-    D --> E["5. Commit and Create Annotated Git Tag"]
-    E --> F["6. Push Tag to GitHub"]
-    F --> G["7. GitHub Actions Release Pipeline Runs"]
-    G --> H["8. Binaries & SHA256SUMS Published to GitHub Releases"]
+    A["Update main and create or sync dev"] --> B["Make change and commit conventionally"]
+    B --> C["Push dev and open PR to main"]
+    C --> D["Wait for required GitHub Actions"]
+    D -->|"All pass"| E["Merge PR"]
+    D -->|"Any fail"| B
+    E --> F{"Release-worthy code change?"}
+    F -->|"Yes"| G["Bump SemVer and create tag on main"]
+    G --> H["Release Actions build and publish"]
+    F -->|"No; docs-only"| I["No version bump or release tag"]
 ```
 
-### Step 1: Synchronize Version
-Use the release preparation helper script to update `package.json` and `package-lock.json` synchronously without creating Git tags:
+### Step 1: Prepare a code release on `dev`
+
+Use this process only when the commits since the previous release include a release-worthy code change. For a documentation-only change, use a `docs:` commit and do not update the application version, create a release tag, or run the release preparation helper.
+
+For a code release, start from an up-to-date `dev` branch. Choose the next version according to the SemVer policy above. Use the release preparation helper to update `package.json` and `package-lock.json` without creating a tag:
 ```bash
 npm run release:prepare 1.1.0
 ```
 
-### Step 2: Update Changelog
-Edit `CHANGELOG.md` to add a new section header with the current release date:
+Edit `CHANGELOG.md` with the release date and notes:
 ```markdown
-## [1.1.0] - 2026-10-15
+## [1.1.0] - YYYY-MM-DD
 
 ### Added
 - Feature description...
@@ -53,59 +68,61 @@ Edit `CHANGELOG.md` to add a new section header with the current release date:
 - Bug fix description...
 ```
 
-### Step 3: Run Local Validation Suite
-Execute the full automated verification checklist before committing:
+### Step 2: Validate and commit
+
+Run the local checks before opening the Pull Request:
 ```bash
-# 1. Run unit, integration, and contrast tests
 npm test
-
-# 2. Verify TypeScript typechecking and production Vite bundle
 npm run build
-
-# 3. Verify third-party license audit
 npm run audit:licenses
-
-# 4. Verify release privacy scanner (zero secrets, databases, or scraped data)
 npm run release:check
-
-# 5. Validate SemVer consistency
 npm run release:validate v1.1.0
 ```
 
-### Step 4: Commit and Create Tag Manually
-Once all local checks pass, the maintainer commits the version updates and creates an annotated tag:
+Commit the version and changelog changes on `dev` using a Conventional Commit message:
 ```bash
 git add package.json package-lock.json CHANGELOG.md
 git commit -m "chore(release): v1.1.0"
-git tag -a v1.1.0 -m "Release v1.1.0"
+git push -u origin dev
 ```
 
-### Step 5: Push to Trigger Automated Release
-Pushing the tag to GitHub initiates the automated CI/CD release workflow:
+Open a Pull Request from `dev` to `main`. Wait for every required GitHub Actions check to pass; fix failures on `dev`, push the fix, and wait for the checks again. Merge only after all required checks pass.
+
+### Step 3: Tag the merged release
+
+After the Pull Request is merged, update local `main` and confirm the release version is there:
 ```bash
-git push origin main
+git switch main
+git pull --ff-only origin main
+npm run release:validate v1.1.0
+git tag -a v1.1.0 -m "Release v1.1.0"
 git push origin v1.1.0
 ```
+
+Pushing the tag starts the release workflow. Do not push release version changes directly to `main` or create the tag before those changes pass the Pull Request Actions and merge.
 
 ---
 
 ## 3. Automated GitHub Actions Pipeline
 
-When a tag matching `v*.*.*` is pushed, the `.github/workflows/release.yml` workflow triggers:
+When a tag matching `v*.*.*` is pushed, `.github/workflows/release.yml` checks the Conventional Commit types since the previous release tag. It runs validation, packaging, and publication only when it finds a release-worthy code change; otherwise, those jobs are skipped.
 
 ```mermaid
 graph TD
-    Tag["Push Tag (v1.1.0)"] --> Validate["1. Validate Job<br/>(Linux Runner)"]
+    Tag["Push Tag (v1.1.0)"] --> Eligibility["0. Check Conventional Commit types"]
+    Eligibility -->|"Release-worthy code change"| Validate["1. Validate Job<br/>(Linux Runner)"]
     Validate --> BuildLinux["2a. Build Linux<br/>(AppImage)"]
     Validate --> BuildWin["2b. Build Windows<br/>(NSIS EXE)"]
     BuildLinux --> Release["3. Release Job<br/>(Aggregate & Verify)"]
     BuildWin --> Release
     Release --> Checksums["Generate SHA256SUMS.txt"]
     Checksums --> Publish["Publish to GitHub Releases"]
+    Eligibility -->|"No release-worthy code change"| Skip["Skip builds and publication"]
 ```
 
 ### Pipeline Jobs & Guarantees:
-1. **`validate` Gate**: Runs on `ubuntu-latest`. Executes test suite, frontend compilation, license audit, release readiness scan, and SemVer tag consistency check. If any check fails, packaging jobs never start.
+0. **`release-eligibility`**: Scans commits since the previous release tag. Only `feat`, `fix`, `perf`, `revert`, or non-documentation breaking changes enable the release jobs.
+1. **`validate` Gate**: Runs on `ubuntu-latest` when the eligibility gate passes. Executes the test suite, frontend compilation, license audit, release readiness scan, and SemVer tag consistency check. If any check fails, packaging jobs do not start.
 2. **`build-linux`**: Runs on `ubuntu-latest`. Compiles native `better-sqlite3` for Linux, packages the desktop AppImage, and verifies archive runtime integrity (`npm run package:verify`).
 3. **`build-windows`**: Runs on native `windows-latest`. Compiles native `better-sqlite3` for Windows x64 and generates the NSIS setup installer (`.exe`).
 4. **`release`**: Runs on `ubuntu-latest` after both builds succeed:
@@ -140,4 +157,3 @@ Get-FileHash -Algorithm SHA256 RT-Library-*-windows-x64-setup.exe
 - **Least Privilege Permissions**: CI workflows run with `contents: read`. Only the final deployment step in `release.yml` uses scoped `contents: write`.
 - **Fork Safety**: Pull requests from forks are executed in read-only mode without access to release tokens or repository write permissions.
 - **Windows Code Signing**: Windows executables are currently built without an EV Code Signing certificate (`WINDOWS_CODE_SIGNING: NOT CONFIGURED`). Users may see a standard Windows SmartScreen prompt upon first launch.
-

@@ -8,6 +8,11 @@ Briefly explain the changes made in this pull request and the motivation behind 
 - [ ] Documentation update
 - [ ] Security / privacy hardening
 
+## Branch and CI
+- [ ] This Pull Request targets `main`.
+- [ ] Commit messages follow Conventional Commits; documentation-only changes use `docs:`.
+- [ ] All required GitHub Actions checks pass before merge.
+
 ## Pre-Submission Checklist
 - [ ] Tests added/updated
 - [ ] `npm test` passes

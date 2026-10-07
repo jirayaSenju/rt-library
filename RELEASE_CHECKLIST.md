@@ -36,11 +36,16 @@ This checklist must be strictly completed and verified prior to any public relea
 
 ## 3. Versioning & SemVer Consistency
 
+- [ ] Commits since the previous release include a release-worthy code type (`feat`, `fix`, `perf`, `revert`, or a non-documentation breaking change)
+- [ ] Documentation-only `docs:` changes do not bump the application version or create a release tag
+- [ ] Release version and changelog changes were made on `dev` and merged to `main` through a Pull Request
+- [ ] All required GitHub Actions checks passed before the Pull Request was merged
 - [ ] `package.json` version updated to target SemVer (`MAJOR.MINOR.PATCH`)
 - [ ] `package-lock.json` version synchronized with `package.json`
 - [ ] `CHANGELOG.md` updated with release header `[MAJOR.MINOR.PATCH] - YYYY-MM-DD` and feature notes
 - [ ] Release version validator passes (`npm run release:validate`)
 - [ ] Annotated Git tag `vMAJOR.MINOR.PATCH` matches `package.json.version` exactly
+- [ ] Release tag was created from the merged commit on `main`
 
 ---
 
