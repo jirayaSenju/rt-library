@@ -96,6 +96,10 @@ function findAsarFile() {
   return null;
 }
 
+function normalizeAsarPath(archivePath) {
+  return archivePath.trim().replace(/\\/g, '/').replace(/^\/+/, '');
+}
+
 function verifyPackageRuntime() {
   const isInspect = process.argv.includes('--inspect');
   const asarPath = findAsarFile();
@@ -119,7 +123,7 @@ function verifyPackageRuntime() {
   const asarFiles = new Set(
     asarListRaw
       .split('\n')
-      .map((l) => l.trim().replace(/^\//, ''))
+      .map(normalizeAsarPath)
       .filter(Boolean)
   );
 
@@ -213,5 +217,5 @@ if (require.main === module) {
 module.exports = {
   MANDATORY_RUNTIME_FILES,
   findAsarFile,
+  normalizeAsarPath,
 };
-
