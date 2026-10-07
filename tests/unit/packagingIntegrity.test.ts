@@ -2,8 +2,16 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
+const { normalizeAsarPath } = require('../../scripts/verify-package-runtime.cjs');
+
 describe('V3-21 Cross-Platform Packaging & Runtime Integrity', () => {
   const rootDir = path.resolve(__dirname, '../..');
+
+  it('normalizes ASAR paths from Windows and POSIX output', () => {
+    expect(normalizeAsarPath('\\electron\\main.cjs')).toBe('electron/main.cjs');
+    expect(normalizeAsarPath('/electron/main.cjs')).toBe('electron/main.cjs');
+    expect(normalizeAsarPath('  electron/main.cjs\r')).toBe('electron/main.cjs');
+  });
 
   it('configures electron-builder files to include scraper, console script, icons, and electron runtime', () => {
     const pkgPath = path.join(rootDir, 'package.json');
@@ -86,4 +94,3 @@ describe('V3-21 Cross-Platform Packaging & Runtime Integrity', () => {
     expect(verifierContent).toContain('better-sqlite3');
   });
 });
-
