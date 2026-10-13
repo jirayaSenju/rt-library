@@ -53,6 +53,7 @@ This checklist must be strictly completed and verified prior to any public relea
 
 - [ ] `npm test` passes completely (all unit, integration, contrast, and benchmark suites)
 - [ ] `npm run build` passes with zero TypeScript/Vite compilation errors
+- [ ] `npm run companion:validate` passes with zero manifest or asset errors
 - [ ] `npm run release:check` passes with zero blockers
 - [ ] `npm run audit:licenses` passes with zero missing/unknown licenses
 - [ ] Source dependency license audit passes
@@ -64,12 +65,24 @@ This checklist must be strictly completed and verified prior to any public relea
 
 - [ ] Linux CI runner (`ubuntu-latest`) passes all checks
 - [ ] Windows CI runner (`windows-latest`) passes all checks
+- [ ] Browser Companion build & validation executed on CI
 - [ ] Least-privilege permissions verified (`contents: read` for pull requests)
 - [ ] Fork-safe execution verified (no secrets exposed)
 
 ---
 
-## 6. Linux Packaging & Verification
+## 6. Browser Companion Packaging & Verification
+
+- [ ] `npm run companion:build` succeeds
+- [ ] `npm run companion:validate` passes with zero manifest or asset errors
+- [ ] `npm run companion:package` generates clean `rt-library-browser-companion-v${version}.zip`
+- [ ] Extension zip contains `manifest.json` at root without extra wrapper folder
+- [ ] Extension zip contains zero development artifacts (`.git`, `node_modules`, `tests`, `.md`)
+- [ ] Browser Companion SHA-256 checksum generated and included in `SHA256SUMS.txt`
+
+---
+
+## 7. Linux Packaging & Verification
 
 - [ ] Linux AppImage generated via `npm run package:linux` (`RT-Library-${version}-linux-x86_64.AppImage`)
 - [ ] `npm run package:verify` passes on packaged `app.asar` (zero forbidden files)
@@ -80,7 +93,7 @@ This checklist must be strictly completed and verified prior to any public relea
 
 ---
 
-## 7. Windows Packaging & Verification
+## 8. Windows Packaging & Verification
 
 - [ ] Windows NSIS setup installer generated on Windows runner (`RT-Library-${version}-windows-x64-setup.exe`)
 - [ ] Native `better-sqlite3` compiled for Electron Windows x64
@@ -89,7 +102,7 @@ This checklist must be strictly completed and verified prior to any public relea
 
 ---
 
-## 8. Packaged Runtime Safety
+## 9. Packaged Runtime Safety
 
 - [ ] No local user data or `.userData/` included in binary packages
 - [ ] No scraper browser profile or cache included in binary packages
@@ -98,7 +111,7 @@ This checklist must be strictly completed and verified prior to any public relea
 
 ---
 
-## 9. Documentation & Version Consistency
+## 10. Documentation & Version Consistency
 
 - [ ] `README.md` is current (accurate theme count, locale count, feature descriptions, and Releases section)
 - [ ] `CHANGELOG.md` reflects all recent changes and features
@@ -107,10 +120,16 @@ This checklist must be strictly completed and verified prior to any public relea
 - [ ] Installation steps in `docs/installation.md`, `docs/building.md`, and `docs/releasing.md` are validated
 - [ ] `docs/data-storage.md` accurately reflects platform user data paths
 - [ ] `docs/scraper.md` accurately reflects incremental and refresh scan semantics
+- [ ] `docs/known-limitations.md` accurately documents RuTracker Cloudflare browser verification operational behavior
+- [ ] First Run blocks safely without corrupting empty database when verification cannot be completed
+- [ ] Existing library catalog remains 100% usable during blocked scraper sync state
+- [ ] Background scheduler records interaction requirement silently without launching browser windows automatically
+- [ ] Scraper retry performs exactly 1 logical access probe without auto-retry loops
+- [ ] Raw scraper exceptions and stack traces are sanitized and not exposed in main UI
 
 ---
 
-## 10. Backend / SQLite Performance
+## 11. Backend / SQLite Performance
 
 - [ ] Backend benchmark completed (`npm run benchmark`)
 - [ ] Cold database initialization with 15,000 items tested (< 500 ms)
@@ -137,6 +156,26 @@ This checklist must be strictly completed and verified prior to any public relea
 - [ ] Linux validated
 - [ ] Windows validated or marked `NOT TESTED ON WINDOWS`
 - [ ] Preliminary hardware guidance documented in `docs/performance-benchmark.md`
+
+### Scraper First-Run Reliability (V3-41)
+
+- [ ] Selected-category verification follows the requested category
+- [ ] Strict all-category preflight blocks scans when any enabled category needs interaction
+- [ ] Cloudflare challenge is reported as `INTERACTION_REQUIRED` without retries or bypass
+- [ ] Headed verification is explicit and uses the scan's persistent profile
+- [ ] Verification completion triggers a fresh probe of the affected scope
+- [ ] Challenge and cancel cleanup leave zero orphan browser processes
+- [ ] Logs contain category diagnostics without request headers or browser cookies
+
+### Manual RuTracker HTML Import (V3-57)
+
+- [ ] Manual HTML import works offline
+- [ ] Duplicate import does not create duplicate records
+- [ ] User favorites and existing screenshots are preserved on sparse updates
+- [ ] Invalid and oversized HTML is rejected safely
+- [ ] Scripts and external resources from imported HTML do not execute or load
+- [ ] Linux runtime manually verified
+- [ ] Windows runtime verified or marked `NOT TESTED`
 
 ---
 

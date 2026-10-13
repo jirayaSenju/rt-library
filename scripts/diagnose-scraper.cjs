@@ -59,29 +59,6 @@ function getProfileMetrics(profileDir) {
   };
 }
 
-async function inspectContext(context) {
-  const cookies = await context.cookies();
-  const ruTrackerCookies = cookies.filter(c => c.domain.includes('rutracker.org'));
-  
-  const cookieMetadata = ruTrackerCookies.map(c => ({
-    name: c.name,
-    domain: c.domain,
-    path: c.path,
-    expires: c.expires > 0 ? new Date(c.expires * 1000).toISOString() : 'session',
-    secure: c.secure,
-    sameSite: c.sameSite,
-  }));
-
-  const cfClearance = cookieMetadata.find(c => c.name === 'cf_clearance');
-
-  return {
-    totalCookies: cookies.length,
-    ruTrackerCookiesCount: ruTrackerCookies.length,
-    cookieNames: ruTrackerCookies.map(c => c.name),
-    cfClearance: cfClearance || null,
-  };
-}
-
 async function runHealthCheckTrace(page, modeLabel) {
   const networkLogs = [];
 
@@ -89,15 +66,9 @@ async function runHealthCheckTrace(page, modeLabel) {
     const url = res.url();
     if (url.includes('rutracker.org')) {
       networkLogs.push({
-        url,
+        url: require('../scraper/accessProbe.cjs').sanitizeUrlForLog(url),
         status: res.status(),
-        statusText: res.statusText(),
-        headers: {
-          server: res.headers()['server'] || null,
-          contentType: res.headers()['content-type'] || null,
-          cfMitigated: res.headers()['cf-mitigated'] || null,
-          cfRay: res.headers()['cf-ray'] ? 'present' : 'absent',
-        },
+        cfMitigated: res.headers()['cf-mitigated'] || null,
       });
     }
   };
@@ -209,20 +180,10 @@ async function testMatrixCell(label, { headless, profileDir }) {
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
       ],
     });
 
     const page = context.pages().length > 0 ? context.pages()[0] : await context.newPage();
-    const cookieData = await inspectContext(context);
-
-    console.log(`  Cookies found: ${cookieData.ruTrackerCookiesCount} for RuTracker (names: ${cookieData.cookieNames.join(', ') || 'none'})`);
-    if (cookieData.cfClearance) {
-      console.log(`  cf_clearance cookie PRESENT: domain=${cookieData.cfClearance.domain}, expires=${cookieData.cfClearance.expires}`);
-    } else {
-      console.log(`  cf_clearance cookie ABSENT`);
-    }
-
     const trace = await runHealthCheckTrace(page, label);
     console.log(`  Trace Summary for ${label}:`);
     console.log(`    Index Status:     ${trace.step1_index.status} (${trace.step1_index.finalUrl})`);
@@ -237,7 +198,6 @@ async function testMatrixCell(label, { headless, profileDir }) {
       label,
       headless,
       profileDir,
-      cookieData,
       trace,
       pass: !trace.step2_challenge.detected && trace.step5_topics.count > 0,
     };
@@ -278,14 +238,13 @@ async function runDiagnostics() {
   console.log('\n================================================================================');
   console.log('       DIAGNOSTIC MATRIX PARITY SUMMARY');
   console.log('================================================================================');
-  console.log('  Matrix Cell                          | Cookies | Challenge | Topics | Result');
+  console.log('  Matrix Cell                          | Challenge | Topics | Result');
   console.log('  -----------------------------------------------------------------------------');
   results.forEach(r => {
-    const cookies = r.cookieData ? r.cookieData.ruTrackerCookiesCount : 0;
     const challenge = r.trace?.step2_challenge?.detected ? 'YES' : 'NO';
     const topics = r.trace?.step5_topics?.count || 0;
     const status = r.pass ? 'PASS' : 'FAIL';
-    console.log(`  ${r.label.padEnd(36)} | ${String(cookies).padStart(7)} | ${challenge.padStart(9)} | ${String(topics).padStart(6)} | ${status}`);
+    console.log(`  ${r.label.padEnd(36)} | ${challenge.padStart(9)} | ${String(topics).padStart(6)} | ${status}`);
   });
   console.log('================================================================================\n');
 }

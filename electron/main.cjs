@@ -251,6 +251,57 @@ function registerSystemIPCHandlers() {
   };
   ipcMain.handle(IPC_CHANNELS.SYSTEM_SAVE_APP_CONFIG, handleSaveAppConfig);
   ipcMain.handle('save-app-config', handleSaveAppConfig);
+
+  // Window Focus & Notification Handlers (V3-76)
+  ipcMain.handle('system:is-window-focused', (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) return false;
+      return win.isFocused() && !win.isMinimized();
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle('system:focus-window', (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) return false;
+      if (win.isMinimized()) win.restore();
+      win.focus();
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle('system:show-notification', (event, { title, body, silent } = {}) => {
+    try {
+      const { Notification } = require('electron');
+      if (!Notification || !Notification.isSupported || !Notification.isSupported()) return false;
+      const notif = new Notification({
+        title: title || 'RT Library',
+        body: body || '',
+        silent: !!silent,
+        icon: getAppIconPath(),
+      });
+      notif.on('click', () => {
+        try {
+          const win = BrowserWindow.fromWebContents(event.sender);
+          if (win) {
+            if (win.isMinimized()) win.restore();
+            win.focus();
+            win.webContents.send('system:notification-clicked', { title });
+          }
+        } catch (_) {}
+      });
+      notif.show();
+      return true;
+    } catch (err) {
+      console.warn('[Main IPC] Notification error:', err.message);
+      return false;
+    }
+  });
 }
 
 const dbMain = require('./database/dbMain.cjs');
@@ -263,10 +314,92 @@ const workerManager = require('./indexer/workerManager.cjs');
 const { registerScraperIPCHandlers } = require('./scraper/scraperIPC.cjs');
 const ScraperManager = require('./scraper/scraperManager.cjs');
 
+const { BrowserCompanionBridge } = require('./scraper/browserCompanionBridge.cjs');
+const browserCompanion = new BrowserCompanionBridge({
+  appVersion: app.getVersion(),
+  onPage: async ({ html, url, bytes, kind, request, httpStatus, error, requestId }) => {
+    const lower = (html || '').toLowerCase();
+    const forumDetected = /class=["'][^"']*tortopic|id=["']page_container["']|id=["']page_header["']|<table[^>]*forumline/.test(lower);
+    const cfMitigated = /cf-chl-|challenge-platform|just a moment|проверка браузера/.test(lower);
+
+    let status = 'UNKNOWN_PAGE';
+    if (error === 'NO_RUTRACKER_TAB') status = 'NO_RUTRACKER_TAB';
+    else if (error === 'PAYLOAD_TOO_LARGE') status = 'PAYLOAD_TOO_LARGE';
+    else if (forumDetected) status = 'FORUM_READY';
+    else if (cfMitigated || Number(httpStatus) === 403) status = 'VERIFICATION_REQUIRED';
+    else if (/name=["']login["']|id=["']login["']|forum\/login\.php/.test(lower)) status = 'AUTH_REQUIRED';
+    else if (error || Number(httpStatus) >= 400 || Number(httpStatus) === 0) status = 'FETCH_ERROR';
+
+    const output = {
+      status,
+      url,
+      httpStatus: Number(httpStatus) || 0,
+      bytes: Number(bytes) || 0,
+      forumDetected,
+      cfMitigated,
+      fetchedAt: new Date().toISOString(),
+      ...(error ? { error } : {}),
+    };
+
+    if (status === 'FORUM_READY' && kind === 'category') {
+      console.info(`[COMPANION][PARSE_STARTED] requestId=${requestId || 'unknown'} kind=${kind}`);
+      try {
+        const { parseCategoryHtml } = require('../scraper/parsers/rutrackerHtmlParser.cjs');
+        const categories = require('./scraper/categoryManager.cjs').CategoryManager.getInstance().getResolvedCategories();
+        const category = categories.find(item => item.id === request?.categoryId) || {
+          id: request?.categoryId || 'category',
+          name: request?.categoryId || 'Category',
+          baseUrl: url,
+        };
+        const parsed = parseCategoryHtml(html, {
+          categoryId: category.id,
+          categoryName: category.name,
+          categoryBaseUrl: category.baseUrl,
+          titleSearch: category.titleSearch,
+          pageNum: request?.pageNum || 1,
+          pageUrl: url,
+        });
+        output.parsed = parsed;
+        output.topicCount = parsed.topics?.length ?? 0;
+        console.info(`[COMPANION][PARSE_RESULT] requestId=${requestId || 'unknown'} topicCount=${output.topicCount}`);
+      } catch (err) {
+        console.error(`[COMPANION][PARSE_ERROR] requestId=${requestId || 'unknown'} error=${err.message}`);
+        output.status = 'PARSE_ERROR';
+        output.error = err.message;
+      }
+    } else if (status === 'FORUM_READY' && kind === 'topic') {
+      console.info(`[COMPANION][PARSE_STARTED] requestId=${requestId || 'unknown'} kind=${kind}`);
+      try {
+        const { parseTopicHtml } = require('../scraper/parsers/rutrackerHtmlParser.cjs');
+        const parsed = parseTopicHtml(html, {
+          topicUrl: url,
+          topicTitle: request?.topicTitle || '',
+        });
+        const forumMatch = html.match(/viewforum\.php\?f=(\d+)/);
+        const forumId = forumMatch ? forumMatch[1] : null;
+        const pageTitleMatch = html.match(/<title>([^<]+)<\/title>/i);
+        const pageTitle = pageTitleMatch ? pageTitleMatch[1].replace(/\s*[–|-]\s*RuTracker.*$/i, '').trim() : '';
+        output.parsedTopic = {
+          ...parsed,
+          forumId,
+          topicTitle: pageTitle || parsed?.canonicalTitle || '',
+        };
+        console.info(`[COMPANION][PARSE_RESULT] requestId=${requestId || 'unknown'} topic=${parsed?.canonicalTitle || pageTitle || 'unknown'}`);
+      } catch (err) {
+        console.error(`[COMPANION][PARSE_ERROR] requestId=${requestId || 'unknown'} error=${err.message}`);
+        output.status = 'PARSE_ERROR';
+        output.error = err.message;
+      }
+    }
+    console.info(`[COMPANION] page result type=${kind} status=${output.status} bytes=${bytes} topics=${output.topicCount ?? 'n/a'}`);
+    return output;
+  },
+});
+
 app.whenReady().then(async () => {
   const userDataDir = await ensureConfigDir();
   registerSystemIPCHandlers();
-  registerScraperIPCHandlers();
+  registerScraperIPCHandlers(browserCompanion);
   require('./images/imageFetch.cjs').registerImageIPC({
     ipcMain, net,
     trustedUrl: (url) => {
@@ -285,6 +418,7 @@ app.whenReady().then(async () => {
     registerDatabaseIPCHandlers();
     torrentMetadataService.registerIpcHandlers();
     require('./database/backupScheduler.cjs').initScheduler(userDataDir);
+    require('./scraper/syncScheduler.cjs').initSyncScheduler();
     console.log('[DB][NATIVE] Native SQLite initialized in Main process');
 
     // Run legacy JSON catalog migration to SQLite (idempotent, automatic)
@@ -309,6 +443,10 @@ app.whenReady().then(async () => {
 });
 
 app.on('will-quit', () => {
+  try {
+    require('./scraper/syncScheduler.cjs').stopSyncScheduler();
+  } catch (_) {}
+  browserCompanion.stop().catch(() => {});
   try {
     ScraperManager.getInstance().cancel();
   } catch (_) {}

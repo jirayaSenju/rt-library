@@ -4,45 +4,11 @@
  */
 
 const path = require('path');
-const os = require('os');
 const fs = require('fs');
 const { chromium } = require('playwright');
 const { getScraperCategory } = require('./scraperBridge.cjs');
-
-function getScraperProfileDir() {
-  if (process.env.SCRAPER_PROFILE_DIR) {
-    const custom = path.resolve(process.env.SCRAPER_PROFILE_DIR);
-    if (!fs.existsSync(custom)) fs.mkdirSync(custom, { recursive: true });
-    return custom;
-  }
-  try {
-    const baseDir = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
-    const profileDir = path.join(baseDir, 'rt-library', 'scraper-profile');
-    if (!fs.existsSync(profileDir)) {
-      fs.mkdirSync(profileDir, { recursive: true });
-    }
-    return profileDir;
-  } catch (_) {
-    const fallbackDir = path.join(os.tmpdir(), 'rt-library', 'scraper-profile');
-    if (!fs.existsSync(fallbackDir)) {
-      fs.mkdirSync(fallbackDir, { recursive: true });
-    }
-    return fallbackDir;
-  }
-}
-
-function cleanupProfileLocks(profileDir) {
-  if (!fs.existsSync(profileDir)) return;
-  const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'lockfile'];
-  lockFiles.forEach((file) => {
-    const target = path.join(profileDir, file);
-    try {
-      if (fs.existsSync(target)) {
-        fs.unlinkSync(target);
-      }
-    } catch (_) {}
-  });
-}
+const { getScraperProfileDir, getApplicationDataDirectory } = require('./platformPaths.cjs');
+const { detectAccessChallenge, classifyCategoryAccess, sanitizeUrlForLog } = require('./accessProbe.cjs');
 
 function getProfileParityInfo(profileDir) {
   const exists = fs.existsSync(profileDir);
@@ -61,60 +27,28 @@ function getProfileParityInfo(profileDir) {
   };
 }
 
-async function inspectCookieMetadata(context) {
-  try {
-    const cookies = await context.cookies();
-    const ruTrackerCookies = cookies.filter(c => c.domain && c.domain.includes('rutracker.org'));
-    
-    const names = ruTrackerCookies.map(c => c.name);
-    const cfClearance = ruTrackerCookies.find(c => c.name === 'cf_clearance');
-    const bbSession = ruTrackerCookies.find(c => c.name === 'bb_session');
-
-    console.log(`[SCRAPER][COOKIES] Count: ${ruTrackerCookies.length} (names: ${names.join(', ') || 'none'})`);
-    if (cfClearance) {
-      console.log(`[SCRAPER][COOKIES] cf_clearance present: domain=${cfClearance.domain}, expires=${cfClearance.expires > 0 ? new Date(cfClearance.expires * 1000).toISOString() : 'session'}, secure=${cfClearance.secure}, sameSite=${cfClearance.sameSite}`);
-    } else {
-      console.log('[SCRAPER][COOKIES] cf_clearance absent');
-    }
-
-    if (bbSession) {
-      console.log(`[SCRAPER][COOKIES] bb_session present: domain=${bbSession.domain}`);
-    } else {
-      console.log('[SCRAPER][COOKIES] Guest mode: bb_session cookie absent (No account login needed for browsing)');
-    }
-
-    return {
-      count: ruTrackerCookies.length,
-      names,
-      hasClearance: !!cfClearance,
-      hasBbSession: !!bbSession,
-    };
-  } catch (_) {
-    return { count: 0, names: [], hasClearance: false, hasBbSession: false };
-  }
-}
-
 async function launchBrowser({ headless = true, userDataDir = null } = {}) {
   const profileDir = userDataDir ? path.resolve(userDataDir) : getScraperProfileDir();
-  cleanupProfileLocks(profileDir);
-
   const profileInfo = getProfileParityInfo(profileDir);
   console.log(`[SCRAPER][PROFILE] requested=${profileInfo.requested} resolved=${profileInfo.resolved} exists=${profileInfo.exists} writable=${profileInfo.writable}`);
   console.log(`[SCRAPER][BROWSER] executable=${chromium.executablePath()} (headless=${headless})`);
 
-  const DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.8010.12 Safari/537.36';
+  const launchArgs = [
+    ...(headless ? ['--headless=new'] : []),
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-session-crashed-bubble',
+    '--hide-crash-restore-bubble',
+    '--disable-infobars',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--password-store=basic',
+  ];
 
   const context = await chromium.launchPersistentContext(profileDir, {
     headless: false,
     viewport: { width: 1280, height: 800 },
-    userAgent: DEFAULT_USER_AGENT,
-    ignoreDefaultArgs: ['--enable-automation'],
-    args: [
-      ...(headless ? ['--headless=new'] : []),
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
-    ],
+    args: launchArgs,
   });
 
   context.on('close', () => {
@@ -140,8 +74,6 @@ async function launchBrowser({ headless = true, userDataDir = null } = {}) {
   context.pages().forEach(attachPageListeners);
 
   const page = context.pages().length > 0 ? context.pages()[0] : await context.newPage();
-  await inspectCookieMetadata(context);
-
   return { context, page, profileDir };
 }
 
@@ -159,7 +91,7 @@ async function checkSession(page, { category = null } = {}) {
     if (url.includes('rutracker.org')) {
       const status = res.status();
       const cfMitigated = res.headers()['cf-mitigated'] || null;
-      console.log(`[SCRAPER][NETWORK] GET ${url.replace('https://rutracker.org', '')} -> ${status}${cfMitigated ? ` (cf-mitigated: ${cfMitigated})` : ''}`);
+      console.log(`[SCRAPER][NETWORK] GET ${sanitizeUrlForLog(url)} -> ${status}${cfMitigated ? ` (cf-mitigated: ${cfMitigated})` : ''}`);
       responseLogs.push({ url, status, cfMitigated });
     }
   };
@@ -197,41 +129,22 @@ async function checkSession(page, { category = null } = {}) {
     const indexBody = await page.evaluate(() => document.body ? document.body.innerText.slice(0, 2000) : '');
     const cfHeader = indexRes ? (indexRes.headers()['cf-mitigated'] || null) : null;
 
-    const challengePatterns = [
-      /just a moment/i,
-      /um momento/i,
-      /enable javascript and cookies/i,
-      /attention required/i,
-      /checking your browser/i,
-      /ddos-guard/i,
-    ];
-
-    let challengeFound = false;
-    let challengeReason = null;
-
-    if (cfHeader === 'challenge') {
-      challengeFound = true;
-      challengeReason = 'cf-mitigated: challenge header detected';
-    } else {
-      for (const pat of challengePatterns) {
-        if (pat.test(indexTitle)) {
-          challengeFound = true;
-          challengeReason = `Title matched ${pat}`;
-          break;
-        }
-        if (pat.test(indexBody)) {
-          challengeFound = true;
-          challengeReason = `Body text matched ${pat}`;
-          break;
-        }
-      }
-    }
+    const challengeFound = detectAccessChallenge({ status: indexRes?.status(), cfMitigated: cfHeader, title: indexTitle, body: indexBody });
+    const challengeReason = challengeFound ? 'Cloudflare browser verification is required.' : null;
 
     if (challengeFound) {
       console.warn(`[HEALTH][2] Challenge detected on index.php: ${challengeReason}`);
       result.reason = 'challenge';
       result.details.challengeDetected = true;
       result.details.challengeReason = challengeReason;
+      result.details.accessResult = classifyCategoryAccess({
+        category: subforum,
+        status: indexStatus,
+        cfMitigated: cfHeader,
+        finalUrl: typeof page.url === 'function' ? page.url() : 'https://rutracker.org/forum/index.php',
+        title: indexTitle,
+        body: indexBody,
+      });
       return result;
     }
     console.log('[HEALTH][2] Challenge detection PASS');
@@ -278,27 +191,30 @@ async function checkSession(page, { category = null } = {}) {
     const subStatus = subRes ? subRes.status() : 0;
     result.details.subforumStatus = subStatus;
     const subCfHeader = subRes ? (subRes.headers()['cf-mitigated'] || null) : null;
-
-    if (subStatus === 403 || subCfHeader === 'challenge') {
-      console.warn(`[HEALTH][4] Subforum challenge/403 detected (status=${subStatus}, cf-mitigated=${subCfHeader})`);
-      result.reason = 'challenge';
-      result.details.challengeDetected = true;
-      result.details.challengeReason = `Subforum HTTP ${subStatus} (cf-mitigated=${subCfHeader})`;
+    const subPageInfo = await page.evaluate(() => ({
+      title: document.title || '',
+      body: document.body?.innerText?.slice(0, 4000) || '',
+      topicCount: document.querySelectorAll('a.torTopic, a.tt-text, a[href*="viewtopic.php?t="]').length,
+      hasForumStructure: !!(document.querySelector('#tor-tbl, #forum_main, #page_container, #page_header') || document.querySelector('a[href*="viewtopic.php?t="]')),
+      authenticationRequired: !!document.querySelector('form[action*="login"], form#login, input[name="login_username"]'),
+    }));
+    const categoryAccess = classifyCategoryAccess({
+      category: subforum,
+      status: subStatus,
+      cfMitigated: subCfHeader,
+      finalUrl: typeof page.url === 'function' ? page.url() : subforum.baseUrl,
+      ...subPageInfo,
+      body: subPageInfo.authenticationRequired ? 'authenticationRequired' : subPageInfo.body,
+    });
+    result.details.topicCount = categoryAccess.topicCount;
+    result.details.challengeDetected = categoryAccess.challengeDetected;
+    result.details.accessResult = categoryAccess;
+    if (!['ACCESSIBLE', 'ACCESSIBLE_EMPTY'].includes(categoryAccess.status)) {
+      result.reason = categoryAccess.status === 'INTERACTION_REQUIRED' ? 'challenge' : categoryAccess.status.toLowerCase();
+      result.details.error = categoryAccess.message;
       return result;
     }
-    console.log(`[HEALTH][4] Subforum navigation PASS (status=${subStatus})`);
-
-    // Step 5: Topic Listing Check
-    const topicCount = await page.evaluate(() => document.querySelectorAll('a.torTopic').length);
-    result.details.topicCount = topicCount;
-
-    if (topicCount === 0) {
-      console.warn('[HEALTH][5] Zero torTopic links found on subforum page.');
-      result.reason = 'not_authenticated';
-      result.details.error = 'SESSION_REQUIRED: Zero topics found on subforum';
-      return result;
-    }
-    console.log(`[HEALTH][5] Topic list check PASS (${topicCount} torTopic links found)`);
+    console.log(`[HEALTH][5] Category listing validated (${categoryAccess.topicCount} topics, status=${categoryAccess.status})`);
 
     result.valid = true;
     result.reason = 'ok';
@@ -309,7 +225,7 @@ async function checkSession(page, { category = null } = {}) {
 
     if (!result.valid && (process.env.SCRAPER_DEBUG === 'true' || process.env.NODE_ENV === 'development')) {
       try {
-        const debugDir = path.resolve(__dirname, '../userData/scraper-debug');
+        const debugDir = path.join(getApplicationDataDirectory(), 'scraper-debug');
         if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
         const screenshotPath = path.join(debugDir, 'health-failure.png');
         const htmlPath = path.join(debugDir, 'health-failure.html');
@@ -333,7 +249,10 @@ async function checkSessionHealth(page, options = {}) {
   }
 
   if (check.reason === 'challenge') {
-    throw new Error(`SCRAPER_SESSION_INVALID: Cloudflare / Anti-Bot challenge detected (${check.details.challengeReason || '403'}, URL=${check.details.subforumUrl}). Open \`${loginCommand}\`, complete verification on the subforum, and close the browser to save the profile.`);
+    throw Object.assign(new Error(`INTERACTION_REQUIRED: ${check.details.challengeReason || 'Cloudflare browser verification is required.'} Category URL: ${check.details.subforumUrl}. Open \`${loginCommand}\` and complete verification manually.`), {
+      code: 'INTERACTION_REQUIRED',
+      accessResult: check.details.accessResult || null,
+    });
   }
 
   if (check.reason === 'timeout') {

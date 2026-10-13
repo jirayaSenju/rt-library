@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/tooltip"
 import { FilterOptions, LibraryFilters } from "@/types"
 import { FilterPopover } from "@/components/layout/FilterPopover"
+import { GlobalSyncStatus } from "@/components/layout/GlobalSyncStatus"
 import { useI18n } from "@/i18n"
 
 interface TopbarProps {
@@ -33,6 +34,8 @@ interface TopbarProps {
   onToggleDensity?: () => void
   viewMode?: "grid" | "list"
   onViewModeChange?: (mode: "grid" | "list") => void
+  onOpenSettings?: (section?: any, subview?: string | null) => void
+  selectedCategory?: string
 }
 
 const BYTES_IN_GB = 1024 * 1024 * 1024
@@ -62,6 +65,8 @@ export const Topbar: React.FC<TopbarProps> = ({
   onToggleDensity,
   viewMode = "grid",
   onViewModeChange,
+  onOpenSettings,
+  selectedCategory,
 }) => {
   const { t } = useI18n()
 
@@ -88,35 +93,41 @@ export const Topbar: React.FC<TopbarProps> = ({
       <header className="flex flex-col border-b border-border bg-background/90 backdrop-blur shrink-0">
         {/* Main Toolbar Row */}
         <div className="h-16 px-4 sm:px-6 flex items-center justify-between gap-4">
-          {/* Left Slot (Balances the layout so search is visually centered) */}
-          <div className="flex-1 min-w-0 hidden md:block" />
+          {/* Left Slot (Balances the layout and shows GlobalSyncStatus) */}
+          <div className="flex-1 min-w-0 hidden md:flex items-center">
+            <GlobalSyncStatus onOpenSettings={onOpenSettings} />
+          </div>
 
           {/* Centered Search Box */}
           <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl relative min-w-0 mx-auto">
-            <div 
-              onClick={onOpenCommandPalette}
-              className="relative cursor-pointer group"
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault()
-                  onOpenCommandPalette()
-                }
-              }}
-              aria-label={t("topbar.searchAria")}
-            >
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            <div className="relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none" />
               <input
                 type="text"
-                readOnly
                 value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
                 placeholder={t("topbar.searchPlaceholder")}
-                className="w-full h-10 pl-10 pr-14 bg-card border border-border hover:border-border/80 focus:border-primary/50 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors cursor-pointer truncate shadow-sm leading-normal"
+                className="w-full h-10 pl-10 pr-20 bg-card border border-border hover:border-border/80 focus:border-primary/50 focus:ring-1 focus:ring-primary/30 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors truncate shadow-sm leading-normal"
+                aria-label={t("topbar.searchAria")}
               />
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground bg-secondary border border-border rounded shadow-sm select-none">
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange("")}
+                  className="absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors"
+                  aria-label={t("topbar.clearAllFilters")}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onOpenCommandPalette}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground bg-secondary hover:bg-secondary/80 border border-border rounded shadow-sm select-none cursor-pointer transition-colors"
+                title="Command Palette (Ctrl+K)"
+              >
                 ⌘K
-              </kbd>
+              </button>
             </div>
           </div>
 
@@ -129,7 +140,7 @@ export const Topbar: React.FC<TopbarProps> = ({
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSortChange={onSortChange}
-              categoryId={filters.categoryId || undefined}
+              categoryId={selectedCategory || filters.categoryId || undefined}
             />
 
             {/* Subtle Divider */}

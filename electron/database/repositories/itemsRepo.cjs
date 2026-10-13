@@ -11,6 +11,7 @@ const { normalizeCanonicalGameTitle, normalizeTitleForDedupe, extractBTIH, class
 const SORT_COLUMNS = {
   title: 'COALESCE(items.canonical_title, items.title_sort, items.clean_title, items.title)',
   discoveredAt: 'items.discovered_at',
+  updatedAt: 'items.updated_at',
   releaseYear: 'items.release_year',
   sizeBytes: 'items.size_bytes',
   seeds: 'tm.seeds',
@@ -176,10 +177,10 @@ function upsert(db, item) {
       cover_url = COALESCE(excluded.cover_url, items.cover_url),
       size_str = COALESCE(excluded.size_str, items.size_str),
       size_bytes = COALESCE(excluded.size_bytes, items.size_bytes),
-      has_cover = excluded.has_cover,
-      has_screenshots = excluded.has_screenshots,
-      has_magnet = excluded.has_magnet,
-      discovered_at = COALESCE(excluded.discovered_at, items.discovered_at),
+      has_cover = CASE WHEN @preserveMissingFields = 1 AND excluded.has_cover = 0 THEN items.has_cover ELSE excluded.has_cover END,
+      has_screenshots = CASE WHEN @preserveMissingFields = 1 AND excluded.has_screenshots = 0 THEN items.has_screenshots ELSE excluded.has_screenshots END,
+      has_magnet = CASE WHEN @preserveMissingFields = 1 AND excluded.has_magnet = 0 THEN items.has_magnet ELSE excluded.has_magnet END,
+      discovered_at = COALESCE(items.discovered_at, excluded.discovered_at),
       scraped_at = COALESCE(excluded.scraped_at, items.scraped_at),
       updated_at = excluded.updated_at
   `);
@@ -215,6 +216,7 @@ function upsert(db, item) {
     hasScreenshots: (item.hasScreenshots || (item.screenshots && item.screenshots.length > 0) || (item.details && item.details.screenshots && item.details.screenshots.length > 0)) ? 1 : 0,
     hasMagnet: (item.hasMagnet || item.magnet || (item.details && item.details.magnet)) ? 1 : 0,
     isFavorite: item.isFavorite ? 1 : 0,
+    preserveMissingFields: item.preserveMissingFields ? 1 : 0,
     discoveredAt: item.discoveredAt || item.discovered_at || now,
     scrapedAt: item.scrapedAt || item.scraped_at || now,
     updatedAt: now,
@@ -272,7 +274,7 @@ function upsertBatch(db, items) {
       has_cover = excluded.has_cover,
       has_screenshots = excluded.has_screenshots,
       has_magnet = excluded.has_magnet,
-      discovered_at = COALESCE(excluded.discovered_at, items.discovered_at),
+      discovered_at = COALESCE(items.discovered_at, excluded.discovered_at),
       scraped_at = COALESCE(excluded.scraped_at, items.scraped_at),
       updated_at = excluded.updated_at
   `);
@@ -298,8 +300,9 @@ function upsertBatch(db, items) {
       const source = item.source || 'rutracker';
       const topicId = item.topicId ? String(item.topicId) : null;
       const coverUrl = item.coverUrl || item.cover || null;
-      const magnet = item.magnet || item.magnetLink || null;
-      const screenshots = item.screenshots || (item.details && item.details.screenshots) || [];
+      const magnet = item.magnet || item.magnetLink || (item.details && item.details.magnet) || null;
+      const rawScreenshots = item.screenshots || (item.details && item.details.screenshots);
+      const screenshots = Array.isArray(rawScreenshots) ? rawScreenshots : [];
       const fileList = item.fileList || (item.details && item.details.fileList) || null;
       const titles = computeItemTitles(item);
 
@@ -334,6 +337,7 @@ function upsertBatch(db, items) {
         hasScreenshots: screenshots.length > 0 ? 1 : 0,
         hasMagnet: magnet ? 1 : 0,
         isFavorite: item.isFavorite ? 1 : 0,
+        preserveMissingFields: item.preserveMissingFields ? 1 : 0,
         discoveredAt: item.discoveredAt || item.discovered_at || now,
         scrapedAt: item.scrapedAt || item.scraped_at || now,
         updatedAt: now,
@@ -344,7 +348,7 @@ function upsertBatch(db, items) {
         itemId: item.id,
         magnet: magnet || details.magnet || null,
         fileListJson: Array.isArray(fileList) ? JSON.stringify(fileList) : null,
-        screenshotsJson: Array.isArray(screenshots) ? JSON.stringify(screenshots) : null,
+        screenshotsJson: item.preserveMissingFields && screenshots.length === 0 ? null : JSON.stringify(screenshots),
         sourceJson: details.source ? JSON.stringify(details.source) : null,
         scrapingJson: details.scraping ? JSON.stringify(details.scraping) : null,
       });
@@ -553,7 +557,12 @@ function getPaginated(db, options = {}) {
   const sortOrder = options.sortOrder ? (options.sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC') : 'DESC';
 
   let orderSql = '';
-  if (sortByKey === 'discoveredAt' || sortByKey === 'releaseYear' || sortByKey === 'sizeBytes' || sortByKey === 'seeds' || sortByKey === 'leechers') {
+  if (sortByKey === 'discoveredAt') {
+    // When sorting by recently added / discovered, order by discovery timestamp first,
+    // then by topic_id (chronological release order on the tracker) so items discovered
+    // in the same batch/date appear in tracker release order, followed by title and id.
+    orderSql = `ORDER BY (${sortCol} IS NULL), ${sortCol} ${sortOrder}, CAST(items.topic_id AS INTEGER) ${sortOrder}, COALESCE(items.canonical_title, items.title_sort) ASC, items.id ASC`;
+  } else if (sortByKey === 'updatedAt' || sortByKey === 'releaseYear' || sortByKey === 'sizeBytes' || sortByKey === 'seeds' || sortByKey === 'leechers') {
     // NULL handling: NULLs sorted last deterministically
     orderSql = `ORDER BY (${sortCol} IS NULL), ${sortCol} ${sortOrder}, COALESCE(items.canonical_title, items.title_sort) ASC, items.id ASC`;
   } else {
@@ -670,9 +679,18 @@ function findDuplicates(db, item) {
  * }}
  */
 function getFilterFacets(db, options = {}) {
-  const categoryId = options.categoryId === 'all' ? undefined : options.categoryId;
-  const catClause = categoryId ? 'WHERE category_id = ?' : '';
-  const catParams = categoryId ? [categoryId] : [];
+  const isFavorites = options.categoryId === 'favorites' || Boolean(options.favoritesOnly);
+  const categoryId = (options.categoryId === 'all' || options.categoryId === 'favorites') ? undefined : options.categoryId;
+  const whereParts = [];
+  const catParams = [];
+  if (categoryId) {
+    whereParts.push('category_id = ?');
+    catParams.push(categoryId);
+  }
+  if (isFavorites) {
+    whereParts.push('is_favorite = 1');
+  }
+  const catClause = whereParts.length > 0 ? `WHERE ${whereParts.join(' AND ')}` : '';
 
   // Developers
   const devStmt = db.prepare(`

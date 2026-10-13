@@ -391,10 +391,10 @@ function registerDatabaseIPCHandlers() {
     let invalidFavorites = 0;
 
     if (tables.has('item_details') && tables.has('items')) {
-      orphanDetails = db.prepare('SELECT COUNT(*) AS count FROM item_details WHERE id NOT IN (SELECT id FROM items)').get().count;
+      orphanDetails = db.prepare('SELECT COUNT(*) AS count FROM item_details WHERE item_id NOT IN (SELECT id FROM items)').get().count;
     }
     if (tables.has('torrent_metadata') && tables.has('items')) {
-      orphanMetadata = db.prepare('SELECT COUNT(*) AS count FROM torrent_metadata WHERE id NOT IN (SELECT id FROM items)').get().count;
+      orphanMetadata = db.prepare('SELECT COUNT(*) AS count FROM torrent_metadata WHERE item_id NOT IN (SELECT id FROM items)').get().count;
     }
     if (tables.has('favorites') && tables.has('items')) {
       invalidFavorites = db.prepare('SELECT COUNT(*) AS count FROM favorites WHERE item_id NOT IN (SELECT id FROM items)').get().count;
@@ -416,10 +416,10 @@ function registerDatabaseIPCHandlers() {
     const runCleanup = db.transaction(() => {
       let d1 = 0, d2 = 0, d3 = 0;
       if (tables.has('item_details') && tables.has('items')) {
-        d1 = db.prepare('DELETE FROM item_details WHERE id NOT IN (SELECT id FROM items)').run().changes;
+        d1 = db.prepare('DELETE FROM item_details WHERE item_id NOT IN (SELECT id FROM items)').run().changes;
       }
       if (tables.has('torrent_metadata') && tables.has('items')) {
-        d2 = db.prepare('DELETE FROM torrent_metadata WHERE id NOT IN (SELECT id FROM items)').run().changes;
+        d2 = db.prepare('DELETE FROM torrent_metadata WHERE item_id NOT IN (SELECT id FROM items)').run().changes;
       }
       if (tables.has('favorites') && tables.has('items')) {
         d3 = db.prepare('DELETE FROM favorites WHERE item_id NOT IN (SELECT id FROM items)').run().changes;

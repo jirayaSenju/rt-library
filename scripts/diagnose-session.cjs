@@ -1,8 +1,7 @@
 /**
  * Playwright Scraper Session Diagnostic Tool
- * Evaluates profile existence, cookie persistence, cookie applicability,
- * network request header sending, index accessibility, subforum target response,
- * and Cloudflare mitigation status.
+ * Evaluates profile existence, index accessibility, category response,
+ * and whether the server explicitly requires browser verification.
  */
 
 const { chromium } = require('playwright');
@@ -24,49 +23,22 @@ async function diagnoseSession() {
   const profileDir = getScraperProfileDir();
   const profileExists = fs.existsSync(profileDir);
 
-  const DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.8010.12 Safari/537.36';
-
   const context = await chromium.launchPersistentContext(profileDir, {
     headless: false,
     viewport: { width: 1280, height: 800 },
-    userAgent: DEFAULT_USER_AGENT,
-    ignoreDefaultArgs: ['--enable-automation'],
     args: [
       '--headless=new',
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
     ],
   });
 
   const page = context.pages()[0] || await context.newPage();
 
-  const cookies = await context.cookies();
-  const ruTrackerCookies = cookies.filter(c => c.domain && c.domain.includes('rutracker.org'));
-  const cfClearance = ruTrackerCookies.find(c => c.name === 'cf_clearance');
-  const bbSession = ruTrackerCookies.find(c => c.name === 'bb_session');
-
-  // Cookie applicability check for target subforum URL
-  const targetCookies = await context.cookies(category.baseUrl);
-  const targetClearance = targetCookies.find(c => c.name === 'cf_clearance');
-
   let indexStatus = 0;
   let indexChallenge = false;
   let targetStatus = 0;
   let targetCfMitigated = false;
-  let cookieHeaderObserved = false;
-
-  page.on('request', async (req) => {
-    if (req.url().includes('viewforum.php')) {
-      try {
-        const headers = await req.allHeaders().catch(() => req.headers());
-        const cookieHeader = headers['cookie'] || headers['Cookie'] || null;
-        if (cookieHeader && cookieHeader.includes('cf_clearance')) {
-          cookieHeaderObserved = true;
-        }
-      } catch (_) {}
-    }
-  });
 
   try {
     const resIndex = await page.goto('https://rutracker.org/forum/index.php', { waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => null);
@@ -90,15 +62,6 @@ async function diagnoseSession() {
 
   console.log('PROFILE');
   console.log(profileExists ? 'PASS' : 'FAIL');
-  console.log('');
-  console.log('COOKIE STORED');
-  console.log(`cf_clearance ${cfClearance ? 'YES' : 'NO'}`);
-  console.log('');
-  console.log('COOKIE APPLICABLE TO TARGET');
-  console.log(targetClearance ? 'YES' : 'NO');
-  console.log('');
-  console.log('COOKIE HEADER OBSERVED');
-  console.log(cookieHeaderObserved ? 'YES' : 'NO');
   console.log('');
   console.log('INDEX');
   console.log(indexStatus);

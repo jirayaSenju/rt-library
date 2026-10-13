@@ -252,6 +252,12 @@ describe('Catalog Default Sorting by Scrape/Discovery Date Descending (V3-24)', 
       expect(ids[5]).toBe('item-a');
       expect(ids[6]).toBe('item-g');
     });
+
+    it('breaks discovery timestamp ties using CAST(items.topic_id AS INTEGER) DESC for tracker chronological release order', () => {
+      itemsRepo.getPaginated(mockDb, {});
+      const selectSql = lastPreparedSql.find((s) => s.includes('SELECT') && !s.includes('COUNT(*)'))!;
+      expect(selectSql).toContain('CAST(items.topic_id AS INTEGER) DESC');
+    });
   });
 
   describe('Phase 26: Category Scoped Sorting', () => {

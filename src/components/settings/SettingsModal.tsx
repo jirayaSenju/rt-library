@@ -40,6 +40,7 @@ import { GlobalThemeSelector } from "./GlobalThemeSelector"
 import { ProgressThemeSelector } from "./ProgressThemeSelector"
 import { ScraperPanel } from "@/components/scraper/ScraperPanel"
 import { CategoryManagement } from "@/components/scraper/CategoryManagement"
+import { SyncHistoryView } from "@/components/scraper/SyncHistoryView"
 import { cn } from "@/lib/utils"
 import { useI18n } from "@/i18n"
 import { ProgressMascot } from "@/components/layout/ProgressMascot"
@@ -58,8 +59,9 @@ export interface SettingsModalProps {
   onClose: () => void
   settings: AppSettings
   onSaveSettings: (settings: AppSettings) => Promise<void>
-  onForceReindex: () => void
+  onForceReindex: () => Promise<void> | void
   initialSection?: SettingsSectionKey
+  initialSubview?: string | null
   themeId?: ThemeId
   onSelectTheme?: (themeId: ThemeId) => void
   density?: "comfortable" | "compact"
@@ -77,6 +79,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSaveSettings,
   onForceReindex,
   initialSection = "library",
+  initialSubview = null,
   themeId = "rt-dark",
   onSelectTheme,
   density = "comfortable",
@@ -89,7 +92,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const { t, locale, setLocale } = useI18n()
   const { progressThemeId, setProgressTheme } = useProgressTheme()
   const [activeSection, setActiveSection] = useState<SettingsSectionKey>(initialSection)
-  const [subview, setSubview] = useState<string | null>(null)
+  const [subview, setSubview] = useState<string | null>(initialSubview)
   const [localSettings, setLocalSettings] = useState<AppSettings>(settings)
   const [previewThemeId, setPreviewThemeId] = useState<ThemeId | null>(null)
   const [previewProgressThemeId, setPreviewProgressThemeId] = useState<ProgressThemeId | null>(null)
@@ -144,9 +147,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     if (isOpen && initialSection) {
       setActiveSection(initialSection)
-      setSubview(null)
+      setSubview(initialSubview !== undefined ? initialSubview : null)
     }
-  }, [isOpen, initialSection])
+  }, [isOpen, initialSection, initialSubview])
 
   useEffect(() => {
     if (isOpen && contentRef.current) {
@@ -252,9 +255,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="animate-in fade-in-0 duration-150">
                 {subview === "scraper/categories" ? (
                   <CategoryManagement onBack={() => setSubview(null)} />
+                ) : subview === "scraper/history" || subview?.startsWith("scraper/history:") ? (
+                  <SyncHistoryView
+                    onBack={() => setSubview(null)}
+                    initialRunId={subview.startsWith("scraper/history:") ? subview.slice("scraper/history:".length) : null}
+                  />
                 ) : (
                   <ScraperPanel
                     onNavigateToCategories={() => setSubview("scraper/categories")}
+                    onNavigateToHistory={() => setSubview("scraper/history")}
                   />
                 )}
               </div>

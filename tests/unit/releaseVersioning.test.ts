@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { validateReleaseVersion, STRICT_SEMVER_REGEX, STRICT_TAG_REGEX } from '../../scripts/validate-release-version.cjs';
 
@@ -32,12 +34,14 @@ describe('V3-38 Release & Strict SemVer Validation Suite', () => {
     expect(STRICT_TAG_REGEX.test('v01.0.0')).toBe(false);
   });
 
-  it('validates current repository release readiness for v1.0.0', () => {
-    const result = validateReleaseVersion('v1.0.0');
+  it('validates current repository release readiness for current version', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'));
+    const result = validateReleaseVersion(`v${pkg.version}`);
     expect(result.valid).toBe(true);
     expect(result.issues).toHaveLength(0);
-    expect(result.info.pkgVersion).toBe('1.0.0');
-    expect(result.info.lockVersion).toBe('1.0.0');
+    expect(result.info.pkgVersion).toBe(pkg.version);
+    expect(result.info.lockVersion).toBe(pkg.version);
+    expect(result.info.companionVersion).toBe(pkg.version);
     expect(result.info.license).toBe('MIT');
     expect(result.info.changelogEntryFound).toBe(true);
     expect(result.info.licenseFileFound).toBe(true);

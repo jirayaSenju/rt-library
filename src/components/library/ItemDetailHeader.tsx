@@ -8,6 +8,7 @@ import {
   Copy,
   ExternalLink,
   Gamepad2,
+  RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useI18n } from "@/i18n"
@@ -38,6 +39,8 @@ interface ItemDetailHeaderProps {
   onToggleFavorite: () => void
   onLaunchMagnet: () => void
   onCopyMagnet: () => void
+  isEnriching?: boolean
+  onEnrich?: () => void
 }
 
 export const ItemDetailHeader: React.FC<ItemDetailHeaderProps> = ({
@@ -47,6 +50,8 @@ export const ItemDetailHeader: React.FC<ItemDetailHeaderProps> = ({
   onToggleFavorite,
   onLaunchMagnet,
   onCopyMagnet,
+  isEnriching = false,
+  onEnrich,
 }) => {
   const { t, locale } = useI18n()
   const targetMagnet = item.magnetLink || item.magnet
@@ -137,6 +142,24 @@ export const ItemDetailHeader: React.FC<ItemDetailHeaderProps> = ({
               >
                 <Copy className="h-3.5 w-3.5 mr-1.5" />
                 {t("itemDetail.copyMagnet")}
+              </Button>
+            )}
+
+            {!targetMagnet && onEnrich && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onEnrich}
+                disabled={isEnriching}
+                className="border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary font-medium text-xs h-8 sm:h-9 px-3 rounded-xl transition-colors shadow-sm"
+                title={locale === "pt-BR" ? "Buscar capa, imagens e magnet no RuTracker via Companion" : "Fetch cover, screenshots and magnet from RuTracker via Companion"}
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isEnriching && "animate-spin")} />
+                <span>
+                  {isEnriching
+                    ? (locale === "pt-BR" ? "Carregando..." : locale === "ru-RU" ? "Загрузка..." : "Loading...")
+                    : (locale === "pt-BR" ? "Carregar Capa e Magnet" : locale === "ru-RU" ? "Загрузить обложку и магнет" : "Load Cover & Magnet")}
+                </span>
               </Button>
             )}
 

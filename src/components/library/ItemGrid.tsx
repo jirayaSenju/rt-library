@@ -3,7 +3,8 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { LibraryItem } from "@/types"
 import { ItemCard } from "@/components/library/ItemCard"
 import { Skeleton } from "@/components/ui/skeleton"
-import { SearchX } from "lucide-react"
+import { SearchX, Database, RefreshCw, FileText, Star, Library } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { perfTelemetry } from "@/utils/performanceTelemetry"
 import { useI18n } from "@/i18n"
 
@@ -93,6 +94,16 @@ interface ItemGridProps {
   density?: GridDensity
   selectedIds?: Set<string>
   onToggleSelect?: (itemId: string) => void
+  isLibraryEmpty?: boolean
+  isFavorites?: boolean
+  hasSearchQuery?: boolean
+  onBrowseAll?: () => void
+  onOpenSettings?: (tab?: any) => void
+  onImportHtml?: () => void
+  isSyncing?: boolean
+  onViewSync?: () => void
+  pendingNewItemsCount?: number
+  onShowNewItems?: () => void
 }
 
 export const ItemGrid: React.FC<ItemGridProps> = ({
@@ -106,6 +117,16 @@ export const ItemGrid: React.FC<ItemGridProps> = ({
   density = "comfortable",
   selectedIds,
   onToggleSelect,
+  isLibraryEmpty = false,
+  isFavorites = false,
+  hasSearchQuery = false,
+  onBrowseAll,
+  onOpenSettings,
+  onImportHtml,
+  isSyncing = false,
+  onViewSync,
+  pendingNewItemsCount = 0,
+  onShowNewItems,
 }) => {
   const { t } = useI18n()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -196,6 +217,9 @@ export const ItemGrid: React.FC<ItemGridProps> = ({
   useEffect(() => {
     const el = containerRef.current
     if (el) {
+      if (el.scrollTop > 40) {
+        return
+      }
       el.scrollTop = savedScrollPosition || 0
     }
   }, [items])
@@ -271,6 +295,119 @@ export const ItemGrid: React.FC<ItemGridProps> = ({
   }
 
   if (items.length === 0) {
+    if (isFavorites) {
+      if (hasSearchQuery) {
+        return (
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-12 text-center select-none">
+            <div className="h-16 w-16 rounded-2xl bg-secondary/80 border border-border flex items-center justify-center text-muted-foreground mb-4 shadow-xl">
+              <SearchX className="h-8 w-8 stroke-[1.5]" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground">{t("catalog.emptyTitle")}</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mt-1">
+              {t("catalog.emptyDescription")}
+            </p>
+          </div>
+        )
+      }
+
+      return (
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-12 text-center select-none animate-in fade-in-50 duration-200">
+          <div className="h-16 w-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-4 shadow-xl">
+            <Star className="h-8 w-8 fill-amber-400/20 stroke-[1.5]" />
+          </div>
+          <h3 className="text-base font-semibold text-foreground">{t("catalog.emptyFavoritesTitle")}</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mt-1.5 leading-relaxed">
+            {t("catalog.emptyFavoritesDesc")}
+          </p>
+          {onBrowseAll && (
+            <div className="flex items-center justify-center mt-5">
+              <Button
+                size="sm"
+                onClick={onBrowseAll}
+                className="h-8 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-sm"
+              >
+                <Library className="h-3.5 w-3.5" />
+                <span>{t("catalog.browseAllGames")}</span>
+              </Button>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    if (isLibraryEmpty) {
+      if (isSyncing) {
+        return (
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-12 text-center select-none animate-in fade-in-50 duration-200">
+            <div className="h-16 w-16 rounded-2xl bg-secondary/80 border border-border flex items-center justify-center text-primary mb-4 shadow-xl">
+              <RefreshCw className="h-8 w-8 animate-spin stroke-[1.5]" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground">{t("catalog.buildingLibraryTitle")}</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mt-1.5 leading-relaxed">
+              {t("catalog.buildingLibraryDesc")}
+            </p>
+            {onViewSync && (
+              <div className="flex items-center justify-center mt-5">
+                <Button
+                  size="sm"
+                  onClick={onViewSync}
+                  className="h-8 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-sm"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span>{t("catalog.viewSynchronization")}</span>
+                </Button>
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      return (
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-12 text-center select-none animate-in fade-in-50 duration-200">
+          <div className="h-16 w-16 rounded-2xl bg-secondary/80 border border-border flex items-center justify-center text-primary mb-4 shadow-xl">
+            <Database className="h-8 w-8 stroke-[1.5]" />
+          </div>
+          <h3 className="text-base font-semibold text-foreground">{t("catalog.emptyLibraryTitle")}</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mt-1.5 leading-relaxed">
+            {t("catalog.emptyLibraryDesc")}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2.5 mt-5">
+            {onOpenSettings && (
+              <Button
+                size="sm"
+                onClick={() => onOpenSettings("scraper")}
+                className="h-8 text-xs font-semibold gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer shadow-sm"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>{t("catalog.emptyLibrarySetupSync")}</span>
+              </Button>
+            )}
+            {onImportHtml && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onImportHtml}
+                className="h-8 text-xs border-border bg-card hover:bg-secondary text-foreground gap-1.5 cursor-pointer"
+              >
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                <span>{t("catalog.emptyLibraryImportPage")}</span>
+              </Button>
+            )}
+            {onOpenSettings && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenSettings("display")}
+                className="h-8 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <span>{t("catalog.emptyLibraryExploreSettings")}</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-12 text-center select-none">
         <div className="h-16 w-16 rounded-2xl bg-secondary/80 border border-border flex items-center justify-center text-muted-foreground mb-4 shadow-xl">
@@ -293,6 +430,31 @@ export const ItemGrid: React.FC<ItemGridProps> = ({
       style={{ scrollbarGutter: "stable" }}
       className={`flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden ${containerPaddingClass} custom-scrollbar relative`}
     >
+      {pendingNewItemsCount > 0 && (
+        <div className="sticky top-2 z-20 flex justify-center w-full pointer-events-none mb-3">
+          <div className="pointer-events-auto inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary text-primary-foreground shadow-lg text-xs font-medium animate-in fade-in slide-in-from-top-2 duration-200">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            <span>
+              {pendingNewItemsCount === 1
+                ? t("catalog.newItemsAvailableSingle", { count: pendingNewItemsCount })
+                : t("catalog.newItemsAvailablePlural", { count: pendingNewItemsCount })}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (containerRef.current) {
+                  containerRef.current.scrollTo({ top: 0, behavior: "smooth" })
+                }
+                onShowNewItems?.()
+              }}
+              className="ml-1 px-2.5 py-0.5 rounded-full bg-primary-foreground/20 hover:bg-primary-foreground/30 font-semibold transition-colors cursor-pointer"
+            >
+              {t("catalog.showNewItems")}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div
         style={{
           height: `${rowVirtualizer.getTotalSize()}px`,

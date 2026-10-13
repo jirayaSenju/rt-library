@@ -64,6 +64,19 @@ export class NativeLibraryService {
     }
   }
 
+  async dismissOnboarding(): Promise<{ success: boolean; error?: string }> {
+    const ipc = getLibraryIPC()
+    if (ipc?.dismissOnboarding) {
+      try {
+        return await ipc.dismissOnboarding()
+      } catch (err) {
+        console.warn("[NativeLibraryService] dismissOnboarding error:", err)
+        return { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+    return { success: true }
+  }
+
   async runMigration(): Promise<{
     status: 'completed' | 'already_migrated' | 'no_legacy_json' | 'error' | 'pending'
     migratedFiles?: number
@@ -243,6 +256,27 @@ export class NativeLibraryService {
       }
     }
     return { status: 'error', error: "IPC unavailable" }
+  }
+
+  async reindex(): Promise<{ success: boolean; total?: number; error?: string }> {
+    const ipc = getLibraryIPC()
+    if (ipc?.reindex) {
+      try {
+        return await ipc.reindex()
+      } catch (err) {
+        console.error("[NativeLibraryService] reindex error:", err)
+        return { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+    if (ipc?.refresh) {
+      try {
+        const res = await ipc.refresh({})
+        return { success: res?.status !== 'error', total: res?.total }
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+    return { success: false, error: "IPC unavailable" }
   }
 
   async getIndexStatus(): Promise<IndexStatus | null> {

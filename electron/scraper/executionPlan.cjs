@@ -124,17 +124,19 @@ function createExecutionPlan(userOptions = {}, categoryContext = {}) {
   const scanAllCategories = (scope.type === 'all');
 
   if (isFull) {
+    const disableEarlyStop = Boolean(normalized.ignoreEarlyStop || normalized.scanAllPages);
     return {
       scope,
       mode: 'full',
+      enrichTopics: normalized.enrichTopics !== undefined ? Boolean(normalized.enrichTopics) : true,
       refresh: {
         images: true,
         size: true,
         files: true,
       },
       scanAllCategories,
-      scanAllPages: false,     // Discovery traversal with safe early stop
-      allowKnownTopicEarlyStop: true,
+      scanAllPages: disableEarlyStop,     // Discovery traversal with safe early stop
+      allowKnownTopicEarlyStop: !disableEarlyStop,
       knownPageLimit: typeof normalized.knownPageLimit === 'number' && normalized.knownPageLimit > 0 ? normalized.knownPageLimit : 3,
       processExistingOnly: false,
       discoverNewTopics: true,
@@ -146,6 +148,7 @@ function createExecutionPlan(userOptions = {}, categoryContext = {}) {
     return {
       scope,
       mode: 'refresh',
+      enrichTopics: normalized.enrichTopics !== undefined ? Boolean(normalized.enrichTopics) : true,
       refresh: {
         images: normalized.refreshScreenshots,
         size: normalized.refreshSizes,
@@ -161,17 +164,23 @@ function createExecutionPlan(userOptions = {}, categoryContext = {}) {
     };
   }
 
+  const disableEarlyStop = Boolean(normalized.ignoreEarlyStop || normalized.scanAllPages);
+  const enrichTopics = normalized.enrichTopics !== undefined
+    ? Boolean(normalized.enrichTopics)
+    : (normalized.fastDiscovery ? false : undefined);
+
   return {
     scope,
     mode: 'incremental',
+    enrichTopics,
     refresh: {
       images: false,
       size: false,
       files: false,
     },
     scanAllCategories,
-    scanAllPages: false,
-    allowKnownTopicEarlyStop: true,
+    scanAllPages: disableEarlyStop,
+    allowKnownTopicEarlyStop: !disableEarlyStop,
     knownPageLimit: typeof normalized.knownPageLimit === 'number' && normalized.knownPageLimit > 0 ? normalized.knownPageLimit : 3,
     processExistingOnly: false,
     discoverNewTopics: true,

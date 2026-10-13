@@ -56,6 +56,14 @@ function prepareRelease(newVersion) {
         stdio: 'inherit',
       });
       console.log(`✅ Version updated in package.json & package-lock.json.`);
+
+      const manifestPath = path.join(PROJECT_ROOT, 'browser-companion', 'manifest.json');
+      if (fs.existsSync(manifestPath)) {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        manifest.version = cleanVersion;
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
+        console.log(`✅ Version updated in browser-companion/manifest.json.`);
+      }
     } catch (err) {
       console.error('❌ Failed to update version via npm:', err.message);
       process.exit(1);

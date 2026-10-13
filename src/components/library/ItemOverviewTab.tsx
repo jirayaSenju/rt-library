@@ -300,6 +300,21 @@ export const ItemOverviewTab: React.FC<ItemOverviewTabProps> = ({
           )}
         </div>
       )}
+
+      {/* 4. EMPTY / NOT YET ENRICHED FALLBACK */}
+      {!hasMagnet && metadataFields.length === 0 && !descriptionText && (
+        <div className="bg-card/60 border border-border rounded-xl p-8 text-center space-y-3">
+          <Info className="h-8 w-8 text-muted-foreground mx-auto" />
+          <h4 className="text-sm font-semibold text-foreground">
+            {locale === "pt-BR" ? "Detalhes completos do tópico ainda não carregados" : "Topic details not yet loaded"}
+          </h4>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto">
+            {locale === "pt-BR"
+              ? "Este item foi indexado a partir da listagem do fórum. Conecte o Browser Companion para obter automaticamente a capa, capturas de tela, metadados e link magnet."
+              : "This item was indexed from the forum listing. Connect the Browser Companion to automatically load cover art, screenshots, metadata, and magnet link."}
+          </p>
+        </div>
+      )}
     </div>
   )
 }

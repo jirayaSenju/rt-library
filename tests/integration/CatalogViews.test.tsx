@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, it, expect, vi } from "vitest"
 import { ItemCard } from "@/components/library/ItemCard"
+import { ItemGrid } from "@/components/library/ItemGrid"
 import { ItemList } from "@/components/library/ItemList"
 import { I18nProvider } from "@/i18n/I18nContext"
 import { mockLibraryItems } from "../fixtures/libraryItems"
@@ -206,6 +207,93 @@ describe("CatalogViews integration tests (Grid and List)", () => {
 
       await user.click(headerCheckbox)
       expect(handleClear).toHaveBeenCalledTimes(1)
+    })
+
+    it("renders empty library state with action buttons when isLibraryEmpty is true", async () => {
+      const handleOpenSettings = vi.fn()
+      const handleImport = vi.fn()
+
+      renderWithI18n(
+        <ItemList
+          items={[]}
+          isLoading={false}
+          favorites={new Set()}
+          isLibraryEmpty={true}
+          onOpenSettings={handleOpenSettings}
+          onImportHtml={handleImport}
+          onToggleFavorite={vi.fn()}
+          onSelectItem={vi.fn()}
+        />
+      )
+
+      expect(screen.getByText(/Your library is empty|Sua biblioteca está vazia|Ваша библиотека пуста/i)).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /Set up synchronization|Configurar sincronização|Настроить синхронизацию/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /Import saved page|Importar página salva|Импортировать сохраненную страницу/i })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /Explore settings|Explorar configurações|Открыть настройки/i })).toBeInTheDocument()
+    })
+
+    it("renders dedicated favorites empty state in ItemList when isFavorites is true with 0 items", async () => {
+      const user = userEvent.setup()
+      const handleBrowseAll = vi.fn()
+
+      renderWithI18n(
+        <ItemList
+          items={[]}
+          isLoading={false}
+          favorites={new Set()}
+          isFavorites={true}
+          onBrowseAll={handleBrowseAll}
+          onToggleFavorite={vi.fn()}
+          onSelectItem={vi.fn()}
+        />
+      )
+
+      expect(screen.getByText(/No favorites yet|Nenhum favorito ainda|В избранном пока ничего нет/i)).toBeInTheDocument()
+      const browseBtn = screen.getByRole("button", { name: /Browse all games|Explorar todos os jogos|Все игры/i })
+      expect(browseBtn).toBeInTheDocument()
+
+      await user.click(browseBtn)
+      expect(handleBrowseAll).toHaveBeenCalledTimes(1)
+    })
+
+    it("renders search empty state in ItemList when isFavorites is true but hasSearchQuery is true", () => {
+      renderWithI18n(
+        <ItemList
+          items={[]}
+          isLoading={false}
+          favorites={new Set()}
+          isFavorites={true}
+          hasSearchQuery={true}
+          onToggleFavorite={vi.fn()}
+        />
+      )
+
+      expect(screen.getByText(/No items found|Nenhum item encontrado|Ничего не найдено/i)).toBeInTheDocument()
+      expect(screen.queryByText(/No favorites yet|Nenhum favorito ainda|В избранном пока ничего нет/i)).not.toBeInTheDocument()
+    })
+
+    it("renders dedicated favorites empty state in ItemGrid when isFavorites is true with 0 items", async () => {
+      const user = userEvent.setup()
+      const handleBrowseAll = vi.fn()
+
+      renderWithI18n(
+        <ItemGrid
+          items={[]}
+          isLoading={false}
+          favorites={new Set()}
+          isFavorites={true}
+          onBrowseAll={handleBrowseAll}
+          onToggleFavorite={vi.fn()}
+          onSelectItem={vi.fn()}
+        />
+      )
+
+      expect(screen.getByText(/No favorites yet|Nenhum favorito ainda|В избранном пока ничего нет/i)).toBeInTheDocument()
+      const browseBtn = screen.getByRole("button", { name: /Browse all games|Explorar todos os jogos|Все игры/i })
+      expect(browseBtn).toBeInTheDocument()
+
+      await user.click(browseBtn)
+      expect(handleBrowseAll).toHaveBeenCalledTimes(1)
     })
   })
 })

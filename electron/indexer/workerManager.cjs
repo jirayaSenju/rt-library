@@ -49,6 +49,17 @@ function notifyProgressListeners(data) {
       console.warn('[WORKER_MANAGER][WARN] Progress listener error:', err.message);
     }
   }
+
+  try {
+    const { BrowserWindow } = require('electron');
+    if (BrowserWindow && typeof BrowserWindow.getAllWindows === 'function') {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('library:indexProgress', data);
+        }
+      }
+    }
+  } catch (_) {}
 }
 
 function sendTaskToWorker(worker, taskMsg) {
@@ -426,8 +437,19 @@ async function indexLibraryBackground(db, options = {}) {
   return summary;
 }
 
+function startIndexing(db, rootDir, callback) {
+  if (typeof callback === 'function') {
+    addProgressListener(callback);
+  }
+  const fs = require('fs');
+  const dataDir = path.join(rootDir, 'data');
+  const targetDir = fs.existsSync(dataDir) ? dataDir : rootDir;
+  return indexLibraryBackground(db, { libraryPath: targetDir, force: true });
+}
+
 module.exports = {
   indexLibraryBackground,
+  startIndexing,
   getIndexingState,
   addProgressListener,
   terminateWorker,

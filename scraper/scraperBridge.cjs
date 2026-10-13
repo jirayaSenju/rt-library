@@ -37,7 +37,9 @@ function getResolvedCategories() {
 
 function getScraperCategory(category = null) {
   const list = getResolvedCategories();
-  const selected = list.find(c => c.id === (category || 'switch') && c.enabled !== false);
+  const selected = category
+    ? list.find(c => c.id === category && c.enabled !== false)
+    : list.find(c => c.enabled !== false);
   if (!selected) throw new Error(`SCRAPER_CATEGORY_INVALID: Unknown or disabled category "${category}".`);
   return selected;
 }

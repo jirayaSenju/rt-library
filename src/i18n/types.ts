@@ -24,6 +24,7 @@ export interface Translations {
     indexing: string
     fetching: string
     copied: string
+    copy: string
     copyAll: string
     export: string
     openFolder: string
@@ -91,6 +92,7 @@ export interface Translations {
     sortFields: {
       title: string
       discoveredAt: string
+      updatedAt: string
       sizeBytes: string
       seeds: string
       leechers: string
@@ -166,6 +168,20 @@ export interface Translations {
   catalog: {
     emptyTitle: string
     emptyDescription: string
+    emptyLibraryTitle: string
+    emptyLibraryDesc: string
+    emptyLibrarySetupSync: string
+    emptyLibraryImportPage: string
+    emptyLibraryExploreSettings: string
+    emptyFavoritesTitle: string
+    emptyFavoritesDesc: string
+    browseAllGames: string
+    buildingLibraryTitle: string
+    buildingLibraryDesc: string
+    viewSynchronization: string
+    newItemsAvailableSingle: string
+    newItemsAvailablePlural: string
+    showNewItems: string
     loadingMore: string
     viewDetailsAria: string
     magnetButton: string
@@ -332,6 +348,7 @@ export interface Translations {
       clearStorageError: string
       pathUpdatedToast: string
       reindexStartedToast: string
+      reindexCompleteToast: string
       reindexErrorToast: string
     }
     database: {
@@ -372,7 +389,90 @@ export interface Translations {
       filesDesc: string
       refreshCostNotice: string
       refreshTooltip: string
+      deepScanTitle: string
+      deepScanDesc: string
+      importTopicUrlTitle: string
+      importTopicUrlPlaceholder: string
+      importTopicButton: string
       executionProgress: string
+      companionTitle: string
+      companionDescription: string
+      companionConnect: string
+      companionOpenBrowser: string
+      companionCheckAccess: string
+      companionDisconnected: string
+      companionConnected: string
+      companionVerificationRequired: string
+      companionAuthRequired: string
+      companionUnknownPage: string
+      companionForumReady: string
+      companionConnectionCode: string
+      companionTopicCount: string
+      activeTransportBadge: string
+      syncStatusCardTitle: string
+      syncStatusCardDesc: string
+      companionSessionStatus: string
+      companionConnectedSession: string
+      companionDisconnectedSession: string
+      temporaryConnectionNotice: string
+      reconnectButton: string
+      showSetupInstructions: string
+      categoriesSummaryTitle: string
+      categoriesSummaryCount: string
+      manageCategoriesButton: string
+      syncScopeLabel: string
+      lastSyncLabel: string
+      lastSyncNever: string
+      activeSyncMethodLabel: string
+      methodRecommended: string
+      methodAlternative: string
+      methodOffline: string
+      rutrackerAccessible: string
+      restoreDatabaseTitle: string
+      restoreDatabaseDesc: string
+      restoreDatabaseButton: string
+      restoringDatabase: string
+      restoreDatabaseSuccess: string
+      restoreDatabaseHelp: string
+      rutrackerVerificationRequired: string
+      rutrackerNoTab: string
+      rutrackerUnknown: string
+      extensionInstalledLabel: string
+      sessionConnectedLabel: string
+      rutrackerReadyLabel: string
+      statusInstalled: string
+      statusNotDetected: string
+      statusConnected: string
+      statusConnecting: string
+      statusDisconnected: string
+      statusReady: string
+      statusNotChecked: string
+      diagnosticsTitle: string
+      diagnosticsDesc: string
+      diagnosticExtensionVersion: string
+      diagnosticBridgeStatus: string
+      diagnosticProtocolVersion: string
+      diagnosticBridgePort: string
+      diagnosticLastCheck: string
+      diagnosticLastHttp: string
+      diagnosticActiveTransport: string
+      diagnosticStatusActive: string
+      diagnosticStatusIdle: string
+      diagnosticSessionId: string
+      diagnosticLastHeartbeat: string
+      checkAgainButton: string
+      noRuTrackerTabMessage: string
+      timeoutMessage: string
+      notInstalledMessage: string
+      connectionExpiredMessage: string
+      recoveryPromptConnect: string
+      recoveryPromptConnecting: string
+      recoveryPromptCheckAccess: string
+      alternativeMethodsTitle: string
+      playwrightTitle: string
+      playwrightDesc: string
+      htmlImportTitle: string
+      htmlImportDesc: string
       cancellingTitle: string
       progressTitle: string
       cancelJob: string
@@ -386,6 +486,176 @@ export interface Translations {
       pagesVisited: string
       newItemsSaved: string
       duration: string
+      categoryProgress: string
+      topicsFound: string
+      newTopics: string
+      knownTopics: string
+      detailsProcessed: string
+      itemsSavedCount: string
+      syncPausedTitle: string
+      syncPausedDesc: string
+      pauseJob: string
+      pausing: string
+      pausingTitle: string
+      resumeJob: string
+      resuming: string
+      resumingTitle: string
+      userPausedTitle: string
+      userPausedDesc: string
+      verificationPausedTitle: string
+      verificationPausedDesc: string
+      disconnectedPausedTitle: string
+      disconnectedPausedDesc: string
+      noTabPausedTitle: string
+      noTabPausedDesc: string
+      progressKeptInMemory: string
+      pauseVsCancelNote: string
+      syncCancelled: string
+      companionDisconnectedMidScan: string
+      libraryUpToDate: string
+      libraryUpToDateDesc: string
+      syncCompletedWithWarnings: string
+      statusPending: string
+      statusInProgress: string
+      statusCompleted: string
+      statusPaused: string
+      statusFailed: string
+      errorConnection: string
+      errorAccess: string
+      errorNetwork: string
+      errorParser: string
+      errorImport: string
+      errorDatabase: string
+      errorUnknown: string
+      emptyLibraryTitle: string
+      emptyLibraryDesc: string
+      emptyLibrarySetupSync: string
+      emptyLibraryImportPage: string
+      emptyLibraryExploreSettings: string
+      noCategoriesSelected: string
+      resumeSync: string
+      syncStatusTitle: string
+      statusSyncing: string
+      statusVerificationRequired: string
+      viewSettings: string
+      backgroundScanContinuesNotice: string
+      categoryChangesNotice: string
+      syncCompletedToastTitle: string
+      syncCompletedToastDesc: string
+      syncCompletedOneItemDesc: string
+      syncUpToDateToastTitle: string
+      syncUpToDateToastDesc: string
+      syncCompletedWarningsToastTitle: string
+      syncCompletedWarningsToastDesc: string
+      syncCompletedWarningsOneDesc: string
+      syncFailedToastTitle: string
+      syncFailedToastDesc: string
+      syncCancelledToastTitle: string
+      syncInterruptedStartupTitle: string
+      syncInterruptedStartupDesc: string
+      initialSyncCompletedToastTitle: string
+      reviewIssues: string
+      reconnect: string
+      openRuTracker: string
+      checkAgain: string
+      runAgain: string
+      viewDetails: string
+      actionBannerVerificationTitle: string
+      actionBannerDisconnectedTitle: string
+      actionBannerNoTabTitle: string
+      actionBannerFailedTitle: string
+      verifyNow: string
+      embeddedVerificationBannerTitle: string
+      embeddedTransportTitle: string
+      testAccess: string
+      checkingAccess: string
+      embeddedSessionReady: string
+      embeddedVerificationRequired: string
+      accessCheckFailed: string
+      resetSession: string
+      sessionResetSuccess: string
+      scraperTransportTitle: string
+      scraperTransportDesc: string
+      transportAutomatic: string
+      transportBuiltIn: string
+      transportCompanion: string
+      transportPlaywright: string
+      transportManual: string
+      syncMethodLabel: string
+      fallbackTransportsTitle: string
+      fallbackTransportsDesc: string
+      manageFallbacks: string
+      directScraperProfileLabel: string
+      manualImportOfflineNotice: string
+      transportAutomaticDescEmbedded: string
+      transportAutomaticDescCompanion: string
+      transportCompanionDesc: string
+      transportPlaywrightDesc: string
+      transportManualDesc: string
+      builtInScraperStatus: string
+      builtInNotice: string
+      autoSyncTitle: string
+      autoSyncDesc: string
+      autoSyncNotice: string
+      autoSyncNoticeEmbedded: string
+      autoSyncEnabled: string
+      autoSyncFrequency: string
+      autoSyncPreset1h: string
+      autoSyncPreset3h: string
+      autoSyncPreset6h: string
+      autoSyncPreset12h: string
+      autoSyncPreset24h: string
+      autoSyncScope: string
+      autoSyncScopeAll: string
+      autoSyncScopeSelected: string
+      autoSyncNextRun: string
+      autoSyncLastRun: string
+      autoSyncStatusActive: string
+      autoSyncStatusOff: string
+      autoSyncStatusWaitingCompanion: string
+      autoSyncStatusWaitingTab: string
+      autoSyncStatusVerification: string
+      autoSyncStatusBusy: string
+      autoSyncSkipCompanionDesc: string
+      autoSyncSkipNoTabDesc: string
+      autoSyncSkipVerificationDesc: string
+      triggerScheduled: string
+      triggerManual: string
+      triggerFirstRun: string
+      backgroundNotificationsSetting: string
+      backgroundNotificationsSettingDesc: string
+      currentSpeedLabel: string
+      estimatedRemainingLabel: string
+      categoryStatusListTitle: string
+      syncHealthTitle: string
+      syncHealthDesc: string
+      lastSuccessfulSyncLabel: string
+      lastRunLabel: string
+      categoriesHealthySummary: string
+      categoriesAttentionSummary: string
+      viewSyncHistory: string
+      viewSummary: string
+      syncCategoryAction: string
+      syncHistoryTitle: string
+      syncHistoryDesc: string
+      backToScraperSettings: string
+      emptyHistoryTitle: string
+      emptyHistoryDesc: string
+      filterAll: string
+      filterCompleted: string
+      filterWarnings: string
+      filterFailed: string
+      filterCancelled: string
+      statusCompletedWithWarnings: string
+      statusCancelled: string
+      statusInterrupted: string
+      statusUpToDate: string
+      statusNeverSynced: string
+      statusWarning: string
+      newItemsLabel: string
+      updatedItemsLabel: string
+      loadMoreHistory: string
+      showingRunsCount: string
       sessionRequiredTitle: string
       sessionRequiredDesc: string
       errorTitle: string
@@ -688,20 +958,169 @@ export interface Translations {
     sessionReady: string
     sessionDesc: string
     verifySession: string
+    verifyAccess: string
+    openVerificationWindow: string
+    checkingAccess: string
+    sessionPartial: string
+    sessionUnknown: string
+    authRequired: string
+    networkError: string
+    accessError: string
+    syncPaused: string
+    viewLogs: string
+    lastPage: string
     categoriesTitle: string
     activeCategories: string
     categoriesDesc: string
     configureCategories: string
     scanning: string
     synchronizing: string
+    connecting: string
     itemsSaved: string
     startInitialScan: string
     catalogCreatedTitle: string
     catalogCreatedDesc: string
     openLibrary: string
     sessionRenewLaunched: string
+    verificationWindowOpened: string
+    verificationInProgress: string
+    verificationStillRequired: string
     scanStarted: string
     scanCancelled: string
+    importSavedPage: string
+    importSavedPageDescription: string
+    importing: string
+    importComplete: string
+    importFailed: string
+    categoryPage: string
+    topicPage: string
+    imported: string
+    updated: string
+    skipped: string
+    invalid: string
+    retryOnlineSync: string
+    continueWithoutImport: string
+    selectImportCategory: string
+    importCategory: string
+    importInvalidHtml: string
+    importUnsupportedPage: string
+    importFileTooLarge: string
+    importFileReadError: string
+    importParseError: string
+    importDatabaseError: string
+    importCategoryRequired: string
+    importTopicIdMissing: string
+    companionSetupTitle: string
+    companionSetupDesc: string
+    companionRecommended: string
+    companionStatusConnected: string
+    companionStatusDisconnected: string
+    companionConnectAction: string
+    companionOpenAction: string
+    companionCheckAction: string
+    companionFallbackPlaywright: string
+    companionFallbackImport: string
+    companionFallbackSkip: string
+    stepWelcome: string
+    stepCategories: string
+    stepCompanion: string
+    stepAccess: string
+    stepSync: string
+    stepReady: string
+    welcomeSubtitle: string
+    welcomeStep1Title: string
+    welcomeStep1Desc: string
+    welcomeStep2Title: string
+    welcomeStep2Desc: string
+    welcomeStep3Title: string
+    welcomeStep3Desc: string
+    getStarted: string
+    orRestoreExistingBackup: string
+    restoreBackupButton: string
+    restoringDatabase: string
+    restoreSuccessTitle: string
+    restoreSuccessSummary: string
+    restoreNextStepDesc: string
+    continueScrapingWithRestored: string
+    openLibraryDirectly: string
+    restoreSuccessToast: string
+    restoreErrorToast: string
+    selectAll: string
+    clearSelection: string
+    selectedCategoriesCount: string
+    zeroCategoriesWarning: string
+    continueToBrowser: string
+    back: string
+    next: string
+    temporaryConnectionTitle: string
+    temporaryConnectionDesc: string
+    extensionStatusTitle: string
+    extensionStatusInstalled: string
+    extensionStatusNotDetected: string
+    sessionStatusTitle: string
+    sessionConnected: string
+    sessionDisconnected: string
+    howToInstall: string
+    howToInstallAndConnect: string
+    connectionCodeTitle: string
+    openForumInBrowser: string
+    openForumInBrowserDesc: string
+    installInstructionsTitle: string
+    installStep1Title: string
+    installStep1: string
+    installStep2: string
+    installStep3: string
+    installFolderLabel: string
+    installStep2Title: string
+    installStepRuTracker: string
+    installStep3Title: string
+    installStep4: string
+    installStep5: string
+    portLabel: string
+    tokenLabel: string
+    connectedToSession: string
+    nextCheckAccess: string
+    accessCheckTitle: string
+    accessCheckDesc: string
+    accessInstruction: string
+    accessInstructionBuiltIn: string
+    verificationSuccess: string
+    syncStatusInteraction: string
+    syncStatusVerifying: string
+    syncStatusPreflight: string
+    syncConnectingSessionTitle: string
+    syncConnectingSessionDesc: string
+    activityFeedTitle: string
+    activityFeedEvents: string
+    openRuTracker: string
+    checkAccess: string
+    checkingAccessProgress: string
+    accessReadySummary: string
+    accessSummaryBrowser: string
+    accessSummaryForum: string
+    accessSummaryCategories: string
+    startSyncButton: string
+    statusForumReadyHuman: string
+    statusVerificationHuman: string
+    statusNoTabHuman: string
+    statusDisconnectedHuman: string
+    statusTimeoutHuman: string
+    statusAuthHuman: string
+    statusErrorHuman: string
+    buildingLibrary: string
+    topicsFound: string
+    gamesAdded: string
+    detailsProcessed: string
+    syncPausedTitle: string
+    resumeSync: string
+    retrySync: string
+    readyTitle: string
+    readySummary: string
+    openLibraryButton: string
+    viewSyncSettingsButton: string
+    continueWithoutSync: string
+    browseLibrary: string
+    syncContinuesInBackground: string
   }
   migration: {
     title: string

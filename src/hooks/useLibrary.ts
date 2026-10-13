@@ -3,6 +3,7 @@ import { Category, LibraryItem, FilterOptions, AppSettings, PaginatedResult } fr
 import { GetItemsOptions, LibraryReadinessState } from "@/types/libraryIPC"
 import { nativeLibraryService } from "@/services/nativeLibrary"
 import { configService } from "@/services/configService"
+import { scraperService } from "@/services/scraperService"
 import { toast } from "sonner"
 import { perfTelemetry } from "@/utils/performanceTelemetry"
 
@@ -79,8 +80,13 @@ export function useLibrary() {
   })
 
   const [debouncedSearch, setDebouncedSearch] = useState<string>("")
+  const [pendingNewItemsCount, setPendingNewItemsCount] = useState<number>(0)
   const requestIdRef = useRef<number>(0)
   const isInitialMount = useRef(true)
+  const selectedCategoryRef = useRef<string>(selectedCategory)
+  selectedCategoryRef.current = selectedCategory
+  const scrollPositionsRef = useRef<Record<string, number>>({})
+  const pageCommittedDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Debounce search query
   useEffect(() => {
@@ -186,6 +192,8 @@ export function useLibrary() {
         case 'discoveredAt':
         case 'indexed_desc':
           return 'discoveredAt'
+        case 'updatedAt':
+          return 'updatedAt'
         default:
           return 'discoveredAt'
       }
@@ -315,6 +323,53 @@ export function useLibrary() {
     return unsubscribe
   }, [loadCategories, loadInitialItems])
 
+  // Progressive sync: listen for committed pages from Scraper
+  useEffect(() => {
+    const unsubscribe = scraperService.onPageCommitted(async (event) => {
+      // 1. Update categories count
+      loadCategories()
+
+      // 2. Check if currently viewed category is affected
+      const currentCat = selectedCategoryRef.current
+      const isRelevant = currentCat === "all" || currentCat === event.categoryId
+      if (!isRelevant) return
+
+      // 3. Check scroll position
+      const currentScroll = scrollPositionsRef.current[currentCat] || 0
+      if (currentScroll > 40) {
+        if ((event.inserted || 0) > 0) {
+          setPendingNewItemsCount((prev) => prev + event.inserted)
+        }
+      } else {
+        if (pageCommittedDebounceRef.current) {
+          clearTimeout(pageCommittedDebounceRef.current)
+        }
+        pageCommittedDebounceRef.current = setTimeout(async () => {
+          queryCache.clear()
+          await fetchPage(1, pageSize)
+        }, 200)
+      }
+    })
+
+    return () => {
+      unsubscribe()
+      if (pageCommittedDebounceRef.current) {
+        clearTimeout(pageCommittedDebounceRef.current)
+      }
+    }
+  }, [loadCategories, fetchPage, pageSize])
+
+  const showPendingNewItems = useCallback(async () => {
+    setPendingNewItemsCount(0)
+    queryCache.clear()
+    setCurrentPage(1)
+    if (selectedCategoryRef.current) {
+      scrollPositionsRef.current[selectedCategoryRef.current] = 0
+      setCategoryScrollPositions((prev) => ({ ...prev, [selectedCategoryRef.current]: 0 }))
+    }
+    await fetchPage(1, pageSize)
+  }, [fetchPage, pageSize])
+
   // Reload items on filter/category changes when ready
   useEffect(() => {
     if (bootState === "READY") {
@@ -368,6 +423,7 @@ export function useLibrary() {
   }
 
   const saveScrollPosition = (catId: string, pos: number) => {
+    scrollPositionsRef.current[catId] = pos
     setCategoryScrollPositions((prev) => ({ ...prev, [catId]: pos }))
   }
 
@@ -377,6 +433,7 @@ export function useLibrary() {
       pageSize?: number
       filters?: Partial<FilterOptions>
     }) => {
+      setPendingNewItemsCount(0)
       if (state.selectedCategory !== undefined) {
         setSelectedCategory(state.selectedCategory)
       }
@@ -410,6 +467,8 @@ export function useLibrary() {
     selectedCategory,
     setSelectedCategory: (catId: string) => {
       setSelectedCategory(catId)
+      setCurrentPage(1)
+      setPendingNewItemsCount(0)
       updateFilters({ categoryId: catId })
     },
     items,
@@ -432,6 +491,8 @@ export function useLibrary() {
     reloadItems: loadInitialItems,
     categoryScrollPositions,
     saveScrollPosition,
+    pendingNewItemsCount,
+    showPendingNewItems,
     isNativeMode: true,
   }
 }

@@ -32,7 +32,7 @@ import { SettingRow } from "./SettingRow"
 interface LibrarySettingsProps {
   settings: AppSettings
   onUpdateSettings: (updater: (prev: AppSettings) => AppSettings) => void
-  onForceReindex: () => void
+  onForceReindex: () => Promise<void> | void
 }
 
 export const LibrarySettings: React.FC<LibrarySettingsProps> = ({
@@ -83,11 +83,15 @@ export const LibrarySettings: React.FC<LibrarySettingsProps> = ({
     setIsReindexing(true)
     setIndexProgress({ status: "indexing", percent: 0 })
     try {
-      onForceReindex()
       toast.info(t("settings.library.reindexStartedToast"))
+      await onForceReindex()
+      await fetchDbStatus()
+      toast.success(t("settings.library.reindexCompleteToast") || "Biblioteca reindexada com sucesso")
     } catch (err: any) {
-      setIsReindexing(false)
       toast.error(err.message || t("settings.library.reindexErrorToast"))
+    } finally {
+      setIsReindexing(false)
+      setIndexProgress(null)
     }
   }
 

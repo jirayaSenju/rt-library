@@ -7,7 +7,7 @@ const detailsRepo = require('../database/repositories/detailsRepo.cjs');
 const favoritesRepo = require('../database/repositories/favoritesRepo.cjs');
 const migration = require('../database/migration.cjs');
 
-const ALLOWED_SORT_COLUMNS = new Set(['title', 'discoveredAt', 'releaseYear', 'sizeBytes']);
+const ALLOWED_SORT_COLUMNS = new Set(['title', 'discoveredAt', 'updatedAt', 'releaseYear', 'sizeBytes', 'seeds', 'leechers']);
 const ALLOWED_SORT_ORDERS = new Set(['asc', 'desc']);
 
 function getDbOrThrow() {
@@ -65,6 +65,18 @@ function registerLibraryIPCHandlers() {
       return migration.runJsonMigration(db, userDataDir);
     } catch (err) {
       return { status: 'error', error: err.message };
+    }
+  });
+
+  // 0.3 Mark Onboarding Dismissed (User chose to browse library during or skipping initial sync)
+  ipcMain.handle('library:dismissOnboarding', async () => {
+    try {
+      const db = getDbOrThrow();
+      const appStateRepo = require('../database/repositories/appStateRepo.cjs');
+      appStateRepo.setAppState(db, 'onboarding_dismissed', 'true');
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
   });
 
@@ -375,6 +387,81 @@ function registerLibraryIPCHandlers() {
     } catch (err) {
       console.error('[IPC][LIBRARY][ERROR] library:refresh failed:', err.message);
       return { status: 'error', error: err.message };
+    }
+  });
+
+  // 6.1 SQLite Library Reindex
+  ipcMain.handle('library:reindex', async () => {
+    try {
+      const db = getDbOrThrow();
+      const sendProgress = (data) => {
+        try {
+          for (const win of BrowserWindow.getAllWindows()) {
+            if (!win.isDestroyed()) {
+              win.webContents.send('library:indexProgress', data);
+            }
+          }
+        } catch (_) {}
+      };
+
+      sendProgress({ status: 'indexing', percent: 20, message: 'Rebuilding SQLite indexes...' });
+      
+      // 1. Rebuild SQLite indexes
+      db.exec('REINDEX');
+
+      sendProgress({ status: 'indexing', percent: 50, message: 'Recalculating category counts...' });
+
+      // 2. Recalculate category item counts
+      db.exec(`
+        UPDATE categories SET item_count = COALESCE(
+          (SELECT COUNT(*) FROM items WHERE items.category_id = categories.id),
+          0
+        )
+      `);
+
+      sendProgress({ status: 'indexing', percent: 75, message: 'Optimizing SQLite database...' });
+
+      // 3. Optimize & checkpoint
+      try {
+        db.pragma('optimize');
+        db.pragma('wal_checkpoint(PASSIVE)');
+      } catch (_) {}
+
+      // 4. Check for JSON catalog files in data/ and import if present
+      const userDataDir = app ? app.getPath('userData') : process.cwd();
+      const path = require('path');
+      const candidateDirs = [
+        path.join(userDataDir, 'data'),
+        path.resolve(__dirname, '../../data'),
+      ];
+      for (const cDir of candidateDirs) {
+        try {
+          const files = (await fs.readdir(cDir)).filter(f => f.endsWith('.json'));
+          if (files.length > 0) {
+            const workerManager = require('../indexer/workerManager.cjs');
+            await workerManager.indexLibraryBackground(db, { libraryPath: cDir, force: true });
+            break;
+          }
+        } catch (_) {
+          // ignore directory access errors
+        }
+      }
+
+      const total = itemsRepo.getTotalItemCount(db);
+
+      sendProgress({ status: 'complete', percent: 100, totalItems: total, message: 'Reindexing completed' });
+
+      return { success: true, total };
+    } catch (err) {
+      console.error('[IPC][LIBRARY][ERROR] library:reindex failed:', err.message);
+      try {
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) {
+            win.webContents.send('library:indexProgress', { status: 'failed', error: err.message });
+          }
+        }
+      } catch (_) {}
+      return { success: false, error: err.message };
     }
   });
 

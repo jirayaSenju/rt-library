@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const { app } = require('electron');
 const { DEFAULT_CATEGORIES } = require('./defaultCategories.cjs');
+const { resolveScraperProfileDirectory } = require('../../scraper/platformPaths.cjs');
 
 const CONFIG_VERSION = 1;
 const ID_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -419,49 +420,63 @@ class CategoryManager {
     }
 
     const { ScraperBrowserSession } = require('../../scraper/browserSession.cjs');
+    const { ACCESS_STATUSES } = require('../../scraper/accessProbe.cjs');
+    const scraperManager = require('./scraperManager.cjs').getInstance();
+    if (scraperManager.isProfileBusy()) throw new Error('SCRAPER_BUSY: The persistent scraper profile is in use.');
     let session = null;
 
     try {
       console.log(`[CATEGORIES] Testing category URL: ${baseUrl} with patterns: ${JSON.stringify(titleSearch)}`);
-      session = new ScraperBrowserSession({ headed: false });
-      await session.init();
+      session = new ScraperBrowserSession({ userDataDir: resolveScraperProfileDirectory(this.getUserDataPath()), mode: 'category_test' });
+      await session.start({ headless: true });
+      const access = await session.probeCategory({ id: 'category-test', name: 'Category test', baseUrl });
 
-      const page = session.page;
-      await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-
-      // Check for Cloudflare / DDOS challenge
-      const pageTitle = await page.title();
-      const content = await page.content();
-
-      if (
-        pageTitle.includes('Just a moment') ||
-        content.includes('cf-browser-verification') ||
-        content.includes('Checking your browser')
-      ) {
+      if (access.status === ACCESS_STATUSES.INTERACTION_REQUIRED) {
         return {
           success: false,
           status: 'INTERACTION_REQUIRED',
           totalTopics: 0,
           matchedTopics: 0,
           sampleMatches: [],
-          error: 'Cloudflare challenge detected. Please verify session in Scraper tab.',
+          error: access.message,
         };
       }
 
-      // Check if login is required / guest redirect
-      if (content.includes('login.php') || content.includes('form-login') || page.url().includes('login.php')) {
+      if (access.status === ACCESS_STATUSES.AUTH_REQUIRED) {
         return {
           success: false,
-          status: 'SESSION_REQUIRED',
+          status: 'AUTH_REQUIRED',
           totalTopics: 0,
           matchedTopics: 0,
           sampleMatches: [],
-          error: 'RuTracker session cookie required to view this forum.',
+          error: access.message,
+        };
+      }
+
+      if (access.status === ACCESS_STATUSES.NETWORK_ERROR) {
+        return {
+          success: false,
+          status: 'NETWORK_ERROR',
+          totalTopics: 0,
+          matchedTopics: 0,
+          sampleMatches: [],
+          error: access.message,
+        };
+      }
+
+      if (![ACCESS_STATUSES.ACCESSIBLE, ACCESS_STATUSES.ACCESSIBLE_EMPTY].includes(access.status)) {
+        return {
+          success: false,
+          status: access.status,
+          totalTopics: access.topicCount || 0,
+          matchedTopics: 0,
+          sampleMatches: [],
+          error: access.message,
         };
       }
 
       // Extract topic titles from forum page table
-      const topics = await page.evaluate(() => {
+      const topics = await session.page.evaluate(() => {
         const results = [];
         // RuTracker topic links usually have class .tt-text or are inside table#tor-tbl
         const rows = document.querySelectorAll('#tor-tbl tbody tr, #forum_main tbody tr, tr.hl-tr');
@@ -527,9 +542,7 @@ class CategoryManager {
       };
     } finally {
       if (session) {
-        try {
-          await session.close('test_finished');
-        } catch (_) {}
+        await session.close('test_finished');
       }
     }
   }

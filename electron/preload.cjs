@@ -21,16 +21,22 @@ const rtLibrary = {
     getConfigDir: () => ipcRenderer.invoke('get-config-dir'),
     loadAppConfig: () => ipcRenderer.invoke('load-app-config'),
     saveAppConfig: (configData) => ipcRenderer.invoke('save-app-config', configData),
+    isWindowFocused: () => ipcRenderer.invoke('system:is-window-focused'),
+    focusWindow: () => ipcRenderer.invoke('system:focus-window'),
+    showNotification: (options) => ipcRenderer.invoke('system:show-notification', options),
   },
   images: {
     fetch: (url, requestId) => ipcRenderer.invoke('image:fetch', { url, requestId }),
     cancel: (requestId) => ipcRenderer.send('image:cancel', requestId),
   },
   library: {
+    importRuTrackerHtml: (options) => ipcRenderer.invoke('library:import-rutracker-html', options),
     getCapabilities: () => ipcRenderer.invoke('library:getCapabilities'),
     getReadiness: () => ipcRenderer.invoke('library:getReadiness'),
+    dismissOnboarding: () => ipcRenderer.invoke('library:dismissOnboarding'),
     runMigration: () => ipcRenderer.invoke('library:runMigration'),
     getCategories: () => ipcRenderer.invoke('library:getCategories'),
+    getFilterFacets: (options) => ipcRenderer.invoke('library:getFilterFacets', options),
     getItems: (options) => ipcRenderer.invoke('library:getItems', options),
     getItem: (id) => ipcRenderer.invoke('library:getItem', id),
     getScreenshots: (id) => ipcRenderer.invoke('library:getScreenshots', id),
@@ -41,6 +47,7 @@ const rtLibrary = {
     exportMagnets: (magnets) => ipcRenderer.invoke('library:exportMagnets', { magnets }),
     ensureNativeImport: (libraryPath, options) => ipcRenderer.invoke('library:ensureNativeImport', libraryPath, options),
     refresh: (options) => ipcRenderer.invoke('library:refresh', options),
+    reindex: () => ipcRenderer.invoke('library:reindex'),
     getIndexStatus: () => ipcRenderer.invoke('library:getIndexStatus'),
     getAllImageUrls: () => ipcRenderer.invoke('library:getAllImageUrls'),
     onIndexProgress: (callback) => {
@@ -105,9 +112,13 @@ const rtLibrary = {
     },
   },
   scraper: {
+    importRuTrackerHtml: (options) => ipcRenderer.invoke('library:import-rutracker-html', options),
     start: (options) => ipcRenderer.invoke('scraper:start', options),
     renewSession: (options) => ipcRenderer.invoke('scraper:renewSession', options),
+    probeAccess: (options) => ipcRenderer.invoke('scraper:probeAccess', options),
     cancel: () => ipcRenderer.invoke('scraper:cancel'),
+    pause: () => ipcRenderer.invoke('scraper:pause'),
+    resume: () => ipcRenderer.invoke('scraper:resume'),
     getState: () => ipcRenderer.invoke('scraper:getState'),
     clearStorage: () => ipcRenderer.invoke('scraper:clearStorage'),
     reindexLibrary: () => ipcRenderer.invoke('scraper:reindexLibrary'),
@@ -121,6 +132,10 @@ const rtLibrary = {
     setCategoryEnabled: (id, enabled) => ipcRenderer.invoke('scraper:setCategoryEnabled', { id, enabled }),
     resetCategory: (id) => ipcRenderer.invoke('scraper:resetCategory', id),
     testCategory: (data) => ipcRenderer.invoke('scraper:testCategory', data),
+    getSyncHistory: (options) => ipcRenderer.invoke('scraper:getSyncHistory', options),
+    getSyncRunDetails: (runId) => ipcRenderer.invoke('scraper:getSyncRunDetails', runId),
+    getSyncHealth: () => ipcRenderer.invoke('scraper:getSyncHealth'),
+    clearSyncHistory: () => ipcRenderer.invoke('scraper:clearSyncHistory'),
     onStateChanged: (callback) => {
       if (typeof callback !== 'function') return () => {};
       const handler = (_event, data) => callback(data);
@@ -133,12 +148,58 @@ const rtLibrary = {
       ipcRenderer.on('scraper:progress', handler);
       return () => ipcRenderer.removeListener('scraper:progress', handler);
     },
+    onAccessChanged: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('scraper:accessChanged', handler);
+      return () => ipcRenderer.removeListener('scraper:accessChanged', handler);
+    },
+    onPageCommitted: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('scraper:pageCommitted', handler);
+      return () => ipcRenderer.removeListener('scraper:pageCommitted', handler);
+    },
+    onRunFinalized: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('scraper:runFinalized', handler);
+      return () => ipcRenderer.removeListener('scraper:runFinalized', handler);
+    },
+    getActiveTransport: () => ipcRenderer.invoke('scraper:get-active-transport'),
+    getTransportPreference: () => ipcRenderer.invoke('scraper:get-transport-preference'),
+    setTransportPreference: (preference) => ipcRenderer.invoke('scraper:set-transport-preference', preference),
+    setEmbeddedPromoted: (promoted) => ipcRenderer.invoke('scraper:set-embedded-promoted', promoted),
+    fetchTopic: (options) => ipcRenderer.invoke('scraper:fetch-topic', options),
+    embeddedVerify: (options) => ipcRenderer.invoke('scraper:embedded-verify', options),
+    embeddedProbe: (options) => ipcRenderer.invoke('scraper:embedded-probe', options),
+    embeddedResetSession: () => ipcRenderer.invoke('scraper:embedded-reset-session'),
+    embeddedStatus: () => ipcRenderer.invoke('scraper:embedded-status'),
+    getSchedulerStatus: () => ipcRenderer.invoke('scraper:getSchedulerStatus'),
+    updateSchedulerConfig: (config) => ipcRenderer.invoke('scraper:updateSchedulerConfig', config),
+    runSchedulerDueCheck: () => ipcRenderer.invoke('scraper:runSchedulerDueCheck'),
+    onSchedulerStatusChanged: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('scraper:schedulerStatusChanged', handler);
+      return () => ipcRenderer.removeListener('scraper:schedulerStatusChanged', handler);
+    },
     onLog: (callback) => {
       if (typeof callback !== 'function') return () => {};
       const handler = (_event, data) => callback(data);
       ipcRenderer.on('scraper:log', handler);
       return () => ipcRenderer.removeListener('scraper:log', handler);
     },
+  },
+  companion: {
+    connect: () => ipcRenderer.invoke('companion:connect'),
+    reconnect: () => ipcRenderer.invoke('companion:reconnect'),
+    disconnect: () => ipcRenderer.invoke('companion:disconnect'),
+    status: () => ipcRenderer.invoke('companion:status'),
+    openRuTracker: (options) => ipcRenderer.invoke('companion:open-rutracker', options),
+    checkAccess: (options) => ipcRenderer.invoke('companion:check-access', options),
+    fetchXboxPage: () => ipcRenderer.invoke('companion:fetch-xbox-page'),
+    fetchTopic: (options) => ipcRenderer.invoke('companion:fetch-topic', options),
   },
 };
 
@@ -155,4 +216,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   library: rtLibrary.library,
   torrent: rtLibrary.torrent,
   scraper: rtLibrary.scraper,
+  companion: rtLibrary.companion,
 });

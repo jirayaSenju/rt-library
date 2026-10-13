@@ -48,7 +48,7 @@ import { SettingsSection } from "./SettingsSection"
 import { SettingRow } from "./SettingRow"
 
 export const ImageSettings: React.FC = () => {
-  const { t, formatNumber } = useI18n()
+  const { t, formatNumber, locale } = useI18n()
   const [cacheStats, setCacheStats] = useState<ImageCacheDetailedStats>({
     count: 0,
     totalBytes: 0,
@@ -121,12 +121,22 @@ export const ImageSettings: React.FC = () => {
         skipExisting: warmupSkipExisting,
       })
       await loadStats()
-      toast.success(
-        t("settings.images.generateSuccessToast", {
-          cached: formatNumber(warmup.cachedSuccess),
-          size: warmup.bytesAddedFormatted,
-        })
-      )
+      if (warmup.totalImages === 0) {
+        toast.info(
+          locale === "pt-BR"
+            ? "Nenhuma imagem encontrada no catálogo para armazenar em cache. As capas e capturas são obtidas automaticamente ao abrir os jogos na biblioteca."
+            : locale === "ru-RU"
+            ? "В каталоге не найдено изображений для кэширования. Обложки и скриншоты загружаются при открытии игр."
+            : "No images found in catalog to cache. Covers and screenshots are loaded when viewing games in the library."
+        )
+      } else {
+        toast.success(
+          t("settings.images.generateSuccessToast", {
+            cached: formatNumber(warmup.cachedSuccess),
+            size: warmup.bytesAddedFormatted,
+          })
+        )
+      }
     } catch (err: any) {
       toast.error(t("settings.images.generateErrorToast", { error: err.message || "Failed" }))
     }
