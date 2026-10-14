@@ -309,7 +309,7 @@ export function App() {
         favoritesCount={favorites.size}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebarCollapse}
-        onOpenSettings={() => handleOpenSettings("library")}
+        onOpenSettings={(section) => handleOpenSettings(section || "library")}
       />
 
       <main className="flex-1 min-h-0 flex flex-col h-screen overflow-hidden bg-background">

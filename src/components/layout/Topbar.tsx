@@ -6,7 +6,6 @@ import {
   LayoutGrid, 
   Grid2X2, 
   List, 
-  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,7 +18,6 @@ import { FilterOptions, LibraryFilters } from "@/types"
 import { FilterPopover } from "@/components/layout/FilterPopover"
 import { GlobalSyncStatus } from "@/components/layout/GlobalSyncStatus"
 import { useI18n } from "@/i18n"
-import { useUpdater } from "@/hooks/useUpdater"
 
 interface TopbarProps {
   searchQuery: string
@@ -71,8 +69,6 @@ export const Topbar: React.FC<TopbarProps> = ({
   selectedCategory,
 }) => {
   const { t } = useI18n()
-  const { status: updaterStatus } = useUpdater()
-  const hasUpdateReady = updaterStatus.state === 'UPDATE_AVAILABLE' || updaterStatus.state === 'DOWNLOADED'
 
   const hasActiveFilters =
     filters.minSeeds != null ||
@@ -137,34 +133,6 @@ export const Topbar: React.FC<TopbarProps> = ({
 
           {/* Right Slot: Grouped Controls */}
           <div className="flex-1 min-w-0 flex items-center justify-end gap-2.5 shrink-0">
-            {/* Update Available Indicator Badge */}
-            {hasUpdateReady && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onOpenSettings?.("about")}
-                    className={`h-8 px-2.5 text-xs font-semibold gap-1.5 shadow-xs border ${
-                      updaterStatus.state === 'DOWNLOADED'
-                        ? 'border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200'
-                        : 'border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-200 animate-pulse'
-                    }`}
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">
-                      {updaterStatus.state === 'DOWNLOADED' ? t('updater.badgeDownloaded') : t('updater.badgeUpdateAvailable')}
-                    </span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {updaterStatus.state === 'DOWNLOADED'
-                    ? t('updater.downloadedDesc', { version: updaterStatus.availableVersion || '' })
-                    : t('updater.updateAvailableDesc', { version: updaterStatus.availableVersion || '' })}
-                </TooltipContent>
-              </Tooltip>
-            )}
-
             {/* Filter Popover (includes Sorting section inside) */}
             <FilterPopover
               filters={filters}

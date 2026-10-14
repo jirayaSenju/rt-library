@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.1.2] - 2026-10-14
+
+### Changed
+- Moved update notification badge from Topbar to bottom of Sidebar, avoiding overlap with Search input and `⌘K` command palette.
+- Replaced raw HTML release notes block with sanitized, formatted preview and new full Changelog Modal (`ChangelogModal.tsx`).
+- Harmonized all updater state cards and progress bars with active application theme color tokens (WCAG AA compliant across all themes).
+
+---
+
 ## [1.1.1] - 2026-10-14
 
 ### Added

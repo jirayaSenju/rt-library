@@ -1290,6 +1290,9 @@ export interface Translations {
     later: string
     releaseNotes: string
     viewOnGitHub: string
+    viewFullChangelog: string
+    changelogTitle: string
+    closeChangelog: string
     unsupported: string
     unsupportedDev: string
     unsupportedLinux: string

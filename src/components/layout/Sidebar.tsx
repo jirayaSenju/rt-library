@@ -10,7 +10,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  Sparkles,
 } from "lucide-react"
+import { useUpdater } from "@/hooks/useUpdater"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,7 +31,7 @@ interface SidebarProps {
   favoritesCount: number
   isCollapsed?: boolean
   onToggleCollapse?: () => void
-  onOpenSettings?: () => void
+  onOpenSettings?: (section?: any) => void
 }
 
 interface PlatformGroup {
@@ -135,8 +137,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed = false,
   onToggleCollapse,
   onOpenSettings,
-}) => {
+}: SidebarProps) => {
   const { t, formatNumber } = useI18n()
+  const { status: updaterStatus } = useUpdater()
+  const hasUpdateReady = updaterStatus.state === 'UPDATE_AVAILABLE' || updaterStatus.state === 'DOWNLOADED'
   const platformGroups = useMemo(() => groupCategories(categories, t), [categories, t])
 
   // Track expanded groups in accordion (collapsed by default)
@@ -426,6 +430,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })
           )}
         </div>
+
+        {/* Bottom Section: Update Available Notification & Settings */}
+        {hasUpdateReady && (
+          <div className={cn("p-2 border-t border-border shrink-0 bg-card/70", isCollapsed ? "flex flex-col items-center" : "")}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => onOpenSettings?.("about")}
+                  className={cn(
+                    "w-full flex items-center rounded-lg transition-all border text-xs font-semibold shadow-xs",
+                    updaterStatus.state === 'DOWNLOADED'
+                      ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+                      : "border-primary/40 bg-primary/15 text-primary hover:bg-primary/25 animate-pulse",
+                    isCollapsed ? "h-10 w-10 justify-center p-0" : "px-3 py-2.5 justify-between gap-2"
+                  )}
+                  aria-label={updaterStatus.state === 'DOWNLOADED' ? t('updater.badgeDownloaded') : t('updater.badgeUpdateAvailable')}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Sparkles className="h-4 w-4 shrink-0" />
+                    {!isCollapsed && (
+                      <span className="truncate">
+                        {updaterStatus.state === 'DOWNLOADED' ? t('updater.badgeDownloaded') : t('updater.badgeUpdateAvailable')}
+                      </span>
+                    )}
+                  </div>
+                  {!isCollapsed && updaterStatus.availableVersion && (
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-background/60 border border-border/60 shrink-0">
+                      v{updaterStatus.availableVersion}
+                    </span>
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {updaterStatus.state === 'DOWNLOADED'
+                  ? t('updater.downloadedDesc', { version: updaterStatus.availableVersion || '' })
+                  : t('updater.updateAvailableDesc', { version: updaterStatus.availableVersion || '' })}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
       </aside>
     </TooltipProvider>
   )
