@@ -28,6 +28,7 @@ class UpdaterManager extends EventEmitter {
     this.isPackaged = options.isPackaged !== undefined ? options.isPackaged : (this.app ? this.app.isPackaged : false);
     this.platform = options.platform || process.platform;
     this.env = options.env || process.env;
+    this.updaterLogPath = options.updaterLogPath || this.resolveUpdaterLogPath();
 
     this.status = createInitialStatus(this.currentVersion);
     this.activeCheckPromise = null;
@@ -37,6 +38,46 @@ class UpdaterManager extends EventEmitter {
     this.syncActiveProvider = options.syncActiveProvider || (() => false);
 
     this.checkPlatformSupport();
+    this.logDiagnostic('manager_initialized', {
+      version: this.currentVersion,
+      platform: this.platform,
+      packaged: this.isPackaged,
+      supported: this.status.isSupported,
+      state: this.status.state,
+      errorCode: this.status.errorCode,
+    });
+  }
+
+  resolveUpdaterLogPath() {
+    try {
+      if (this.app && typeof this.app.getPath === 'function') {
+        return path.join(this.app.getPath('userData'), 'logs', 'updater.log');
+      }
+    } catch (_) {}
+    return path.join(require('os').tmpdir(), 'rt-library-updater.log');
+  }
+
+  logDiagnostic(event, details = {}) {
+    const line = `${JSON.stringify({
+      timestamp: new Date().toISOString(),
+      event,
+      ...details,
+    })}\n`;
+    try {
+      fs.mkdirSync(path.dirname(this.updaterLogPath), { recursive: true });
+      fs.appendFileSync(this.updaterLogPath, line, 'utf8');
+    } catch (err) {
+      console.error('[UPDATER][LOG_WRITE_ERROR]', this.updaterLogPath, err.message);
+    }
+  }
+
+  describeError(err) {
+    return {
+      name: err?.name || 'Error',
+      message: err?.message || String(err || 'Unknown error'),
+      code: err?.code || null,
+      stack: err?.stack ? String(err.stack).slice(0, 12000) : null,
+    };
   }
 
   checkPlatformSupport() {
@@ -99,6 +140,10 @@ class UpdaterManager extends EventEmitter {
     if (!this.status.isSupported) return null;
 
     try {
+      this.logDiagnostic('updater_initialization_started', {
+        platform: this.platform,
+        version: this.currentVersion,
+      });
       const { AppImageUpdater } = require('electron-updater');
 
       const self = this;
@@ -206,6 +251,7 @@ class UpdaterManager extends EventEmitter {
 
       this.autoUpdater.on('checking-for-update', () => {
         console.info('[UPDATER] Checking for updates on GitHub...');
+        this.logDiagnostic('checking_for_update');
       });
 
       this.autoUpdater.on('update-available', (info) => {
@@ -225,12 +271,14 @@ class UpdaterManager extends EventEmitter {
       });
 
       this.autoUpdater.on('error', (err) => {
+        this.logDiagnostic('updater_error_event', { error: this.describeError(err) });
         this.handleError(err);
       });
 
       return this.autoUpdater;
     } catch (err) {
       console.error('[UPDATER][INIT_ERROR]', err.message);
+      this.logDiagnostic('updater_initialization_failed', { error: this.describeError(err) });
       this.status.state = UpdaterState.ERROR;
       this.status.errorCode = UpdaterErrorCode.UNKNOWN;
       this.status.errorMessage = 'Failed to initialize update subsystem.';
@@ -245,11 +293,16 @@ class UpdaterManager extends EventEmitter {
 
     // Strict SemVer verification: must be strictly newer
     if (!cleanVersion || !semver.gt(cleanVersion, this.currentVersion)) {
+      this.logDiagnostic('update_candidate_rejected', {
+        currentVersion: this.currentVersion,
+        candidateVersion: rawVersion || null,
+      });
       this.handleUpdateNotAvailable(info);
       return;
     }
 
     console.info(`[UPDATER] Update available: ${cleanVersion} (current: ${this.currentVersion})`);
+    this.logDiagnostic('update_available', { currentVersion: this.currentVersion, availableVersion: cleanVersion });
     this.status.state = UpdaterState.UPDATE_AVAILABLE;
     this.status.availableVersion = cleanVersion;
     this.status.releaseDate = info.releaseDate || null;
@@ -263,6 +316,7 @@ class UpdaterManager extends EventEmitter {
 
   handleUpdateNotAvailable(info) {
     console.info(`[UPDATER] Application is up to date (${this.currentVersion}).`);
+    this.logDiagnostic('update_not_available', { currentVersion: this.currentVersion, reportedVersion: info?.version || null });
     this.status.state = UpdaterState.UP_TO_DATE;
     this.status.availableVersion = null;
     this.status.errorCode = null;
@@ -276,11 +330,22 @@ class UpdaterManager extends EventEmitter {
     this.status.bytesPerSecond = Math.round(progressObj.bytesPerSecond || 0);
     this.status.transferred = Math.round(progressObj.transferred || 0);
     this.status.total = Math.round(progressObj.total || 0);
+    const progressMilestone = Math.floor(this.status.progress / 25) * 25;
+    if (progressMilestone > (this._lastLoggedProgressMilestone || 0)) {
+      this._lastLoggedProgressMilestone = progressMilestone;
+      this.logDiagnostic('download_progress', {
+        percent: this.status.progress,
+        transferred: this.status.transferred,
+        total: this.status.total,
+        bytesPerSecond: this.status.bytesPerSecond,
+      });
+    }
     this.emitChange();
   }
 
   handleUpdateDownloaded(info) {
     console.info(`[UPDATER] Update downloaded successfully: ${this.status.availableVersion}`);
+    this.logDiagnostic('update_downloaded', { availableVersion: this.status.availableVersion || info?.version || null });
     this.status.state = UpdaterState.DOWNLOADED;
     this.status.progress = 100;
     this.status.errorCode = null;
@@ -290,6 +355,7 @@ class UpdaterManager extends EventEmitter {
 
   handleError(err) {
     const rawMsg = err ? (err.message || String(err)) : 'Unknown error';
+    this.logDiagnostic('updater_error', { error: this.describeError(err), state: this.status.state });
 
     // Deduplicate identical immediate error logging
     if (this._lastLoggedError !== rawMsg) {
@@ -316,13 +382,21 @@ class UpdaterManager extends EventEmitter {
   }
 
   checkForUpdates(isManual = false) {
+    this.logDiagnostic('check_requested', {
+      manual: Boolean(isManual),
+      currentVersion: this.currentVersion,
+      platform: this.platform,
+      supported: this.status.isSupported,
+    });
     if (!this.checkPlatformSupport()) {
+      this.logDiagnostic('check_skipped_unsupported', { errorCode: this.status.errorCode, message: this.status.errorMessage });
       return Promise.resolve(this.getStatus());
     }
 
     // Duplicate check protection: share active Promise
     if (this.activeCheckPromise) {
       console.info('[UPDATER] Update check already in progress, returning active check.');
+      this.logDiagnostic('check_deduplicated');
       return this.activeCheckPromise;
     }
 
@@ -339,8 +413,10 @@ class UpdaterManager extends EventEmitter {
           return this.getStatus();
         }
         await updater.checkForUpdates();
+        this.logDiagnostic('check_completed', { state: this.status.state, availableVersion: this.status.availableVersion });
         return this.getStatus();
       } catch (err) {
+        this.logDiagnostic('check_failed', { error: this.describeError(err) });
         this.handleError(err);
         return this.getStatus();
       } finally {
@@ -352,8 +428,17 @@ class UpdaterManager extends EventEmitter {
   }
 
   async downloadUpdate() {
+    this.logDiagnostic('download_requested', {
+      currentVersion: this.currentVersion,
+      availableVersion: this.status.availableVersion,
+      state: this.status.state,
+      platform: this.platform,
+      supported: this.status.isSupported,
+    });
     if (!this.status.isSupported) {
-      throw new Error(this.status.errorMessage || 'Updates unsupported.');
+      const err = new Error(this.status.errorMessage || 'Updates unsupported.');
+      this.logDiagnostic('download_rejected_unsupported', { error: this.describeError(err) });
+      throw err;
     }
 
     if (this.status.state !== UpdaterState.UPDATE_AVAILABLE && this.status.state !== UpdaterState.ERROR) {
@@ -362,6 +447,7 @@ class UpdaterManager extends EventEmitter {
 
     this.status.state = UpdaterState.DOWNLOADING;
     this.status.progress = 0;
+    this._lastLoggedProgressMilestone = 0;
     this.status.errorCode = null;
     this.status.errorMessage = null;
     this.emitChange();
@@ -370,14 +456,17 @@ class UpdaterManager extends EventEmitter {
       const updater = this.ensureAutoUpdater();
       if (!updater) throw new Error('Auto updater unavailable.');
       await updater.downloadUpdate();
+      this.logDiagnostic('download_completed', { availableVersion: this.status.availableVersion });
       return this.getStatus();
     } catch (err) {
+      this.logDiagnostic('download_failed', { error: this.describeError(err) });
       this.handleError(err);
       throw err;
     }
   }
 
   async quitAndInstall() {
+    this.logDiagnostic('install_requested', { state: this.status.state, availableVersion: this.status.availableVersion });
     if (!this.status.isSupported) {
       throw new Error('Updates unsupported.');
     }
@@ -395,6 +484,7 @@ class UpdaterManager extends EventEmitter {
 
     console.info('[UPDATER] Initiating application restart and update installation...');
     this.status.state = UpdaterState.INSTALLING;
+    this.logDiagnostic('install_started', { availableVersion: this.status.availableVersion });
     this.emitChange();
 
     const updater = this.ensureAutoUpdater();

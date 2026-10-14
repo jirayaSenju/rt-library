@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -6,12 +7,14 @@ import { UpdaterManager } from '../../electron/updater/updaterManager.cjs';
 
 describe('UpdaterManager Unit Tests', () => {
   let mockApp: any;
+  let tempDir: string;
 
   beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rt-updater-log-test-'));
     mockApp = {
       getVersion: () => '1.1.0',
       isPackaged: true,
-      getPath: (name: string) => `/tmp/rt-mock-${name}`,
+      getPath: (name: string) => name === 'userData' ? tempDir : path.join(tempDir, name),
       whenReady: () => Promise.resolve(),
       quit: vi.fn(),
       relaunch: vi.fn(),
@@ -21,6 +24,36 @@ describe('UpdaterManager Unit Tests', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('persists updater diagnostics and download exception details to the user data log', async () => {
+    const logPath = path.join(tempDir, 'logs', 'updater.log');
+    const manager = new UpdaterManager({
+      app: mockApp,
+      isPackaged: true,
+      currentVersion: '1.1.0',
+      platform: 'win32',
+      env: { PORTABLE_EXECUTABLE_FILE: path.join(tempDir, 'RT-Library.exe') },
+    });
+    manager.handleUpdateAvailable({ version: '1.2.0' });
+    (manager as any).ensureAutoUpdater = () => ({
+      downloadUpdate: vi.fn().mockRejectedValue(new TypeError('this.doDownloadUpdate is not a function')),
+    });
+
+    await expect(manager.downloadUpdate()).rejects.toThrow('this.doDownloadUpdate is not a function');
+
+    const entries = fs.readFileSync(logPath, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    expect(entries.map((entry) => entry.event)).toEqual(expect.arrayContaining([
+      'manager_initialized',
+      'update_available',
+      'download_requested',
+      'download_failed',
+      'updater_error',
+    ]));
+    const failedDownload = entries.find((entry) => entry.event === 'download_failed');
+    expect(failedDownload.error.message).toBe('this.doDownloadUpdate is not a function');
+    expect(failedDownload.error.stack).toContain('TypeError');
   });
 
   it('correctly reports UNSUPPORTED when isPackaged is false (Development build)', () => {
