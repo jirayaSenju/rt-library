@@ -17,6 +17,24 @@ The project packages the application for Linux and Windows. It starts with an em
 
 When online sync is unavailable, Scraper settings can import a RuTracker category or topic page saved as HTML. See [Manual HTML Import](docs/scraper.md#manual-html-import).
 
+## Demo
+
+![Animated RT-Library demo](docs/images/rt-library.gif)
+
+## Screenshots
+
+| Library | First-run setup |
+|---|---|
+| <img src="docs/images/home-page.png" alt="RT-Library home page" width="480"> | <img src="docs/images/setup.png" alt="RT-Library first-run setup" width="480"> |
+
+| Browser Companion setup | Theme settings |
+|---|---|
+| <img src="docs/images/setup-scrapper.png" alt="Browser Companion setup" width="480"> | <img src="docs/images/settings-themes.png" alt="Application theme settings" width="480"> |
+
+| Progress theme settings |
+|---|
+| <img src="docs/images/settings-progress-themes.png" alt="Scraper progress theme settings" width="480"> |
+
 ## Highlights
 
 - **Local-first:** Catalogs, settings, and caches are stored on the user's device.
