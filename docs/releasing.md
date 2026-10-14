@@ -27,25 +27,25 @@ Application releases are created for release-worthy code changes since the previ
 - A non-documentation breaking change marked with `!` or a `BREAKING CHANGE:` footer triggers a MAJOR release.
 - A documentation-only change uses `docs:`. It does not bump the application version or create a release tag. `test`, `ci`, and maintenance-only commits do not trigger a release by themselves.
 
-The release workflow checks commits between the current tag and the previous release tag. If it finds no release-worthy Conventional Commit, it skips validation builds and publication. Documentation-only work still goes through the normal Pull Request checks and merge flow.
+The release workflow checks commits since the previous release tag. A commit can trigger a release only when it uses a release-worthy Conventional Commit type and changes application code. Changes limited to `.github/`, documentation files, changelog/legal files, or generated output do not trigger a release. Documentation and CI-only work still goes through the normal Pull Request checks and merge flow.
 
 ---
 
 ## 2. Development and Release Preparation Workflow
 
-Every code or documentation change follows the project workflow: start from `main`, work on the `dev` branch, commit with Conventional Commits, open a Pull Request to `main`, wait for GitHub Actions, and merge only after all required checks pass. If `dev` is absent, create it from the latest `main`. Keep `dev` synchronized with `main` after each merge. Only release-worthy code changes need a version bump and release tag.
+Every code or documentation change follows the project workflow: start from `main`, work on the `dev` branch, commit with Conventional Commits, open a Pull Request to `main`, wait for GitHub Actions, and merge only after all required checks pass. If `dev` is absent, create it from the latest `main`. Keep `dev` synchronized with `main` after each merge. Release-worthy code changes need a SemVer version bump in the package metadata and a changelog entry. After the merge, a successful CI run on `main` automatically builds the release artifacts, creates the matching `vMAJOR.MINOR.PATCH` tag, and publishes a GitHub Release. Documentation-only commits do not create a release.
 
 ```mermaid
 flowchart TD
-    A["Update main and create or sync dev"] --> B["Make change and commit conventionally"]
-    B --> C["Push dev and open PR to main"]
-    C --> D["Wait for required GitHub Actions"]
-    D -->|"All pass"| E["Merge PR"]
-    D -->|"Any fail"| B
+    A["Open/sync dev branch from main"] --> B["Make change, bump SemVer if needed, and commit"]
+    B --> C["Open PR/MR to main"]
+    C --> D["Wait for CI checks"]
+    D -->|"CI fails"| B
+    D -->|"CI passes"| E["Merge PR/MR into main"]
     E --> F{"Release-worthy code change?"}
-    F -->|"Yes"| G["Bump SemVer and create tag on main"]
-    G --> H["Release Actions build and publish"]
-    F -->|"No; docs-only"| I["No version bump or release tag"]
+    F -->|"Yes"| G["Wait for post-merge CI and release workflow"]
+    G --> H["Automatic tag, artifacts, and GitHub Release"]
+    F -->|"No code change; docs/CI only"| I["No release is created"]
 ```
 
 ### Step 1: Prepare a code release on `dev`
@@ -88,28 +88,29 @@ git push -u origin dev
 
 Open a Pull Request from `dev` to `main`. Wait for every required GitHub Actions check to pass; fix failures on `dev`, push the fix, and wait for the checks again. Merge only after all required checks pass.
 
-### Step 3: Tag the merged release
+### Step 3: Confirm the automatic release
 
-After the Pull Request is merged, update local `main` and confirm the release version is there:
+After the Pull Request is merged, the successful `main` CI run automatically validates and publishes the release. It uses the version from `package.json`, checks that the version is newer than the previous release, builds Linux, Windows, and Browser Companion artifacts, and attaches them with checksums to the GitHub Release. No manual tag push is needed.
+
+Confirm the published release and artifacts in GitHub Releases. To validate the version locally:
 ```bash
 git switch main
 git pull --ff-only origin main
 npm run release:validate v1.1.0
-git tag -a v1.1.0 -m "Release v1.1.0"
-git push origin v1.1.0
 ```
 
-Pushing the tag starts the release workflow. Do not push release version changes directly to `main` or create the tag before those changes pass the Pull Request Actions and merge.
+The tag-triggered release workflow remains available for manually pushed release tags, but the normal release path is the successful post-merge CI run. Do not push release version changes directly to `main`.
 
 ---
 
 ## 3. Automated GitHub Actions Pipeline
 
-When a tag matching `v*.*.*` is pushed, `.github/workflows/release.yml` checks the Conventional Commit types since the previous release tag. It runs validation, packaging, and publication only when it finds a release-worthy code change; otherwise, those jobs are skipped.
+After a push to `main`, `.github/workflows/ci.yml` waits for the Linux and Windows validation matrix to pass, reads the SemVer version from `package.json`, and calls `.github/workflows/release.yml`. The reusable release workflow checks Conventional Commits since the previous release, confirms at least one application code file changed, and verifies the version is strict SemVer newer than the previous tag. It validates, packages, and publishes only release-worthy code changes. Documentation-only and CI-only changes skip publication. The GitHub Release action creates the tag automatically; no manual tag push is needed. Manually pushed `v*.*.*` tags continue to use the same release workflow.
 
 ```mermaid
 graph TD
-    Tag["Push Tag (v1.1.0)"] --> Eligibility["0. Check Conventional Commit types"]
+    Main["Successful CI on main"] --> Version["Read package.json SemVer"]
+    Version --> Eligibility["0. Check Conventional Commit types and version"]
     Eligibility -->|"Release-worthy code change"| Validate["1. Validate Job<br/>(Linux Runner)"]
     Validate --> BuildLinux["2a. Build Linux<br/>(AppImage)"]
     Validate --> BuildWin["2b. Build Windows<br/>(NSIS EXE)"]
@@ -118,10 +119,11 @@ graph TD
     Release --> Checksums["Generate SHA256SUMS.txt"]
     Checksums --> Publish["Publish to GitHub Releases"]
     Eligibility -->|"No release-worthy code change"| Skip["Skip builds and publication"]
+    ManualTag["Optional manual vX.Y.Z tag"] --> Eligibility
 ```
 
 ### Pipeline Jobs & Guarantees:
-0. **`release-eligibility`**: Scans commits since the previous release tag. Only `feat`, `fix`, `perf`, `revert`, or non-documentation breaking changes enable the release jobs.
+0. **`prepare-release` / `release-eligibility`**: After the successful main CI matrix, reads the package version and scans commits since the previous release tag. Only commits using `feat`, `fix`, `perf`, `revert`, or a non-documentation breaking change and changing application code, with a newer strict SemVer version, enable the release jobs. CI-only and documentation-only changes are ignored.
 1. **`validate` Gate**: Runs on `ubuntu-latest` when the eligibility gate passes. Executes the test suite, frontend compilation, license audit, release readiness scan, and SemVer tag consistency check. If any check fails, packaging jobs do not start.
 2. **`build-linux`**: Runs on `ubuntu-latest`. Compiles native `better-sqlite3` for Linux, packages the desktop AppImage, and verifies archive runtime integrity (`npm run package:verify`).
 3. **`build-windows`**: Runs on native `windows-latest`. Compiles native `better-sqlite3` for Windows x64 and generates the NSIS setup installer (`.exe`).

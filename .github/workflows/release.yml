@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_call:
+    inputs:
+      release_tag:
+        description: SemVer tag derived from package.json after a successful main CI run.
+        required: true
+        type: string
+      target_sha:
+        description: Exact main commit that passed CI and will be released.
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -21,24 +31,34 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.classify.outputs.should_release }}
+      release_tag: ${{ steps.classify.outputs.release_tag }}
+      target_sha: ${{ steps.classify.outputs.target_sha }}
     steps:
       - name: Checkout Full History
         uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.target_sha || github.sha }}
           fetch-depth: 0
 
       - name: Classify Conventional Commits since previous release
         id: classify
         shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+          TARGET_SHA: ${{ inputs.target_sha || github.sha }}
+          IS_AUTOMATIC_RELEASE: ${{ inputs.target_sha != '' }}
         run: |
           set -euo pipefail
 
-          previous_tag="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
+          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "target_sha=${TARGET_SHA}" >> "$GITHUB_OUTPUT"
+
+          previous_tag="$(git describe --tags --match 'v[0-9]*.[0-9]*.[0-9]*' --abbrev=0 "${TARGET_SHA}^" 2>/dev/null || true)"
           if [[ -n "$previous_tag" ]]; then
-            commit_range="${previous_tag}..${GITHUB_SHA}"
+            commit_range="${previous_tag}..${TARGET_SHA}"
             echo "Checking commits since ${previous_tag}."
           else
-            commit_range="${GITHUB_SHA}"
+            commit_range="${TARGET_SHA}"
             echo "No previous release tag found; checking repository history."
           fi
 
@@ -49,6 +69,23 @@ jobs:
           while IFS= read -r commit; do
             subject="$(git show -s --format=%s "$commit")"
             body="$(git show -s --format=%b "$commit")"
+
+            has_code_changes=false
+            while IFS= read -r changed_file; do
+              case "$changed_file" in
+                .github/*|docs/*|*/README.md|README.md|CHANGELOG.md|CONTRIBUTING.md|SECURITY.md|LEGAL.md|LICENSE|LICENSE.*|THIRD_PARTY_*|benchmark-results/*|scratch/*|dist/*|dist-desktop/*|*.md)
+                  ;;
+                *)
+                  has_code_changes=true
+                  break
+                  ;;
+              esac
+            done < <(git diff-tree --no-commit-id --name-only -r --root "$commit")
+
+            if [[ "$has_code_changes" != true ]]; then
+              echo "Ignoring non-code commit: ${subject}"
+              continue
+            fi
 
             if [[ "$subject" =~ $release_commit_regex ]]; then
               should_release=true
@@ -77,6 +114,30 @@ jobs:
 
           if [[ "$should_release" == false ]]; then
             echo "No release-triggering Conventional Commits found. Documentation-only and maintenance-only changes will not be released."
+          else
+            release_version="${RELEASE_TAG#v}"
+            if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "::error::Release tag '${RELEASE_TAG}' is not strict SemVer (vMAJOR.MINOR.PATCH)."
+              exit 1
+            fi
+
+            if [[ -n "$previous_tag" ]]; then
+              previous_version="${previous_tag#v}"
+              latest_version="$(printf '%s\n%s\n' "$previous_version" "$release_version" | sort -V | tail -n 1)"
+              if [[ "$release_version" == "$previous_version" || "$latest_version" != "$release_version" ]]; then
+                echo "::error::Version ${release_version} must be greater than the previous release ${previous_version}. Bump package.json and package-lock.json before merging release-worthy changes."
+                exit 1
+              fi
+            fi
+
+            if [[ "${IS_AUTOMATIC_RELEASE}" == 'true' ]] && git show-ref --verify --quiet "refs/tags/${RELEASE_TAG}"; then
+              existing_tag_target="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+              if [[ "$existing_tag_target" != "$TARGET_SHA" ]]; then
+                echo "::error::Release tag ${RELEASE_TAG} already points to ${existing_tag_target}, not ${TARGET_SHA}. Increment the package version for the next release."
+                exit 1
+              fi
+              echo "Release tag ${RELEASE_TAG} already points to this commit; continuing to allow a safe workflow rerun."
+            fi
           fi
 
           echo "should_release=${should_release}" >> "$GITHUB_OUTPUT"
@@ -92,6 +153,8 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-eligibility.outputs.target_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -120,18 +183,20 @@ jobs:
           npm run companion:validate
 
       - name: Validate Semantic Versioning & Tag Consistency
-        run: node scripts/validate-release-version.cjs "${{ github.ref_name }}"
+        run: node scripts/validate-release-version.cjs "${{ needs.release-eligibility.outputs.release_tag }}"
 
   # ----------------------------------------------------------------------------
   # 2. Linux AppImage Build
   # ----------------------------------------------------------------------------
   build-linux:
     name: Build Linux AppImage
-    needs: [validate]
+    needs: [validate, release-eligibility]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-eligibility.outputs.target_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -158,12 +223,14 @@ jobs:
         run: npm run package:inspect
 
       - name: Validate Update Metadata Artifacts
-        run: node scripts/validate-update-artifacts.cjs dist-desktop "${{ steps.validate.outputs.version || '' }}"
+        run: node scripts/validate-update-artifacts.cjs dist-desktop "${RELEASE_TAG#v}"
+        env:
+          RELEASE_TAG: ${{ needs.release-eligibility.outputs.release_tag }}
 
       - name: Upload Linux AppImage & Update Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: rt-library-linux-${{ github.ref_name }}
+          name: rt-library-linux-${{ needs.release-eligibility.outputs.release_tag }}
           path: |
             dist-desktop/*.AppImage
             dist-desktop/latest-linux.yml
@@ -176,11 +243,13 @@ jobs:
   # ----------------------------------------------------------------------------
   build-windows:
     name: Build Windows Portable Executable
-    needs: [validate]
+    needs: [validate, release-eligibility]
     runs-on: windows-latest
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-eligibility.outputs.target_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -209,12 +278,14 @@ jobs:
         run: npm run package:inspect
 
       - name: Validate Update Metadata Artifacts
-        run: node scripts/validate-update-artifacts.cjs dist-desktop "${{ steps.validate.outputs.version || '' }}"
+        run: node scripts/validate-update-artifacts.cjs dist-desktop "${RELEASE_TAG#v}"
+        env:
+          RELEASE_TAG: ${{ needs.release-eligibility.outputs.release_tag }}
 
       - name: Upload Windows Portable & Update Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: rt-library-windows-${{ github.ref_name }}
+          name: rt-library-windows-${{ needs.release-eligibility.outputs.release_tag }}
           path: |
             dist-desktop/*portable.exe
             dist-desktop/latest.yml
@@ -226,11 +297,13 @@ jobs:
   # ----------------------------------------------------------------------------
   package-companion:
     name: Package Browser Companion
-    needs: [validate]
+    needs: [validate, release-eligibility]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-eligibility.outputs.target_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -249,7 +322,7 @@ jobs:
       - name: Upload Browser Companion Artifact
         uses: actions/upload-artifact@v7
         with:
-          name: rt-library-companion-${{ github.ref_name }}
+          name: rt-library-companion-${{ needs.release-eligibility.outputs.release_tag }}
           path: dist-companion/rt-library-browser-companion-*.zip
           if-no-files-found: error
           retention-days: 5
@@ -259,13 +332,15 @@ jobs:
   # ----------------------------------------------------------------------------
   release:
     name: Publish GitHub Release
-    needs: [validate, build-linux, build-windows, package-companion]
+    needs: [validate, release-eligibility, build-linux, build-windows, package-companion]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-eligibility.outputs.target_sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -278,19 +353,19 @@ jobs:
       - name: Download Linux Artifact
         uses: actions/download-artifact@v8
         with:
-          name: rt-library-linux-${{ github.ref_name }}
+          name: rt-library-linux-${{ needs.release-eligibility.outputs.release_tag }}
           path: release-assets
 
       - name: Download Windows Artifact
         uses: actions/download-artifact@v8
         with:
-          name: rt-library-windows-${{ github.ref_name }}
+          name: rt-library-windows-${{ needs.release-eligibility.outputs.release_tag }}
           path: release-assets
 
       - name: Download Browser Companion Artifact
         uses: actions/download-artifact@v8
         with:
-          name: rt-library-companion-${{ github.ref_name }}
+          name: rt-library-companion-${{ needs.release-eligibility.outputs.release_tag }}
           path: release-assets
 
       - name: Verify Release Assets Set
@@ -298,7 +373,8 @@ jobs:
           echo "=== RELEASE ARTIFACTS INVENTORY ==="
           ls -la release-assets
           
-          EXPECTED_VERSION="${GITHUB_REF_NAME#v}"
+          EXPECTED_VERSION="${RELEASE_TAG#v}"
+          export EXPECTED_VERSION
           echo "Expected Version: ${EXPECTED_VERSION}"
           
           APPIMAGE_COUNT=$(ls -1 release-assets/RT-Library-${EXPECTED_VERSION}-linux-*.AppImage 2>/dev/null | wc -l)
@@ -355,6 +431,8 @@ jobs:
           fi
           
           echo "✅ Release assets inventory verified successfully (AppImage, Portable exe, Companion zip, latest metadata, 0 forbidden files)."
+        env:
+          RELEASE_TAG: ${{ needs.release-eligibility.outputs.release_tag }}
 
       - name: Generate SHA-256 Checksums
         run: |
@@ -373,8 +451,9 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          name: RT-Library ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          name: RT-Library ${{ needs.release-eligibility.outputs.release_tag }}
+          tag_name: ${{ needs.release-eligibility.outputs.release_tag }}
+          target_commitish: ${{ needs.release-eligibility.outputs.target_sha }}
           files: |
             release-assets/*.AppImage
             release-assets/*portable.exe
