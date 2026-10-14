@@ -89,7 +89,6 @@ class UpdaterManager extends EventEmitter {
     try {
       const { AppImageUpdater } = require('electron-updater/out/AppImageUpdater');
       const { NsisUpdater } = require('electron-updater/out/NsisUpdater');
-      const { NodeHttpExecutor } = require('builder-util/out/nodeHttpExecutor');
 
       const self = this;
       const appAdapter = {
@@ -123,29 +122,63 @@ class UpdaterManager extends EventEmitter {
         return null;
       }
 
-      const { configureRequestUrl, configureRequestOptions } = require('builder-util-runtime');
-      const httpExecutor = new NodeHttpExecutor();
-      httpExecutor.download = async function (url, destination, options) {
-        return await options.cancellationToken.createPromise((resolve, reject, onCancel) => {
-          const requestOptions = {
-            headers: options.headers || undefined,
-            redirect: 'manual',
-          };
-          configureRequestUrl(url, requestOptions);
-          configureRequestOptions(requestOptions);
-          this.doDownload(requestOptions, {
-            destination,
-            options,
-            onCancel,
-            callback: (error) => {
-              if (error == null) resolve(destination);
-              else reject(error);
-            },
-            responseHandler: null,
-          }, 0);
-        });
-      };
-      this.autoUpdater.httpExecutor = httpExecutor;
+      // In real Electron runtime (Main process with session & net), use ElectronHttpExecutor
+      // In headless unit-tests / node runner, provide a pure Node HttpExecutor fallback
+      let electronHttpAvailable = false;
+      try {
+        const electron = require('electron');
+        if (electron && electron.session && electron.net) {
+          const { ElectronHttpExecutor } = require('electron-updater/out/electronHttpExecutor');
+          this.autoUpdater.httpExecutor = new ElectronHttpExecutor();
+          electronHttpAvailable = true;
+        }
+      } catch (_) {
+        electronHttpAvailable = false;
+      }
+
+      if (!electronHttpAvailable) {
+        const http = require('http');
+        const https = require('https');
+        let builderRuntime;
+        try {
+          builderRuntime = require('builder-util-runtime');
+        } catch {
+          builderRuntime = require('electron-updater/node_modules/builder-util-runtime');
+        }
+        const { HttpExecutor, configureRequestUrl, configureRequestOptions } = builderRuntime;
+
+        class FallbackNodeHttpExecutor extends HttpExecutor {
+          createRequest(options, callback) {
+            const isHttps = options.protocol === 'https:';
+            const client = isHttps ? https : http;
+            return client.request(options, callback);
+          }
+        }
+
+        const fallbackExec = new FallbackNodeHttpExecutor();
+        fallbackExec.download = async function (url, destination, options) {
+          return await options.cancellationToken.createPromise((resolve, reject, onCancel) => {
+            const requestOptions = {
+              headers: options.headers || undefined,
+              redirect: 'manual',
+            };
+            configureRequestUrl(url, requestOptions);
+            configureRequestOptions(requestOptions);
+            this.doDownload(requestOptions, {
+              destination,
+              options,
+              onCancel,
+              callback: (error) => {
+                if (error == null) resolve(destination);
+                else reject(error);
+              },
+              responseHandler: null,
+            }, 0);
+          });
+        };
+        this.autoUpdater.httpExecutor = fallbackExec;
+      }
+
       this.autoUpdater.disableDifferentialDownload = true;
       this.autoUpdater.setFeedURL({
         provider: 'github',
