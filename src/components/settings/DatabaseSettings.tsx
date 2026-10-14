@@ -362,6 +362,21 @@ export const DatabaseSettings: React.FC = () => {
     }
   }
 
+  const chooseRestoreFile = async () => {
+    setBusy(true)
+    try {
+      const result = await api()?.selectRestoreFile()
+      if (!result || result.canceled || !result.filePath) return
+      const fileName = result.filePath.split(/[\\/]/).pop() || result.filePath
+      setSelectedBackupForRestore({ filePath: result.filePath, fileName, size: null, externalFile: true })
+      setRestorePhrase("")
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   // Maintenance Actions
   const handleMaintenance = async (action: "checkpoint" | "optimize" | "vacuum") => {
     setBusy(true)
@@ -1412,7 +1427,8 @@ export const DatabaseSettings: React.FC = () => {
               {selectedBackupForRestore ? (
                 <div className="p-3 rounded-xl border border-destructive/40 bg-destructive/5 space-y-2">
                   <span className="text-xs font-bold text-foreground block">
-                    Target Backup: <span className="font-mono text-primary">{selectedBackupForRestore.fileName}</span> ({formatBytes(selectedBackupForRestore.size)})
+                    {selectedBackupForRestore.externalFile ? t("settings.database.externalRestoreTarget") : "Target Backup:"} <span className="font-mono text-primary" title={selectedBackupForRestore.filePath}>{selectedBackupForRestore.fileName}</span>{selectedBackupForRestore.size != null && ` (${formatBytes(selectedBackupForRestore.size)})`}
+                    {selectedBackupForRestore.externalFile && <span className="block break-all pt-1 font-mono text-[10px] text-muted-foreground">{selectedBackupForRestore.filePath}</span>}
                   </span>
                   <div className="flex flex-wrap items-center gap-2">
                     <input
@@ -1430,27 +1446,20 @@ export const DatabaseSettings: React.FC = () => {
                     >
                       {t("settings.database.restore")}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setSelectedBackupForRestore(null)}>
-                      Cancel
+                    <Button variant="outline" size="sm" onClick={() => { setSelectedBackupForRestore(null); setRestorePhrase("") }}>
+                      {t("settings.database.cancel")}
                     </Button>
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    value={restorePhrase}
-                    onChange={(e) => setRestorePhrase(e.target.value)}
-                    placeholder={t("settings.database.confirmWord")}
-                    aria-label={t("settings.database.confirmRestore")}
-                    className="h-8 rounded-lg border border-border bg-background px-2.5 text-xs font-mono"
-                  />
                   <Button
-                    variant="destructive"
+                    variant="outline"
                     size="sm"
-                    disabled={busy || restorePhrase !== "RESTORE"}
-                    onClick={() => restoreBackup()}
+                    disabled={busy}
+                    onClick={chooseRestoreFile}
                   >
-                    Select File &amp; Restore
+                    {t("settings.database.chooseRestoreFile")}
                   </Button>
                 </div>
               )}

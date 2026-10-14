@@ -65,18 +65,20 @@ function getDatabasePath() {
 /**
  * Closes native database connection cleanly.
  */
-function closeDatabase() {
+function closeDatabase({ throwOnError = false } = {}) {
   if (dbInstance) {
     try {
       dbInstance.close();
       console.log(`[DB][NATIVE] connection closed safely`);
     } catch (err) {
       console.error(`[DB][NATIVE][ERROR] Error closing database:`, err.message);
-    } finally {
-      dbInstance = null;
-      dbPathInstance = null;
+      if (throwOnError) throw err;
+      return false;
     }
+    dbInstance = null;
+    dbPathInstance = null;
   }
+  return true;
 }
 
 module.exports = {

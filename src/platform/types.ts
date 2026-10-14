@@ -103,6 +103,7 @@ export interface RTLibraryAPI {
     verifyBackup: (filePath: string) => Promise<any>;
     deleteBackup: (filePath: string) => Promise<{ success: boolean }>;
     selectBackupDirectory: () => Promise<{ canceled: boolean; directory?: string }>;
+    selectRestoreFile: () => Promise<{ canceled: boolean; filePath?: string }>;
     createBackup: (options?: { useSaveDialog?: boolean }) => Promise<{ canceled: boolean; size?: number; durationMs?: number; filePath?: string; fileName?: string }>;
     restoreBackup: (customFilePath?: string) => Promise<{ canceled: boolean; success?: boolean; automaticBackupPath?: string }>;
     runVacuum: () => Promise<{ success: boolean; durationMs?: number }>;
