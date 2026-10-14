@@ -91,17 +91,28 @@ class UpdaterManager extends EventEmitter {
       const { NsisUpdater } = require('electron-updater/out/NsisUpdater');
       const { NodeHttpExecutor } = require('builder-util/out/nodeHttpExecutor');
 
+      const self = this;
       const appAdapter = {
-        whenReady: () => (this.app ? this.app.whenReady() : Promise.resolve()),
-        get version() { return this.currentVersion; },
+        whenReady: () => (self.app ? self.app.whenReady() : Promise.resolve()),
+        get version() { return self.currentVersion; },
         get name() { return 'RT-Library'; },
-        get isPackaged() { return this.isPackaged; },
-        get appUpdateConfigPath() { return ''; },
-        get userDataPath() { return this.app ? this.app.getPath('userData') : '/tmp'; },
-        get baseCachePath() { return this.app ? this.app.getPath('userData') : '/tmp'; },
-        quit: () => { if (this.app) this.app.quit(); },
-        relaunch: () => { if (this.app) this.app.relaunch(); },
-        onQuit: (handler) => { if (this.app) this.app.once('quit', (_, code) => handler(code)); },
+        get isPackaged() { return self.isPackaged; },
+        get appUpdateConfigPath() {
+          if (process.resourcesPath) {
+            const p = path.join(process.resourcesPath, 'app-update.yml');
+            if (fs.existsSync(p)) return p;
+          }
+          if (self.app && typeof self.app.getPath === 'function') {
+            const p = path.join(self.app.getPath('userData'), 'app-update.yml');
+            if (fs.existsSync(p)) return p;
+          }
+          return path.join(process.cwd(), 'dist-desktop', 'linux-unpacked', 'resources', 'app-update.yml');
+        },
+        get userDataPath() { return self.app ? self.app.getPath('userData') : '/tmp'; },
+        get baseCachePath() { return self.app ? self.app.getPath('userData') : '/tmp'; },
+        quit: () => { if (self.app) self.app.quit(); },
+        relaunch: () => { if (self.app) self.app.relaunch(); },
+        onQuit: (handler) => { if (self.app) self.app.once('quit', (_, code) => handler(code)); },
       };
 
       if (this.platform === 'linux') {
@@ -112,7 +123,30 @@ class UpdaterManager extends EventEmitter {
         return null;
       }
 
-      this.autoUpdater.httpExecutor = new NodeHttpExecutor();
+      const { configureRequestUrl, configureRequestOptions } = require('builder-util-runtime');
+      const httpExecutor = new NodeHttpExecutor();
+      httpExecutor.download = async function (url, destination, options) {
+        return await options.cancellationToken.createPromise((resolve, reject, onCancel) => {
+          const requestOptions = {
+            headers: options.headers || undefined,
+            redirect: 'manual',
+          };
+          configureRequestUrl(url, requestOptions);
+          configureRequestOptions(requestOptions);
+          this.doDownload(requestOptions, {
+            destination,
+            options,
+            onCancel,
+            callback: (error) => {
+              if (error == null) resolve(destination);
+              else reject(error);
+            },
+            responseHandler: null,
+          }, 0);
+        });
+      };
+      this.autoUpdater.httpExecutor = httpExecutor;
+      this.autoUpdater.disableDifferentialDownload = true;
       this.autoUpdater.setFeedURL({
         provider: 'github',
         owner: REPO_OWNER,
