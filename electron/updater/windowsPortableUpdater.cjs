@@ -19,6 +19,8 @@ const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
 const { BaseUpdater } = require('electron-updater');
+const { findFile } = require('electron-updater/out/providers/Provider');
+const { DOWNLOAD_PROGRESS } = require('electron-updater/out/types');
 
 class WindowsPortableUpdater extends BaseUpdater {
   constructor(options, app) {
@@ -34,6 +36,23 @@ class WindowsPortableUpdater extends BaseUpdater {
 
   set installerPath(val) {
     this._customInstallerPath = val;
+  }
+
+  doDownloadUpdate(downloadUpdateOptions) {
+    const provider = downloadUpdateOptions.updateInfoAndProvider.provider;
+    const fileInfo = findFile(provider.resolveFiles(downloadUpdateOptions.updateInfoAndProvider.info), 'exe');
+
+    return this.executeDownload({
+      fileExtension: 'exe',
+      fileInfo,
+      downloadUpdateOptions,
+      task: async (destinationFile, downloadOptions) => {
+        if (this.listenerCount(DOWNLOAD_PROGRESS) > 0) {
+          downloadOptions.onProgress = (progress) => this.emit(DOWNLOAD_PROGRESS, progress);
+        }
+        await this.httpExecutor.download(fileInfo.url, destinationFile, downloadOptions);
+      },
+    });
   }
 
   getTargetExecutablePath() {

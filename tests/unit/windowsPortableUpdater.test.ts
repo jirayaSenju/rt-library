@@ -50,6 +50,37 @@ describe('WindowsPortableUpdater Unit Tests', () => {
     expect(resolved).toBe(path.resolve(path.join(tempDir, 'RT-Library.exe')));
   });
 
+  it('downloads the Windows executable selected by the update metadata', async () => {
+    const updater = new WindowsPortableUpdater(null, mockApp);
+    const fileUrl = new URL('https://example.test/RT-Library-1.1.4-windows-x64-portable.exe');
+    const fileInfo = { url: fileUrl, info: { url: fileUrl.toString(), sha512: 'expected-hash' } };
+    const download = vi.fn(async (_url, _destination, options) => {
+      options.onProgress?.({ percent: 50 });
+    });
+    updater.httpExecutor = { download } as any;
+    const progressListener = vi.fn();
+    updater.on('download-progress', progressListener);
+    (updater as any).executeDownload = async (options: any) => {
+      expect(options.fileExtension).toBe('exe');
+      expect(options.fileInfo).toBe(fileInfo);
+      const destination = path.join(tempDir, 'update.exe');
+      const downloadOptions: any = {};
+      await options.task(destination, downloadOptions);
+      return [destination];
+    };
+
+    const result = await (updater as any).doDownloadUpdate({
+      updateInfoAndProvider: {
+        info: { version: '1.1.4' },
+        provider: { resolveFiles: () => [fileInfo] },
+      },
+    });
+
+    expect(result).toEqual([path.join(tempDir, 'update.exe')]);
+    expect(download).toHaveBeenCalledWith(fileUrl, path.join(tempDir, 'update.exe'), expect.objectContaining({ onProgress: expect.any(Function) }));
+    expect(progressListener).toHaveBeenCalledWith({ percent: 50 });
+  });
+
   it('generates an atomic update batch script with PID polling and rollback protection', () => {
     const updater = new WindowsPortableUpdater(null, mockApp);
     const targetExe = path.join(tempDir, 'RT-Library-1.1.0-windows-x64-portable.exe');
