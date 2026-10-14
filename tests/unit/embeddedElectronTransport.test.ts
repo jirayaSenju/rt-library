@@ -77,6 +77,10 @@ describe('EmbeddedElectronTransport Security & Detection Helpers', () => {
     it('allows approved mirror domains', () => {
       expect(isAllowedUrl('https://rutracker.net/forum/viewtopic.php?t=123')).toBe(true);
       expect(isAllowedUrl('https://rutracker.nl/forum/viewtopic.php?t=123')).toBe(true);
+      expect(isAllowedUrl('https://rutracker.cc/forum/index.php')).toBe(true);
+      expect(isAllowedUrl('https://mirror.t-ru.org/forum/index.php')).toBe(true);
+      expect(isAllowedUrl('https://challenges.cloudflare.com/turnstile')).toBe(true);
+      expect(isAllowedUrl('https://assets.cf-assets.net/challenge.js')).toBe(true);
     });
 
     it('blocks unallowed external protocols and origins', () => {

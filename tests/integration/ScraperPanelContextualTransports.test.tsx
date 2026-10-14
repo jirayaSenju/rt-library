@@ -66,14 +66,29 @@ const renderWithI18n = (ui: React.ReactElement) => {
 describe('ScraperPanel Contextual Transports Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.mockPreference = 'AUTOMATIC';
+    mocks.mockPreference = 'EMBEDDED_ELECTRON';
     mocks.mockActiveTransport = 'EMBEDDED_ELECTRON';
+  });
+
+  it('renders only Built-in Scraper and Browser Companion cards, omitting Playwright and Automatic', async () => {
+    renderWithI18n(<ScraperPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/persist:rutracker-v1/i)).toBeInTheDocument();
+    });
+
+    // Both supported transports should be in the document
+    expect(screen.getAllByText(/built-in scraper|scraper integrado|встроенный скрапер/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/browser companion|companion do navegador|браузерный компаньон/i).length).toBeGreaterThan(0);
+
+    // Playwright and Automatic options must NOT be rendered in the engine picker
+    expect(screen.queryByText(/^Playwright$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Automatic \(Recommended\)|Automático \(Recomendado\)/i)).not.toBeInTheDocument();
   });
 
   it('renders Built-in Scraper controls and hides Browser Companion when EMBEDDED_ELECTRON is selected', async () => {
     mocks.mockPreference = 'EMBEDDED_ELECTRON';
     mocks.mockActiveTransport = 'EMBEDDED_ELECTRON';
-    const user = userEvent.setup();
 
     renderWithI18n(<ScraperPanel />);
 
@@ -111,54 +126,35 @@ describe('ScraperPanel Contextual Transports Integration Tests', () => {
     expect(screen.queryByText(/persist:rutracker-v1/i)).not.toBeInTheDocument();
   });
 
-  it('renders Direct Scraper (Playwright) section and hides Companion and Built-in when PLAYWRIGHT is selected', async () => {
-    mocks.mockPreference = 'PLAYWRIGHT';
-    mocks.mockActiveTransport = 'PLAYWRIGHT';
-
-    renderWithI18n(<ScraperPanel />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/~\/\.config\/rt-library\/scraper-profile/i)).toBeInTheDocument();
-    });
-    expect(screen.getByRole('button', { name: /check access|verificar acesso|проверить доступ/i })).toBeInTheDocument();
-
-    // Companion and Built-in must NOT be rendered
-    expect(screen.queryByText(/extension installed|extensão instalada/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/persist:rutracker-v1/i)).not.toBeInTheDocument();
-  });
-
-  it('keeps fallback transports collapsed by default in AUTOMATIC mode and expands on click', async () => {
-    mocks.mockPreference = 'AUTOMATIC';
+  it('switches between Built-in Scraper and Browser Companion when clicking transport cards', async () => {
+    mocks.mockPreference = 'EMBEDDED_ELECTRON';
     mocks.mockActiveTransport = 'EMBEDDED_ELECTRON';
     const user = userEvent.setup();
 
     renderWithI18n(<ScraperPanel />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /manage fallback transports|gerenciar transportes de fallback/i })).toBeInTheDocument();
+      expect(screen.getByText(/persist:rutracker-v1/i)).toBeInTheDocument();
     });
 
-    // Companion card is NOT rendered in the main view
-    expect(screen.queryByText(/extension installed|extensão instalada/i)).not.toBeInTheDocument();
+    // Find and click the Browser Companion card
+    const companionCards = screen.getAllByRole('button', { name: /browser companion|companion do navegador|браузерный компаньон/i });
+    await user.click(companionCards[0]);
 
-    // Click to expand fallback transports
-    const fallbackToggle = screen.getByRole('button', { name: /manage fallback transports|gerenciar transportes de fallback/i });
-    await user.click(fallbackToggle);
-
-    // Fallback options are now displayed inside the collapsible
-    expect(screen.getByText(/configure secondary transports|configure transportes secundários/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /reconnect|reconectar/i }).length).toBeGreaterThan(0);
+    expect(scraperService.setTransportPreference).toHaveBeenCalledWith('BROWSER_COMPANION');
   });
 
-  it('displays resolved sync method indicator clearly above the Update Library button', async () => {
+  it('normalizes legacy AUTOMATIC/PLAYWRIGHT preference and displays sync method indicator', async () => {
     mocks.mockPreference = 'AUTOMATIC';
     mocks.mockActiveTransport = 'EMBEDDED_ELECTRON';
 
     renderWithI18n(<ScraperPanel />);
 
     await waitFor(() => {
-      // Expect "Sync method: Automatic → Built-in Scraper" or similar
       expect(screen.getAllByText(/sync method|método de sincronização/i).length).toBeGreaterThan(0);
     });
+
+    // Playwright card should not be present
+    expect(screen.queryByText(/^Playwright$/i)).not.toBeInTheDocument();
   });
 });
