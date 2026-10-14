@@ -10,6 +10,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.1.1] - 2026-10-14
+
+### Added
+- **Automatic Self-Update System**: Production-grade self-updating via GitHub Releases for Linux (AppImage) and Windows (Portable Executable), integrated in Settings > About & Updates with real-time download progress, background checks, and active-sync guards.
+- **Windows Portable Executable**: Migrated Windows distribution to standalone portable executables (`RT-Library-${version}-windows-x64-portable.exe`), preserving all user data and SQLite databases in `%APPDATA%\rt-library` without requiring installation.
+- **Atomic Windows Portable Replacement Helper**: Detached update script with PID termination monitoring, backup renaming, swap, rollback handling, and automatic relaunch.
+- **Update Metadata Generation & Verification**: Automated publication of `latest-linux.yml` and `latest.yml` update metadata in GitHub Actions release workflows, validated by `validate-update-artifacts.cjs` and `validate-published-release.cjs`.
+
+### Changed
+- Replaced deep internal electron-updater imports with `ElectronHttpExecutor` in packaged runtime and headless Node HTTP fallback in test harnesses.
+- Standardized Windows packaging to single-file portable executables across CI, release workflows, and release checklists.
+
+### Fixed
+- Fixed runtime dependency resolution of `jsdom` and parser dependencies in packaged Windows applications.
+- Sanitized scraper error IPC channels to eliminate raw stack traces, module names, and machine paths from the UI.
+- Added graceful handling (`UPDATE_METADATA_MISSING`) and log deduplication when update metadata files are temporarily unavailable on GitHub Releases.
+
+---
+
 ## [1.1.0] - 2026-10-13
 
 ### Added

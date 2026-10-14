@@ -1,7 +1,7 @@
 {
   "name": "rt-library",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Local desktop catalog manager for game metadata and personal library organization",
   "author": "RT-Library contributors",
   "license": "MIT",
