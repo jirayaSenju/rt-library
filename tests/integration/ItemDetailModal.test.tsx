@@ -88,4 +88,28 @@ describe("ItemDetailModal integration tests", () => {
 
     expect(handleToggleFavorite).toHaveBeenCalledTimes(1)
   })
+
+  it("does not violate hook rules when transitioning from null to item", () => {
+    const { rerender } = renderWithI18n(
+      <ItemDetailModal
+        item={null}
+        isOpen={false}
+        onClose={vi.fn()}
+        isFavorite={false}
+        onToggleFavorite={vi.fn()}
+      />
+    )
+
+    rerender(
+      <I18nProvider>
+        <ItemDetailModal
+          item={mockLibraryItems[0]}
+          isOpen={true}
+          onClose={vi.fn()}
+          isFavorite={false}
+          onToggleFavorite={vi.fn()}
+        />
+      </I18nProvider>
+    )
+  })
 })

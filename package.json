@@ -1,7 +1,7 @@
 {
   "name": "rt-library",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Local desktop catalog manager for game metadata and personal library organization",
   "author": "RT-Library contributors",
   "license": "MIT",
@@ -17,6 +17,11 @@
     "test:e2e": "env -u ELECTRON_RUN_AS_NODE playwright test",
     "desktop": "concurrently \"npm run dev\" \"electron .\"",
     "desktop:dev": "concurrently \"npm run dev\" \"electron .\"",
+    "companion:build": "node scripts/build-browser-companion.mjs",
+    "companion:validate": "node scripts/validate-companion-build.cjs",
+    "companion:package": "node scripts/package-browser-companion.cjs",
+    "investigate:turnstile": "env -u ELECTRON_RUN_AS_NODE electron scripts/investigate/electron-turnstile-manual.cjs",
+    "investigate:standalone": "env -u ELECTRON_RUN_AS_NODE electron scripts/investigate/electron-turnstile-standalone.cjs",
     "electron:dev": "concurrently \"npm run dev\" \"electron .\"",
     "desktop:build": "npm run build && npx electron-builder",
     "desktop:package": "npm run build && npx electron-builder --dir",
@@ -141,7 +146,7 @@
       "target": [
         "nsis"
       ],
-      "artifactName": "RT-Library-${version}-windows-${arch}-setup.${ext}"
+      "artifactName": "RT-Library-${version}-windows-setup.${ext}"
     },
     "mac": {
       "icon": "build/icons/rt-library.icns",

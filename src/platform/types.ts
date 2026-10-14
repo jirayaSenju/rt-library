@@ -9,6 +9,25 @@ export interface FileStat {
   size: number;
 }
 
+export interface ScraperSchedulerConfig {
+  enabled: boolean;
+  scheduleType: string;
+  intervalMinutes: number;
+  scope: 'ALL_ENABLED' | 'SELECTED';
+  categoryIds: string[];
+  lastAttemptAt?: string | null;
+  lastStartedAt?: string | null;
+  nextRunAt?: string | null;
+  lastSkipReason?: string | null;
+  transport?: string;
+}
+
+export interface ScraperSchedulerStatus extends ScraperSchedulerConfig {
+  isCompanionConnected: boolean;
+  isScraperBusy: boolean;
+  scheduledTransport?: string;
+}
+
 export interface RTLibraryAPI {
   dialogs: {
     selectFolder: () => Promise<string | null>;
@@ -31,6 +50,9 @@ export interface RTLibraryAPI {
     saveAppConfig: (configData: Record<string, any>) => Promise<boolean>;
     loadSqliteDb: () => Promise<Uint8Array | null>;
     saveSqliteDb: (data: Uint8Array) => Promise<boolean>;
+    isWindowFocused?: () => Promise<boolean>;
+    focusWindow?: () => Promise<boolean>;
+    showNotification?: (options: { title: string; body: string; silent?: boolean }) => Promise<boolean>;
   };
   images?: {
     fetch: (url: string, requestId: string) => Promise<{
@@ -40,8 +62,11 @@ export interface RTLibraryAPI {
     cancel: (requestId: string) => void;
   };
   library?: {
-    getCapabilities: () => Promise<any>;
+    getReadiness?: () => Promise<any>;
+    dismissOnboarding?: () => Promise<{ success: boolean; error?: string }>;
+    runMigration?: () => Promise<any>;
     getCategories: () => Promise<any[]>;
+    getFilterFacets?: (options?: { categoryId?: string }) => Promise<any>;
     getItems: (options?: any) => Promise<any>;
     getItem: (id: string) => Promise<any>;
     getScreenshots: (id: string) => Promise<any>;
@@ -50,6 +75,7 @@ export interface RTLibraryAPI {
     getFavoriteCount: () => Promise<any>;
     ensureNativeImport: (libraryPath: string, options?: any) => Promise<any>;
     refresh: (options: { libraryPath: string; force?: boolean }) => Promise<any>;
+    reindex?: () => Promise<{ success: boolean; total?: number; error?: string }>;
     getIndexStatus: () => Promise<any>;
     getAllImageUrls?: () => Promise<{
       success: boolean;
@@ -92,13 +118,67 @@ export interface RTLibraryAPI {
   };
   scraper?: {
     start: (options?: any) => Promise<{ success: boolean }>;
+    renewSession: (options?: any) => Promise<{ success: boolean }>;
+    probeAccess: (options?: any) => Promise<any>;
     cancel: () => Promise<{ success: boolean; message?: string }>;
+    pause?: () => Promise<{ success: boolean; message?: string }>;
+    resume?: () => Promise<{ success: boolean; message?: string }>;
     getState: () => Promise<any>;
     clearStorage: () => Promise<{ success: boolean }>;
     reindexLibrary: () => Promise<{ success: boolean; count?: number }>;
+    getActiveTransport?: () => Promise<string>;
+    getTransportPreference?: () => Promise<{ preference: string; activeTransport: string; isPromoted: boolean; available: any[] }>;
+    setTransportPreference?: (preference: string) => Promise<{ success: boolean; preference: string; activeTransport?: string }>;
+    setEmbeddedPromoted?: (promoted: boolean) => Promise<{ success: boolean; isPromoted: boolean }>;
+    fetchTopic?: (options: { url?: string; topicId?: string; categoryId?: string }) => Promise<any>;
+    embeddedVerify?: (options?: any) => Promise<{ success: boolean; status: string; url?: string }>;
+    embeddedProbe?: (options?: any) => Promise<any>;
+    embeddedResetSession?: () => Promise<{ success: boolean; error?: string }>;
+    embeddedStatus?: () => Promise<any>;
+    getSyncHistory?: (options?: any) => Promise<any>;
+    getSyncRunDetails?: (runId: string) => Promise<any>;
+    getSyncHealth?: () => Promise<any>;
+    clearSyncHistory?: () => Promise<number>;
     onStateChanged: (callback: (data: any) => void) => () => void;
     onProgress: (callback: (progress: any) => void) => () => void;
+    onAccessChanged: (callback: (access: any) => void) => () => void;
+    onPageCommitted?: (callback: (data: any) => void) => () => void;
+    onRunFinalized?: (callback: (data: any) => void) => () => void;
+    getSchedulerStatus?: () => Promise<ScraperSchedulerStatus>;
+    updateSchedulerConfig?: (config: Partial<ScraperSchedulerConfig>) => Promise<ScraperSchedulerStatus>;
+    runSchedulerDueCheck?: () => Promise<{ executed: boolean; skipped: boolean; reason?: string }>;
+    onSchedulerStatusChanged?: (callback: (status: ScraperSchedulerStatus) => void) => () => void;
     onLog: (callback: (log: any) => void) => () => void;
+  };
+  companion?: {
+    connect: () => Promise<{ port: number; token: string; connectionCode?: string | null; connected: boolean }>;
+    reconnect?: () => Promise<{ port: number; token: string; connectionCode?: string | null; connected: boolean }>;
+    disconnect?: () => Promise<{ port: number | null; token: string | null; connectionCode?: string | null; connected: boolean }>;
+    status: () => Promise<{ port: number | null; token: string | null; connectionCode?: string | null; connected: boolean }>;
+    openRuTracker: (options?: { categoryId?: string }) => Promise<boolean>;
+    checkAccess: (options?: { categoryId?: string }) => Promise<{
+      status: string;
+      httpStatus: number;
+      bytes: number;
+      forumDetected: boolean;
+      cfMitigated: boolean;
+      topicCount?: number;
+      categoryId: string;
+      categoryName: string;
+      url: string;
+      error?: string;
+    }>;
+    fetchXboxPage?: () => Promise<{ status: string; url: string; httpStatus: number; bytes: number; topicCount?: number; fetchedAt: string; error?: string }>;
+    fetchTopic?: (options: { url?: string; topicId?: string; categoryId?: string }) => Promise<{
+      success: boolean;
+      topicId: string;
+      title: string;
+      categoryName?: string;
+      categoryId?: string;
+      inserted: number;
+      updated: number;
+      error?: string;
+    }>;
   };
 }
 

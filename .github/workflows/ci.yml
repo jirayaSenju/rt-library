@@ -37,6 +37,9 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Run Typecheck
+        run: npx tsc --noEmit
+
       - name: Run Test Suite
         run: npm test
 
@@ -46,6 +49,41 @@ jobs:
       - name: Audit Third-Party Licenses
         run: npm run audit:licenses
 
+      - name: Build & Validate Browser Companion
+        run: |
+          npm run companion:build
+          npm run companion:validate
+
       - name: Validate Release Readiness & Source Privacy
         run: npm run release:check
+
+      # Windows-Specific Packaging & Native Runtime Smoke Validation (V3-84)
+      - name: Windows Native Runtime Rebuild & Smoke Test
+        if: matrix.os == 'windows-latest'
+        run: |
+          npx electron-builder install-app-deps
+          npx electron scripts/windows-runtime-smoke.cjs
+        env:
+          ELECTRON_RUN_AS_NODE: "1"
+
+      - name: Build Windows Release Candidate Package
+        if: matrix.os == 'windows-latest'
+        run: npx electron-builder --win nsis --publish never
+        env:
+          GH_TOKEN: ""
+
+      - name: Verify Windows Packaged Runtime
+        if: matrix.os == 'windows-latest'
+        run: node scripts/verify-package-runtime.cjs
+
+      - name: Upload Windows Runtime Validation Artifacts
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-validation-report
+          path: |
+            windows-runtime-report.json
+            dist-desktop/*setup.exe
+          if-no-files-found: warn
+          retention-days: 7
 

@@ -332,8 +332,8 @@ export const FilterPopover: React.FC<FilterPopoverProps> = ({
   }
 
   const handleClearAllDrafts = () => {
-    setDraftSortBy("title")
-    setDraftSortOrder("asc")
+    setDraftSortBy("discoveredAt")
+    setDraftSortOrder("desc")
     setDraftSeeds(null)
     setDraftLeechers(null)
     setDraftYearFrom("")
@@ -355,7 +355,6 @@ export const FilterPopover: React.FC<FilterPopoverProps> = ({
   const currentDraftSortField = (
     draftSortBy === "size" ? "sizeBytes" :
     draftSortBy === "seeders" ? "seeds" :
-    draftSortBy === "updatedAt" ? "discoveredAt" :
     draftSortBy || "discoveredAt"
   ) as string
 
@@ -451,6 +450,7 @@ export const FilterPopover: React.FC<FilterPopoverProps> = ({
                     <SelectContent className="bg-popover border-border text-popover-foreground">
                       <SelectItem value="title">{t("topbar.sortFields.title")}</SelectItem>
                       <SelectItem value="discoveredAt">{t("topbar.sortFields.discoveredAt")}</SelectItem>
+                      <SelectItem value="updatedAt">{t("topbar.sortFields.updatedAt")}</SelectItem>
                       <SelectItem value="sizeBytes">{t("topbar.sortFields.sizeBytes")}</SelectItem>
                       <SelectItem value="seeds">{t("topbar.sortFields.seeds")}</SelectItem>
                       <SelectItem value="leechers">{t("topbar.sortFields.leechers")}</SelectItem>

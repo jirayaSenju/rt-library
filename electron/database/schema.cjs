@@ -1,6 +1,7 @@
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 const { normalizeCanonicalGameTitle, normalizeTitleForDedupe, extractBTIH } = require('../scraper/titleExtractor.cjs');
 const { normalizeItemMetadata } = require('../scraper/metadataNormalizer.cjs');
+const syncHistoryRepo = require('./repositories/syncHistoryRepo.cjs');
 
 /**
  * Initializes database tables, indexes, and versioning idempotently.
@@ -117,6 +118,52 @@ function initializeSchema(db) {
       updated_at TEXT NOT NULL,
       FOREIGN KEY(item_id) REFERENCES items(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS sync_runs (
+      id TEXT PRIMARY KEY,
+      started_at TEXT NOT NULL,
+      finished_at TEXT,
+      status TEXT NOT NULL,
+      mode TEXT,
+      transport TEXT,
+      scope_type TEXT,
+      scope_category_id TEXT,
+      trigger_type TEXT NOT NULL DEFAULT 'MANUAL',
+      categories_total INTEGER NOT NULL DEFAULT 0,
+      categories_completed INTEGER NOT NULL DEFAULT 0,
+      topics_found INTEGER NOT NULL DEFAULT 0,
+      new_items INTEGER NOT NULL DEFAULT 0,
+      updated_items INTEGER NOT NULL DEFAULT 0,
+      known_items INTEGER NOT NULL DEFAULT 0,
+      saved_items INTEGER NOT NULL DEFAULT 0,
+      failed_items INTEGER NOT NULL DEFAULT 0,
+      duration_ms INTEGER NOT NULL DEFAULT 0,
+      cancelled_by_user INTEGER NOT NULL DEFAULT 0,
+      verification_required INTEGER NOT NULL DEFAULT 0,
+      error_code TEXT,
+      error_summary TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS sync_run_categories (
+      id TEXT PRIMARY KEY,
+      sync_run_id TEXT NOT NULL,
+      category_id TEXT NOT NULL,
+      category_name_snapshot TEXT,
+      started_at TEXT NOT NULL,
+      finished_at TEXT,
+      status TEXT NOT NULL,
+      pages_processed INTEGER NOT NULL DEFAULT 0,
+      total_pages INTEGER NOT NULL DEFAULT 0,
+      topics_found INTEGER NOT NULL DEFAULT 0,
+      new_items INTEGER NOT NULL DEFAULT 0,
+      updated_items INTEGER NOT NULL DEFAULT 0,
+      known_items INTEGER NOT NULL DEFAULT 0,
+      saved_items INTEGER NOT NULL DEFAULT 0,
+      duration_ms INTEGER NOT NULL DEFAULT 0,
+      error_code TEXT,
+      error_summary TEXT,
+      FOREIGN KEY(sync_run_id) REFERENCES sync_runs(id) ON DELETE CASCADE
+    );
   `);
 
   // Ensure newly added columns exist if table was created with older schema
@@ -140,6 +187,11 @@ function initializeSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_torrent_swarm_fetched_at ON torrent_metadata(swarm_fetched_at);
     CREATE INDEX IF NOT EXISTS idx_torrent_metadata_seeds ON torrent_metadata(seeds);
     CREATE INDEX IF NOT EXISTS idx_torrent_metadata_leechers ON torrent_metadata(leechers);
+
+    CREATE INDEX IF NOT EXISTS idx_sync_runs_started_at ON sync_runs(started_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_sync_runs_status ON sync_runs(status);
+    CREATE INDEX IF NOT EXISTS idx_sync_run_categories_run_id ON sync_run_categories(sync_run_id);
+    CREATE INDEX IF NOT EXISTS idx_sync_run_categories_category_id ON sync_run_categories(category_id);
   `);
 
   // Run canonical_titles_v1 migration for existing rows
@@ -147,6 +199,16 @@ function initializeSchema(db) {
 
   // Run metadata_normalization_v1 migration for existing rows
   runMetadataNormalizationMigration(db);
+
+  // Run align_initial_discovery_v1 migration for existing rows
+  runAlignInitialDiscoveryMigration(db);
+
+  // Detect and transition any zombie running runs from previous sessions
+  try {
+    syncHistoryRepo.cleanupInterruptedRuns(db);
+  } catch (err) {
+    console.warn('[SCHEMA] Failed to clean up interrupted sync runs:', err.message);
+  }
 
   if (currentVersion < SCHEMA_VERSION) {
     db.pragma(`user_version = ${SCHEMA_VERSION}`);
@@ -364,8 +426,34 @@ function runMetadataNormalizationMigration(db) {
   }
 }
 
+function runAlignInitialDiscoveryMigration(db) {
+  try {
+    const mig = db.prepare("SELECT id FROM schema_migrations WHERE id = 'align_initial_discovery_v1'").get();
+    if (mig) return;
+
+    // Normalize discovered_at timestamps for batches scraped on the same calendar date / initial scan
+    // so that multi-category scans don't invert recency across categories or pages.
+    const res = db.prepare(`
+      UPDATE items
+      SET discovered_at = (
+        SELECT MIN(i2.discovered_at)
+        FROM items i2
+        WHERE date(i2.discovered_at) = date(items.discovered_at)
+      )
+      WHERE discovered_at IS NOT NULL
+    `).run();
+
+    console.log(`[MIGRATION][align_initial_discovery_v1] Normalized discovered_at timestamps for ${res.changes} items.`);
+
+    db.prepare("INSERT OR REPLACE INTO schema_migrations (id, name, applied_at) VALUES ('align_initial_discovery_v1', 'Align discovery timestamps within same date batch', ?)").run(new Date().toISOString());
+  } catch (err) {
+    console.warn('[MIGRATION][align_initial_discovery_v1] Warning:', err.message);
+  }
+}
+
 module.exports = {
   SCHEMA_VERSION,
   initializeSchema,
   runMetadataNormalizationMigration,
+  runAlignInitialDiscoveryMigration,
 };

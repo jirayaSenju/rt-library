@@ -93,14 +93,18 @@ function extractLegacyData(legacyDbPath) {
 }
 
 function runFavoritesMigration(nativeDb, userDataDir) {
-  if (appStateRepo.hasMigration(nativeDb, 'legacy_db_favorites_migration')) {
-    return { status: 'already_migrated' };
+  if (!nativeDb) {
+    return { status: 'error', error: 'Database connection required' };
   }
 
   const legacyDbPath = detectLegacyDatabase(userDataDir);
   if (!legacyDbPath) {
     appStateRepo.recordMigration(nativeDb, 'legacy_db_favorites_migration', 'Legacy v1 SQLite favorites migration');
     return { status: 'no_legacy_db' };
+  }
+
+  if (appStateRepo.hasMigration(nativeDb, 'legacy_db_favorites_migration')) {
+    return { status: 'already_migrated' };
   }
 
   const totalNativeItems = itemsRepo.countByCategory(nativeDb, 'all');
@@ -113,6 +117,7 @@ function runFavoritesMigration(nativeDb, userDataDir) {
     return { status: 'error', error: extracted.error };
   }
 
+  let appliedFavorites = 0;
   for (const legacyFav of extracted.favorites) {
     let nativeItem = itemsRepo.getById(nativeDb, legacyFav.itemId);
     if (!nativeItem) {
@@ -126,11 +131,32 @@ function runFavoritesMigration(nativeDb, userDataDir) {
 
     if (nativeItem) {
       favoritesRepo.setFavorite(nativeDb, nativeItem.id, true, legacyFav.addedAt);
+      appliedFavorites++;
     }
   }
 
+  let backupPath = `${legacyDbPath}.bak`;
+  try {
+    let counter = 1;
+    while (fs.existsSync(backupPath)) {
+      backupPath = `${legacyDbPath}.bak.${counter++}`;
+    }
+    fs.renameSync(legacyDbPath, backupPath);
+  } catch (e) {
+    console.warn('[MIGRATION] Could not rename legacy database:', e.message);
+  }
+
   appStateRepo.recordMigration(nativeDb, 'legacy_db_favorites_migration', 'Legacy v1 SQLite favorites migration');
-  return { status: 'completed', total: extracted.favorites.length };
+  return {
+    status: 'completed',
+    total: extracted.favorites.length,
+    totalLegacyFavorites: extracted.favorites.length,
+    matchedFavorites: appliedFavorites,
+    appliedFavorites,
+    unmatchedFavorites: extracted.favorites.length - appliedFavorites,
+    backupPath,
+    archivedPath: backupPath,
+  };
 }
 
 function detectLegacyJsonCatalogs(userDataDir) {
@@ -272,15 +298,17 @@ function getLibraryReadiness(nativeDb, userDataDir) {
     const totalItems = itemsRepo.getTotalItemCount(nativeDb);
     const categories = categoriesRepo.getAll(nativeDb);
     const initialScanCompleted = appStateRepo.getAppState(nativeDb, 'initial_scan_completed') === 'true';
+    const onboardingDismissed = appStateRepo.getAppState(nativeDb, 'onboarding_dismissed') === 'true';
 
-    // Case A: Valid SQLite with items and initial scan completed
-    if (totalItems > 0 && initialScanCompleted) {
+    // Case A: Valid SQLite with items and (initial scan completed OR user dismissed onboarding to browse library)
+    if (totalItems > 0 && (initialScanCompleted || onboardingDismissed)) {
       return {
         state: 'READY',
         isReady: true,
         itemCount: totalItems,
         categoriesCount: categories.length,
-        initialScanCompleted: true,
+        initialScanCompleted,
+        onboardingDismissed,
       };
     }
 
@@ -320,11 +348,21 @@ function getLibraryReadiness(nativeDb, userDataDir) {
   }
 }
 
+function runMigration(nativeDb, userDataDir) {
+  const favResult = runFavoritesMigration(nativeDb, userDataDir);
+  return {
+    migrated: favResult.status === 'completed',
+    status: favResult.status,
+    ...favResult,
+  };
+}
+
 module.exports = {
   createDatabaseBackup,
   detectLegacyDatabase,
   detectLegacyJsonCatalogs,
   runFavoritesMigration,
   runJsonMigration,
+  runMigration,
   getLibraryReadiness,
 };

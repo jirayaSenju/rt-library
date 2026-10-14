@@ -9,7 +9,7 @@ const DEFAULT_CATEGORIES = [
     name: "Nintendo Switch",
     group: "nintendo",
     baseUrl: "https://rutracker.org/forum/viewforum.php?f=1605",
-    titleSearch: ["[Nintendo Switch]"],
+    titleSearch: ["[Nintendo Switch]", "[Switch]", "[NSW]", "Switch"],
     enabled: true,
     builtIn: true,
   },

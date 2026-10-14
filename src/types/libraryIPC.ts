@@ -58,7 +58,7 @@ export interface GetItemsOptions {
   categoryId?: string
   search?: string
   favoritesOnly?: boolean
-  sortBy?: 'title' | 'discoveredAt' | 'releaseYear' | 'sizeBytes' | 'seeds' | 'leechers'
+  sortBy?: 'title' | 'discoveredAt' | 'updatedAt' | 'releaseYear' | 'sizeBytes' | 'seeds' | 'leechers'
   sortOrder?: 'asc' | 'desc'
   hasSeeds?: boolean
   maxSeeds?: number

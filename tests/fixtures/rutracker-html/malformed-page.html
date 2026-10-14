@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <div>
+    <!-- broken/unclosed tags and partial table -->
+    <table>
+      <tr>
+        <td>
+          <a class="torTopic">Missing href topic</a>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <a class="torTopic" href="viewtopic.php?invalid=yes">Invalid topic query</a>
+        </td>
+        <td><a class="small f-dl">broken size</td>
+        <td><b class="seedmed">not_a_number</b></td>
+      </tr>
+      <tr>
+        <td>
+          <a class="torTopic" href="viewtopic.php?t=888888">Broken row with unclosed b <b class="seedmed">
+        </td>
+      </tr>
+    </table>
+    <!-- Missing post_body -->
+    <div class="not_post_body">
+      Some text
+    </div>
+  </div>
+</body>
+</html>
+

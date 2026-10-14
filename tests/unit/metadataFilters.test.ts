@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DEFAULT_LIBRARY_FILTERS, LibraryFilters, FilterOptions } from '@/types'
 import { FilterFacetsResponse } from '@/types/libraryIPC'
+import { nativeLibraryService } from '@/services/nativeLibrary'
 
 describe('V3-07 Metadata Filters & Facets Unit Tests', () => {
   describe('FASE 2 & 3 - Filter Model & Semantics', () => {
@@ -151,4 +152,95 @@ describe('V3-07 Metadata Filters & Facets Unit Tests', () => {
       expect(deserialized.filters.regions).toEqual(['EUR', 'JPN'])
     })
   })
+
+  describe('nativeLibraryService.getFilterFacets IPC Bridge', () => {
+    beforeEach(() => {
+      vi.restoreAllMocks()
+      // @ts-expect-error test window mock
+      delete window.rtLibrary
+    })
+
+    it('returns empty default facets when window.rtLibrary is undefined', async () => {
+      const facets = await nativeLibraryService.getFilterFacets('nintendo-switch')
+      expect(facets).toEqual({
+        developers: [],
+        publishers: [],
+        genres: [],
+        languages: [],
+        imageFormats: [],
+        regions: [],
+        multiplayer: { yes: 0, no: 0 },
+      })
+    })
+
+    it('delegates to window.rtLibrary.library.getFilterFacets with categoryId when present', async () => {
+      const mockResult: FilterFacetsResponse = {
+        developers: [{ value: 'Nintendo', count: 10 }],
+        publishers: [{ value: 'Nintendo', count: 10 }],
+        genres: [{ value: 'Action', count: 8 }],
+        languages: [{ value: 'en', count: 10 }],
+        imageFormats: [{ value: 'NSP', count: 10 }],
+        regions: [{ value: 'USA', count: 10 }],
+        multiplayer: { yes: 4, no: 6 },
+      }
+
+      const mockGetFilterFacets = vi.fn().mockResolvedValue(mockResult)
+
+      // @ts-expect-error test window mock
+      window.rtLibrary = {
+        library: {
+          getFilterFacets: mockGetFilterFacets,
+        },
+      }
+
+      const result = await nativeLibraryService.getFilterFacets('nintendo-switch')
+      expect(mockGetFilterFacets).toHaveBeenCalledWith({ categoryId: 'nintendo-switch' })
+      expect(result).toEqual(mockResult)
+    })
+
+    it('calls getFilterFacets with undefined categoryId when category is not provided', async () => {
+      const mockGetFilterFacets = vi.fn().mockResolvedValue({
+        developers: [],
+        publishers: [],
+        genres: [],
+        languages: [],
+        imageFormats: [],
+        regions: [],
+        multiplayer: { yes: 0, no: 0 },
+      })
+
+      // @ts-expect-error test window mock
+      window.rtLibrary = {
+        library: {
+          getFilterFacets: mockGetFilterFacets,
+        },
+      }
+
+      await nativeLibraryService.getFilterFacets()
+      expect(mockGetFilterFacets).toHaveBeenCalledWith({ categoryId: undefined })
+    })
+
+    it('handles IPC errors gracefully by returning fallback empty facets', async () => {
+      const mockGetFilterFacets = vi.fn().mockRejectedValue(new Error('IPC crash'))
+
+      // @ts-expect-error test window mock
+      window.rtLibrary = {
+        library: {
+          getFilterFacets: mockGetFilterFacets,
+        },
+      }
+
+      const result = await nativeLibraryService.getFilterFacets('nintendo-switch')
+      expect(result).toEqual({
+        developers: [],
+        publishers: [],
+        genres: [],
+        languages: [],
+        imageFormats: [],
+        regions: [],
+        multiplayer: { yes: 0, no: 0 },
+      })
+    })
+  })
 })
+

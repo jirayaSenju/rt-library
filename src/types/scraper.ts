@@ -29,7 +29,7 @@ export interface ScraperCategoriesConfig {
 
 export interface TestCategoryResult {
   success: boolean
-  status: "OK" | "NO_TOPICS" | "SESSION_REQUIRED" | "INTERACTION_REQUIRED" | "ERROR"
+  status: "OK" | "NO_TOPICS" | "SESSION_REQUIRED" | "AUTH_REQUIRED" | "INTERACTION_REQUIRED" | "NETWORK_ERROR" | "HTTP_ERROR" | "ERROR"
   totalTopics: number
   matchedTopics: number
   sampleMatches: string[]

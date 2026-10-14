@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
+import { useScraper } from '@/hooks/useScraper';
 import { toast } from 'sonner';
 
 const GROUP_COLORS: Record<ScraperCategoryGroup, { bg: string; text: string; border: string }> = {
@@ -48,6 +49,7 @@ interface CategoryManagementProps {
 
 export const CategoryManagement: React.FC<CategoryManagementProps> = ({ onBack }) => {
   const { t } = useI18n();
+  const { isRunning } = useScraper();
   const [categories, setCategories] = useState<ScraperCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -186,6 +188,14 @@ export const CategoryManagement: React.FC<CategoryManagementProps> = ({ onBack }
           </Button>
         </div>
       </div>
+
+      {/* Notice during active synchronization */}
+      {isRunning && (
+        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
+          <span>{t('scraper.categoryChangesNotice')}</span>
+        </div>
+      )}
 
       {/* Search Filter Bar */}
       <div className="relative">

@@ -38,6 +38,9 @@ build/icons/temp/
 *.dmg
 *.pkg
 *.blockmap
+*.zip
+*.tar.gz
+rt-library-browser-companion*.zip
 
 # ------------------------------------------------------------------------------
 # 3. Native Build & Tooling Artifacts (node-gyp / better-sqlite3)
@@ -177,6 +180,9 @@ performance-results/
 benchmark-summary.json
 windows-summary.json
 linux-summary.json
+*-report.json
+windows-runtime-report.json
+scripts/investigate/*.json
 
 # ------------------------------------------------------------------------------
 # 15. Testing & Code Coverage
@@ -237,3 +243,4 @@ Desktop.ini
 .electron/
 electron-cache/
 electron-builder-cache/
+browser-companion/dist/

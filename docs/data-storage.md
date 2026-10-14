@@ -24,6 +24,9 @@ All application data, catalogs, settings, and cache directories are stored local
 ├── backups/                    # Automatic & manual database backup snapshots
 ├── image-cache/                # Locally cached covers and screenshots
 ├── scraper-categories.json     # User category configurations & custom overrides
+├── scraper-profile/            # Persistent browser profile used by verify and scan
+├── logs/
+│   └── scraper/                # Scraper job logs; no response headers or cookies
 └── config.json                 # UI preferences, themes, and application settings
 ```
 

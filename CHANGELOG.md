@@ -8,17 +8,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+---
+
+## [1.1.0] - 2026-10-13
+
 ### Added
-- **Russian Language Localization**: Complete UI localization for Russian (`ru-RU`) with native script typography.
-- **Modernized Compact Selectors**: Compact, accessible dropdown selectors for application themes, progress bar styles, and languages with interactive live hover previews.
-- **Enhanced Mascot Animation System**: 11 animated progress bar styles with edge clamping, customizable trail effects, and `prefers-reduced-motion` compliance.
-- **Theme Accessibility & Contrast Hardening**: System-wide WCAG AA contrast verification across all 14 color themes.
-- **Automated Third-Party License Audit**: Automated audit script (`scripts/audit-third-party-licenses.cjs`) and comprehensive audit documentation (`docs/third-party-license-audit.md`).
-- **Legal & Release Governance**: Dedicated `LEGAL.md`, `RELEASE_CHECKLIST.md`, `docs/license-selection.md`, GitHub issue/PR templates, and AI-assisted development disclosures.
+- **Browser Companion (Manifest V3 Extension)**: Production-recommended sync transport enabling page fetches via the user's regular browser session, sharing legitimate Cloudflare clearance cookies and credentials without automated bypasses.
+- **Local Loopback Bridge**: Authenticated loopback bridge (`http://127.0.0.1:<dynamic-port>`) with dynamic port binding, bearer token authentication, session isolation, and 10 MiB payload limits.
+- **Embedded Electron Scraper (Experimental)**: Autonomous in-app scraper with isolated worker pool (ceiling C=3), persistent session partition (`persist:rutracker-v1`), in-app Cloudflare verification window, and verification loop detection (`VERIFICATION_LOOP`).
+- **Progressive Library Synchronization**: Real-time batch ingestion directly into SQLite, interactive Pause/Resume/Cancel lifecycle, progress metrics, and dynamic speed monitoring.
+- **Sync History & Health Diagnostics**: Dedicated sync run audit logging, telemetry tracking, and visual sync health status cards.
+- **Database Backup Restore**: Ability to restore external SQLite backups directly in Onboarding Step 1 or Scraper Settings, enabling immediate catalog browsing without re-scraping.
+- **Manual RuTracker HTML Import**: Offline parser accepting saved `.html` / `.htm` forum category or topic files up to 15 MiB.
+- **Background Synchronization Scheduler**: Configurable periodic background sync intervals with non-blocking challenge deferral (`INTERACTION_REQUIRED`).
+- **System Background Notifications**: Native desktop notifications with actionable buttons to view newly synchronized topics.
+- **Russian Language Localization**: Complete UI localization for Russian (`ru-RU`) alongside English (`en`) and Brazilian Portuguese (`pt-BR`).
+- **Modernized Compact Selectors & Mascots**: Accessible compact dropdown selectors, 11 animated progress bar mascot styles with edge clamping, and WCAG AA contrast compliance across 14 themes.
+- **Browser Companion Packaging**: Automated extension packaging pipeline generating `rt-library-browser-companion-v1.1.0.zip` release artifacts.
 
 ### Changed
-- Expanded `scripts/check-publication-readiness.cjs` with checks for legacy assets, environment secrets, forbidden directories, and oversized dumps.
-- Expanded `scripts/verify-package-runtime.cjs` with comprehensive exclusion rules for databases, cookies, profiles, and media caches inside packaged `app.asar`.
+- Promoted Browser Companion to primary recommended transport for Cloudflare-protected access; marked Embedded Electron as experimental in UI and docs.
+- Updated database schema to v6 with automated migration from v1.0.0 JSON files and SQLite databases (backward-compatible according to current migration and regression coverage).
+- Synchronized release workflows in GitHub Actions to build, validate, package, checksum, and attach the Browser Companion extension archive to official releases.
+- Hardened release scanners (`scripts/check-publication-readiness.cjs`, `scripts/validate-release-version.cjs`) to prevent inclusion of developer paths, tokens, runtime DBs, or untracked debris.
+
+### Fixed
+- Fixed single-item upsert query parameter omission (`preserveMissingFields`) in native SQLite repository (`itemsRepo.cjs`).
+- Fixed Cloudflare verification loop counting and session debouncing in Embedded Electron transport (`embeddedElectronTransport.cjs`).
+- Resolved legacy database migration test harness compatibility in `migration.cjs`.
+- Removed transient benchmark logs and hardcoded machine-specific paths from diagnostic tooling.
+
+### Known Limitations
+- Embedded Electron transport may encounter Cloudflare Turnstile verification loops under strict network conditions; users should use the Browser Companion for guaranteed forum access.
+- Windows binaries are built via cross-platform configurations but have not been verified in a live Windows production environment.
 
 ---
 

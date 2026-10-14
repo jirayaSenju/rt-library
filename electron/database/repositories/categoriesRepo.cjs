@@ -4,9 +4,12 @@
 
 function getAll(db) {
   const stmt = db.prepare(`
-    SELECT id, name, base_url, title_search, file_path, item_count, file_mtime, file_size, last_scraped_at, indexed_at, created_at, updated_at
-    FROM categories
-    ORDER BY name ASC
+    SELECT 
+      c.id, c.name, c.base_url, c.title_search, c.file_path,
+      COALESCE((SELECT COUNT(*) FROM items i WHERE i.category_id = c.id), c.item_count, 0) AS item_count,
+      c.file_mtime, c.file_size, c.last_scraped_at, c.indexed_at, c.created_at, c.updated_at
+    FROM categories c
+    ORDER BY c.name ASC
   `);
   return stmt.all();
 }
@@ -14,9 +17,12 @@ function getAll(db) {
 function getById(db, id) {
   if (!id) return null;
   const stmt = db.prepare(`
-    SELECT id, name, base_url, title_search, file_path, item_count, file_mtime, file_size, last_scraped_at, indexed_at, created_at, updated_at
-    FROM categories
-    WHERE id = ?
+    SELECT 
+      c.id, c.name, c.base_url, c.title_search, c.file_path,
+      COALESCE((SELECT COUNT(*) FROM items i WHERE i.category_id = c.id), c.item_count, 0) AS item_count,
+      c.file_mtime, c.file_size, c.last_scraped_at, c.indexed_at, c.created_at, c.updated_at
+    FROM categories c
+    WHERE c.id = ?
   `);
   return stmt.get(id) || null;
 }

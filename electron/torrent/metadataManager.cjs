@@ -319,7 +319,7 @@ function startBulkCollection(db, mode = 'all') {
     const rows = db.prepare(sql).all();
 
     if (!rows || rows.length === 0) {
-      return { success: false, message: 'Nenhum item encontrado para o modo de scan selecionado' };
+      return { success: false, message: 'Nenhum item com link magnet encontrado no catálogo. Os links magnet e detalhes são carregados ao abrir os jogos na biblioteca.' };
     }
 
     collectionState = {

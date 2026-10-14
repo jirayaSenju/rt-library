@@ -4,6 +4,7 @@ import { useFavorites } from "@/hooks/useFavorites"
 import { useTheme } from "@/hooks/useTheme"
 import { useSelection } from "@/hooks/useSelection"
 import { useScraper } from "@/hooks/useScraper"
+import { nativeLibraryService } from "@/services/nativeLibrary"
 import { useI18n } from "@/i18n"
 import { Sidebar } from "@/components/layout/Sidebar"
 
@@ -21,6 +22,8 @@ import { Button } from "@/components/ui/button"
 import { Toaster, toast } from "sonner"
 import { LibraryItem, LibraryFilters, DEFAULT_LIBRARY_FILTERS } from "@/types"
 import { Loader2, AlertCircle, RefreshCw } from "lucide-react"
+import { SyncActionBanner } from "@/components/layout/SyncActionBanner"
+import { useSyncNotificationCoordinator } from "@/hooks/useSyncNotificationCoordinator"
 
 export function App() {
   const { t } = useI18n()
@@ -60,6 +63,8 @@ export function App() {
     saveSettings,
     categoryScrollPositions,
     saveScrollPosition,
+    pendingNewItemsCount,
+    showPendingNewItems,
   } = useLibrary()
 
   // Derive selected items from the currently loaded page items
@@ -176,15 +181,24 @@ export function App() {
   const {
     state: scraperState,
     progress: scraperProgress,
+    isRunning: isScraperRunning,
     error: scraperError,
     cancelScraper,
     renewSession,
   } = useScraper()
 
-  const handleOpenSettings = (section: SettingsSectionKey = "library") => {
+  const [settingsSubview, setSettingsSubview] = useState<string | null>(null)
+
+  const handleOpenSettings = (section: SettingsSectionKey = "library", subview: string | null = null) => {
     setSettingsSection(section)
+    setSettingsSubview(subview)
     setIsSettingsOpen(true)
   }
+
+  const { actionBanner, dismissActionBanner, handleBannerAction } = useSyncNotificationCoordinator({
+    onOpenSettings: handleOpenSettings,
+    onRefreshLibrary: refreshLibrary,
+  })
 
   // 1. Loading state during initial bootstrap
   if (bootState === "LOADING") {
@@ -219,7 +233,18 @@ export function App() {
   if (bootState === "SCRAPER_REQUIRED") {
     return (
       <>
-        <Toaster theme={theme.type} position="bottom-right" />
+        <Toaster
+          theme={theme.type}
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: 'hsl(var(--card))',
+              color: 'hsl(var(--card-foreground))',
+              border: '1px solid hsl(var(--border))',
+            },
+            descriptionClassName: 'text-muted-foreground',
+          }}
+        />
         <FirstRunScraperScreen onComplete={unlockLibrary} />
       </>
     )
@@ -246,13 +271,35 @@ export function App() {
     )
   }
 
+  const handleForceReindex = async () => {
+    try {
+      await nativeLibraryService.reindex()
+      await refreshLibrary()
+    } catch (err) {
+      console.error("[App] Force reindex error:", err)
+      await refreshLibrary()
+      throw err
+    }
+  }
+
   // 5. READY state - Catalog View
   const totalItemsCount = categories.reduce((sum, c) => sum + c.count, 0)
   const isAllPageSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id))
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans select-none antialiased">
-      <Toaster theme={theme.type} position="bottom-right" />
+      <Toaster
+          theme={theme.type}
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: 'hsl(var(--card))',
+              color: 'hsl(var(--card-foreground))',
+              border: '1px solid hsl(var(--border))',
+            },
+            descriptionClassName: 'text-muted-foreground',
+          }}
+        />
 
       <Sidebar
         categories={categories}
@@ -273,6 +320,7 @@ export function App() {
           sortBy={filters.sortBy || "discoveredAt"}
           sortOrder={filters.sortOrder || "desc"}
           onSortChange={(sortBy, sortOrder) => updateFilters({ sortBy, sortOrder })}
+          selectedCategory={selectedCategory}
           filters={filters}
           onApplyFilters={handleApplyFilters}
           onClearFilters={handleClearFilters}
@@ -281,6 +329,13 @@ export function App() {
           onToggleDensity={handleToggleDensity}
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
+          onOpenSettings={() => handleOpenSettings("scraper")}
+        />
+
+        <SyncActionBanner
+          banner={actionBanner}
+          onDismiss={dismissActionBanner}
+          onAction={handleBannerAction}
         />
 
         <ScraperActivityBar
@@ -324,6 +379,16 @@ export function App() {
               density={density}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelection}
+              isLibraryEmpty={totalItemsCount === 0 && !filters.searchQuery}
+              isFavorites={selectedCategory === "favorites"}
+              hasSearchQuery={Boolean(filters.searchQuery?.trim())}
+              onBrowseAll={() => handleSelectCategory("all")}
+              onOpenSettings={handleOpenSettings}
+              onImportHtml={() => handleOpenSettings("scraper")}
+              isSyncing={isScraperRunning}
+              onViewSync={() => handleOpenSettings("scraper")}
+              pendingNewItemsCount={pendingNewItemsCount}
+              onShowNewItems={showPendingNewItems}
             />
           ) : (
             <ItemList
@@ -338,6 +403,16 @@ export function App() {
               onToggleSelect={toggleSelection}
               onSelectAllPage={handleSelectAllPage}
               onClearSelection={clearSelection}
+              isLibraryEmpty={totalItemsCount === 0 && !filters.searchQuery}
+              isFavorites={selectedCategory === "favorites"}
+              hasSearchQuery={Boolean(filters.searchQuery?.trim())}
+              onBrowseAll={() => handleSelectCategory("all")}
+              onOpenSettings={handleOpenSettings}
+              onImportHtml={() => handleOpenSettings("scraper")}
+              isSyncing={isScraperRunning}
+              onViewSync={() => handleOpenSettings("scraper")}
+              pendingNewItemsCount={pendingNewItemsCount}
+              onShowNewItems={showPendingNewItems}
             />
           )}
 
@@ -388,11 +463,15 @@ export function App() {
 
       <SettingsModal
         isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={() => {
+          setIsSettingsOpen(false)
+          setSettingsSubview(null)
+        }}
         settings={settings}
         onSaveSettings={saveSettings}
-        onForceReindex={refreshLibrary}
+        onForceReindex={handleForceReindex}
         initialSection={settingsSection}
+        initialSubview={settingsSubview}
         themeId={themeId}
         onSelectTheme={setTheme}
         density={density}

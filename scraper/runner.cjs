@@ -10,6 +10,8 @@ const { ScraperBrowserSession } = require('./browserSession.cjs');
 const { getScraperCategory } = require('./scraperBridge.cjs');
 const { SCRAPER_IPC_MESSAGES, SCRAPER_STATES } = require('./protocol.cjs');
 const { normalizeScraperOptions, createExecutionPlan } = require('./executionPlan.cjs');
+const { sanitizeUrlForLog } = require('./accessProbe.cjs');
+const { acquireScraperLock } = require('./processLock.cjs');
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -52,31 +54,8 @@ function parseArgs() {
 }
 
 function acquireLock() {
-  const lockFile = path.resolve(__dirname, '../scraper.lock');
-  if (fs.existsSync(lockFile)) {
-    try {
-      const lockTimeStr = fs.readFileSync(lockFile, 'utf8').trim();
-      const lockTime = new Date(lockTimeStr).getTime();
-      const now = Date.now();
-      if (isNaN(lockTime) || (now - lockTime > 3 * 60 * 1000)) {
-        console.warn(`[SCRAPER] Removing stale lock file (created at ${lockTimeStr}).`);
-        fs.unlinkSync(lockFile);
-      } else {
-        throw new Error(`SCRAPER_LOCKED: Another scraper process is running (started at ${lockTimeStr}).`);
-      }
-    } catch (err) {
-      if (err.message.startsWith('SCRAPER_LOCKED:')) throw err;
-      try { fs.unlinkSync(lockFile); } catch (_) {}
-    }
-  }
-
-  fs.writeFileSync(lockFile, new Date().toISOString(), 'utf8');
-
-  return () => {
-    try {
-      if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
-    } catch (_) {}
-  };
+  const lockFile = process.env.SCRAPER_LOCK_FILE || path.resolve(__dirname, '../scraper.lock');
+  return acquireScraperLock(lockFile);
 }
 
 let isCancelledFlag = false;
@@ -133,6 +112,9 @@ async function runScraper(userOptions = {}) {
   const normalized = plan.options;
 
   const targetCategory = plan.scope.type === 'single' ? plan.scope.targetCategoryId : null;
+  const verificationCategory = targetCategory
+    ? plan.scope.categories.find((category) => category.id === targetCategory)
+    : plan.scope.categories[0];
   const options = {
     headed: false,
     singleSession: false,
@@ -149,7 +131,7 @@ async function runScraper(userOptions = {}) {
   console.log('[SCRAPER] Starting Playwright Scraper Runner (Stage 1)...');
   console.log(`[SCRAPER][PLAN] scope=${plan.scope.type} target=${targetCategory || 'all'} categories=${plan.scope.categoryIds.join(',')} mode=${plan.mode} images=${plan.refresh.images} size=${plan.refresh.size} files=${plan.refresh.files} scanAllPages=${plan.scanAllPages} scanAllCategories=${plan.scanAllCategories} earlyStop=${plan.allowKnownTopicEarlyStop} threshold=${plan.allowKnownTopicEarlyStop ? plan.knownPageLimit : 'disabled'}`);
   console.log(`[SCRAPER][ENV] HOME=${process.env.HOME} XDG_CONFIG_HOME=${process.env.XDG_CONFIG_HOME || '(unset)'} CWD=${process.cwd()} NODE_ENV=${process.env.NODE_ENV || 'production'}`);
-  sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, { state: SCRAPER_STATES.RUNNING });
+  sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, { state: options.login ? SCRAPER_STATES.VERIFYING : SCRAPER_STATES.RUNNING });
 
   let releaseLock;
   try {
@@ -171,75 +153,144 @@ async function runScraper(userOptions = {}) {
 
   let closeReason = 'completed';
   try {
-    const sessionCategory = getScraperCategory(options.category);
-    session = new ScraperBrowserSession({ userDataDir: options.dataDir });
+    const sessionCategory = verificationCategory || getScraperCategory(options.category);
+    session = new ScraperBrowserSession({
+      userDataDir: options.dataDir,
+      mode: options.login ? 'verification' : 'scan',
+      categoryId: sessionCategory.id,
+      requestId: options.jobId || `scrape_${Date.now()}`,
+    });
 
     if (options.login) {
       console.log('[SCRAPER] Mode: LOGIN / SESSION INITIALIZATION');
+      console.log(`[SCRAPER][VERIFY] opening headed context category=${sessionCategory.id} profile=${session.profileDir} context=${session.contextId}`);
       await session.start({ headless: false });
+      await session.page.bringToFront();
 
-      const defaultSubforumUrl = 'https://rutracker.org/forum/viewforum.php?f=773';
-      const loginUrl = (options.category && sessionCategory) ? sessionCategory.baseUrl : defaultSubforumUrl;
+      const loginUrl = sessionCategory.baseUrl;
+      let challengeLoopCount = 0;
+      session.onNavigationResult = (navigation) => {
+        if (navigation.initiator === 'page' && navigation.cfMitigated === 'challenge') {
+          challengeLoopCount += 1;
+          console.warn(`[SCRAPER][VERIFY] page navigation returned another Cloudflare challenge navigationId=${navigation.navigationId} loopCount=${challengeLoopCount} category=${sessionCategory.id} context=${session.contextId}`);
+          sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, {
+            state: SCRAPER_STATES.VERIFYING,
+            details: { verificationOutcome: 'CHALLENGE_REMAINS', challengeLoopCount },
+          });
+        }
+      };
       console.log(`[SCRAPER] Opening session verification page: ${loginUrl} pid=${session.browserPid} contextId=${session.contextId}`);
 
-      await session.page.goto(loginUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await session.navigate(loginUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-      console.log('================================================================================');
-      console.log('  CLOUDFLARE SESSION VERIFICATION');
-      console.log('  1. No account login required. You can use the scraper as a guest.');
-      console.log('  2. If a Cloudflare challenge appears, click "Confirme que é humano".');
-      console.log(`  3. The window will close AUTOMATICALLY as soon as topics are verified.`);
-      console.log('================================================================================');
+      console.log(`[SCRAPER][VERIFY] headed page ready category=${sessionCategory.id} profile=${session.profileDir} context=${session.contextId}`);
+      console.log(`[SCRAPER][VERIFY] waiting for user category=${sessionCategory.id} profile=${session.profileDir} context=${session.contextId}`);
+      sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, { state: SCRAPER_STATES.VERIFYING, details: { categoryId: sessionCategory.id } });
 
-      let isVerified = false;
-      const pollInterval = setInterval(async () => {
-        try {
-          if (session.context) {
-            const pages = session.context.pages();
-            for (const p of pages) {
-              if (!p.isClosed()) {
-                const topicCount = await p.evaluate(() => document.querySelectorAll('a.torTopic').length).catch(() => 0);
-                if (topicCount > 0) {
-                  isVerified = true;
-                  console.log(`[SCRAPER] Session verification PASSED (${topicCount} topics found). Auto-closing browser and saving profile... pid=${session.browserPid} contextId=${session.contextId}`);
-                  clearInterval(pollInterval);
-                  setTimeout(async () => {
-                    await session.close('completed');
-                  }, 1200);
-                  break;
+      let verificationOutcome = null;
+      let pollInFlight = false;
+      let lastStatus = null;
+      let lastPageState = null;
+      let challengeClearedLogged = false;
+      let forumDetectedLogged = false;
+
+      const verificationWait = new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          verificationOutcome = lastStatus === 'INTERACTION_REQUIRED' ? 'VERIFICATION_INCOMPLETE' : 'TIMEOUT';
+          resolve();
+        }, 15 * 60 * 1000);
+
+        const poll = setInterval(async () => {
+          if (pollInFlight) return;
+          pollInFlight = true;
+          try {
+            if (isCancelledFlag) {
+              verificationOutcome = 'CANCELLED';
+            } else if (!session.context || session.context.pages().length === 0) {
+              verificationOutcome = 'WINDOW_CLOSED';
+            } else if (challengeLoopCount >= 8) {
+              console.warn(`[SCRAPER][VERIFY] detected repetitive main-frame Cloudflare challenge loop (count=${challengeLoopCount}). Stopping verification loop safely.`);
+              verificationOutcome = 'VERIFICATION_INCOMPLETE';
+            } else {
+              const result = await session.inspectCurrentCategory(sessionCategory);
+              const pageState = `${result.status}:${result.challengeDetected ? 'challenge' : 'clear'}`;
+              if (pageState !== lastPageState) {
+                lastPageState = pageState;
+                const currentUrl = session.activePage ? session.activePage.url() : '';
+                console.log(`[SCRAPER][VERIFY] navigation url=${sanitizeUrlForLog(currentUrl)} status=${result.httpStatus ?? 'unknown'} challenge=${!!result.challengeDetected} forumDetected=${['ACCESSIBLE', 'ACCESSIBLE_EMPTY'].includes(result.status)} category=${sessionCategory.id} context=${session.contextId}`);
+              }
+              if (result.status !== lastStatus) {
+                lastStatus = result.status;
+                if (result.status === 'INTERACTION_REQUIRED') {
+                  console.log(`[SCRAPER][VERIFY] challenge still present category=${sessionCategory.id} context=${session.contextId}`);
                 }
               }
-            }
-          }
-        } catch (_) {}
-      }, 1000);
 
-      await new Promise((resolve) => {
-        let resolved = false;
-        const done = () => {
-          if (!resolved) {
-            resolved = true;
-            clearInterval(pollInterval);
-            resolve();
+              if (!result.challengeDetected && !challengeClearedLogged && !result.challengePresent) {
+                challengeClearedLogged = true;
+                console.log(`[SCRAPER][VERIFY] challenge cleared category=${sessionCategory.id} context=${session.contextId}`);
+              }
+
+              if (['ACCESSIBLE', 'ACCESSIBLE_EMPTY'].includes(result.status)) {
+                if (!forumDetectedLogged) {
+                  forumDetectedLogged = true;
+                  console.log(`[SCRAPER][VERIFY] forum detected category=${sessionCategory.id} status=${result.status} context=${session.contextId}`);
+                }
+                verificationOutcome = 'VERIFIED';
+              } else if (result.status === 'NETWORK_ERROR') {
+                verificationOutcome = 'NETWORK_ERROR';
+              }
+            }
+            if (verificationOutcome) {
+              clearTimeout(timeout);
+              clearInterval(poll);
+              resolve();
+            }
+          } catch (_) {
+            if (!session.context || session.context.pages().length === 0) verificationOutcome = 'WINDOW_CLOSED';
+            if (verificationOutcome) {
+              clearTimeout(timeout);
+              clearInterval(poll);
+              resolve();
+            }
+          } finally {
+            pollInFlight = false;
           }
-        };
-        session.context.on('close', done);
-        session.page.on('close', () => {
-          setTimeout(() => {
-            if (!session.context || session.context.pages().length === 0) done();
-          }, 500);
+        }, 1000);
+
+        session.context.once('close', () => {
+          if (!verificationOutcome) verificationOutcome = isCancelledFlag ? 'CANCELLED' : 'WINDOW_CLOSED';
+          clearTimeout(timeout);
+          clearInterval(poll);
+          resolve();
         });
       });
 
-      if (isVerified) {
-        console.log(`[SCRAPER] Session verification complete. Profile saved. pid=${session.browserPid} contextId=${session.contextId}`);
-        sendIPCMessage(SCRAPER_IPC_MESSAGES.FINISHED, { success: true });
-        sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, { state: SCRAPER_STATES.COMPLETED });
+      await verificationWait;
+
+      if (verificationOutcome === 'VERIFIED') {
+        // Wait for network idle and cookie flush so session is safely written to disk
+        try {
+          if (session.activePage) await session.activePage.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
+        } catch (_) {}
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+
+      console.log(`[SCRAPER][VERIFY] closing context category=${sessionCategory.id} context=${session.contextId}`);
+      closeReason = verificationOutcome === 'VERIFIED' ? 'verified' : verificationOutcome === 'CANCELLED' ? 'cancelled' : 'interaction_required';
+      await session.close(closeReason);
+      console.log(`[SCRAPER][VERIFY] browser exited cleanly category=${sessionCategory.id} context=${session.contextId}`);
+
+      if (verificationOutcome === 'VERIFIED') {
+        console.log(`[SCRAPER][VERIFY] forum reached and headed context closed category=${sessionCategory.id} context=${session.contextId}`);
+        sendIPCMessage(SCRAPER_IPC_MESSAGES.FINISHED, { success: true, verificationOutcome });
+        sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, { state: SCRAPER_STATES.COMPLETED, details: { verificationOutcome } });
       } else {
-        console.warn(`[SCRAPER] Session verification window was closed before challenge completion. pid=${session.browserPid}`);
-        sendIPCMessage(SCRAPER_IPC_MESSAGES.FINISHED, { success: false, error: 'VERIFICATION_INCOMPLETE' });
-        sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, { state: SCRAPER_STATES.SESSION_REQUIRED, error: 'VERIFICATION_INCOMPLETE' });
-        process.exitCode = 1;
+        const state = verificationOutcome === 'CANCELLED' ? SCRAPER_STATES.IDLE : SCRAPER_STATES.INTERACTION_REQUIRED;
+        console.warn(`[SCRAPER][VERIFY] ended outcome=${verificationOutcome} category=${sessionCategory.id} context=${session.contextId}`);
+        sendIPCMessage(SCRAPER_IPC_MESSAGES.FINISHED, { success: false, verificationOutcome });
+        sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, { state, error: verificationOutcome, details: { verificationOutcome, categoryId: sessionCategory.id } });
+        process.exitCode = 0;
       }
       return;
     }
@@ -248,7 +299,7 @@ async function runScraper(userOptions = {}) {
     await session.start({ headless: headlessMode });
 
     // Single-context health check
-    await session.healthCheck({ category: options.category });
+    await session.healthCheck({ category: verificationCategory?.id || options.category });
 
     // Inject console script into same context/page
     await session.injectScraper({
@@ -287,6 +338,8 @@ async function runScraper(userOptions = {}) {
       }
     }
 
+    await session.close('completed');
+
     console.log('================================================================================');
     console.log(`[SCRAPER] SUCCESS: ${totalItemsEmitted} items scraped across ${catalogs?.length || 0} categories (pid=${session.browserPid}, contextId=${session.contextId})`);
     console.log('================================================================================');
@@ -299,9 +352,14 @@ async function runScraper(userOptions = {}) {
     sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, { state: SCRAPER_STATES.COMPLETED });
 
   } catch (err) {
-    const isSessionErr = err.message.includes('SCRAPER_SESSION_INVALID') || err.message.includes('403') || err.message.includes('Cloudflare');
-    closeReason = isSessionErr ? 'interaction_required' : (isCancelledFlag ? 'cancelled' : 'scrape_failed');
-    const state = isSessionErr ? SCRAPER_STATES.SESSION_REQUIRED : (isCancelledFlag ? SCRAPER_STATES.IDLE : SCRAPER_STATES.FAILED);
+    const isInteractionRequired = err.code === 'INTERACTION_REQUIRED';
+    const isAuthRequired = err.code === 'AUTH_REQUIRED';
+    closeReason = isInteractionRequired ? 'interaction_required' : (isCancelledFlag ? 'cancelled' : 'scrape_failed');
+    const state = isInteractionRequired
+      ? SCRAPER_STATES.INTERACTION_REQUIRED
+      : isAuthRequired
+        ? SCRAPER_STATES.SESSION_REQUIRED
+        : (isCancelledFlag ? SCRAPER_STATES.IDLE : SCRAPER_STATES.FAILED);
 
     console.error('================================================================================');
     console.error(`[SCRAPER] ERROR: ${err.message}`);
@@ -310,15 +368,19 @@ async function runScraper(userOptions = {}) {
     sendIPCMessage(SCRAPER_IPC_MESSAGES.FINISHED, {
       success: false,
       error: err.message,
+      reason: isInteractionRequired ? 'interaction_required' : isAuthRequired ? 'auth_required' : undefined,
+      accessResult: err.accessResult || null,
     });
-    sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, { state, error: err.message });
-    process.exitCode = 1;
+    sendIPCMessage(SCRAPER_IPC_MESSAGES.STATE_CHANGED, { state, error: err.message, details: err.accessResult || null });
+    process.exitCode = (isInteractionRequired || isAuthRequired || isCancelledFlag) ? 0 : 1;
   } finally {
     clearTimeout(timer);
     if (session) {
       try {
         await session.close(closeReason);
-      } catch (_) {}
+      } catch (closeError) {
+        console.error(`[SCRAPER][LIFECYCLE] Session close failed: ${closeError.message}`);
+      }
     }
     if (releaseLock) releaseLock();
   }
@@ -337,9 +399,7 @@ if (process.send) {
       try {
         await runScraper(msg.options || {});
       } finally {
-        setTimeout(() => {
-          process.exit(process.exitCode || 0);
-        }, 100);
+        if (process.connected) process.disconnect();
       }
     } else if (msg.command === SCRAPER_IPC_MESSAGES.CANCEL_COMMAND) {
       console.log('[SCRAPER] Received cancel command from parent process.');

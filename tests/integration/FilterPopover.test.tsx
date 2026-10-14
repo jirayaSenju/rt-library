@@ -5,6 +5,8 @@ import { describe, it, expect, vi } from "vitest"
 import { FilterPopover } from "@/components/layout/FilterPopover"
 import { I18nProvider } from "@/i18n/I18nContext"
 import { DEFAULT_LIBRARY_FILTERS } from "@/types"
+import { nativeLibraryService } from "@/services/nativeLibrary"
+import { FilterFacetsResponse } from "@/types/libraryIPC"
 
 const renderWithI18n = (ui: React.ReactElement) => {
   return render(<I18nProvider>{ui}</I18nProvider>)
@@ -220,5 +222,71 @@ describe("FilterPopover integration tests", () => {
       })
     )
   })
+
+  it("fetches filter facets scoped to categoryId when popover opens and renders options without 'No options found'", async () => {
+    const user = userEvent.setup()
+    const handleApply = vi.fn()
+    const mockFacets: FilterFacetsResponse = {
+      developers: [{ value: "Nintendo", count: 12 }],
+      publishers: [
+        { value: "Nintendo", count: 12 },
+        { value: "Capcom", count: 5 },
+      ],
+      genres: [
+        { value: "Action", count: 10 },
+        { value: "Adventure", count: 8 },
+      ],
+      languages: [{ value: "en", count: 15 }],
+      imageFormats: [{ value: "NSP", count: 14 }],
+      regions: [{ value: "USA", count: 11 }],
+      multiplayer: { yes: 3, no: 9 },
+    }
+
+    const spy = vi.spyOn(nativeLibraryService, "getFilterFacets").mockResolvedValue(mockFacets)
+
+    renderWithI18n(
+      <FilterPopover
+        filters={DEFAULT_LIBRARY_FILTERS}
+        onApplyFilters={handleApply}
+        categoryId="nintendo-switch"
+      />
+    )
+
+    // Open popover
+    await user.click(screen.getByRole("button", { name: /filtros|filters/i }))
+
+    expect(spy).toHaveBeenCalledWith("nintendo-switch")
+
+    // Metadata section should be present
+    const metaToggle = screen.getByText(/metadados|metadata/i)
+    expect(metaToggle).toBeInTheDocument()
+    await user.click(metaToggle)
+
+    // Click on Publishers facet selector
+    const publisherFacetBtn = screen.getByRole("button", { name: /editora|publisher/i })
+    await user.click(publisherFacetBtn)
+
+    // Verify facet options are rendered with counts, not 'No options found'
+    expect(screen.getByText("Nintendo")).toBeInTheDocument()
+    expect(screen.getByText("Capcom")).toBeInTheDocument()
+    expect(screen.queryByText(/no options found|nenhuma opção encontrada/i)).not.toBeInTheDocument()
+
+    // Select Capcom
+    await user.click(screen.getByText("Capcom"))
+
+    // Apply filters
+    const applyBtn = screen.getByRole("button", { name: /aplicar filtros|apply filters/i })
+    await user.click(applyBtn)
+
+    expect(handleApply).toHaveBeenCalledTimes(1)
+    expect(handleApply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publishers: ["Capcom"],
+      })
+    )
+
+    spy.mockRestore()
+  })
 })
+
 

@@ -61,7 +61,25 @@ function validateReleaseVersion(targetTag) {
     issues.push('Missing package-lock.json at project root.');
   }
 
-  // 3. Validate Git Tag (strict vMAJOR.MINOR.PATCH)
+  // 3. Read browser-companion/manifest.json
+  const manifestPath = path.join(PROJECT_ROOT, 'browser-companion', 'manifest.json');
+  if (fs.existsSync(manifestPath)) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      const manifestVersion = (manifest.version || '').trim();
+      info.companionVersion = manifestVersion;
+
+      if (manifestVersion !== pkgVersion) {
+        issues.push(`browser-companion/manifest.json version ("${manifestVersion}") does not match package.json version ("${pkgVersion}").`);
+      }
+    } catch (err) {
+      issues.push(`Failed to parse browser-companion/manifest.json: ${err.message}`);
+    }
+  } else {
+    issues.push('Missing browser-companion/manifest.json.');
+  }
+
+  // 4. Validate Git Tag (strict vMAJOR.MINOR.PATCH)
   const tag = (targetTag || process.env.GITHUB_REF_NAME || process.env.RELEASE_TAG || '').trim();
   if (tag) {
     info.tag = tag;

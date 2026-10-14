@@ -29,11 +29,15 @@ A clear and concise description of what the bug is.
 ## Expected Behavior
 A clear and concise description of what you expected to happen.
 
-## Environment Details
-- **Operating System**: [e.g. Ubuntu 24.04, Windows 11, macOS 14]
+- **RT-Library Version**: [e.g. 1.0.0]
 - **Package Format**: [e.g. AppImage, .deb, Windows NSIS Installer, Source]
-- **Node.js / npm version** (if running from source): [e.g. Node 20.x, npm 10.x]
+- **Scraper Transport**: [e.g. Built-in Scraper (Embedded Electron), Browser Companion, Playwright, Manual Import]
 - **Active Theme & Language**: [e.g. RT Dark, English / pt-BR / ru-RU]
 
-## Additional Context & Sanitized Logs
-Add any sanitized logs or context here.
+## Relevant Sanitized Logs
+```text
+<!-- Paste relevant sanitized logs here. Strictly omit connection codes, tokens, cookies, passwords, personal paths or IPs -->
+```
+
+## Additional Context
+Add any other context about the problem here.

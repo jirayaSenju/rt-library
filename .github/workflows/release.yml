@@ -114,6 +114,11 @@ jobs:
       - name: Run Publication Readiness & Privacy Scanner
         run: npm run release:check
 
+      - name: Build & Validate Browser Companion
+        run: |
+          npm run companion:build
+          npm run companion:validate
+
       - name: Validate Semantic Versioning & Tag Consistency
         run: node scripts/validate-release-version.cjs "${{ github.ref_name }}"
 
@@ -204,11 +209,44 @@ jobs:
           retention-days: 5
 
   # ----------------------------------------------------------------------------
-  # 4. GitHub Release & Checksums Deployment
+  # 4. Browser Companion Extension Package
+  # ----------------------------------------------------------------------------
+  package-companion:
+    name: Package Browser Companion
+    needs: [validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Package Browser Companion Archive
+        run: |
+          mkdir -p dist-companion
+          node scripts/package-browser-companion.cjs dist-companion
+
+      - name: Upload Browser Companion Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rt-library-companion-${{ github.ref_name }}
+          path: dist-companion/rt-library-browser-companion-*.zip
+          if-no-files-found: error
+          retention-days: 5
+
+  # ----------------------------------------------------------------------------
+  # 5. GitHub Release & Checksums Deployment
   # ----------------------------------------------------------------------------
   release:
     name: Publish GitHub Release
-    needs: [validate, build-linux, build-windows]
+    needs: [validate, build-linux, build-windows, package-companion]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -231,6 +269,12 @@ jobs:
           name: rt-library-windows-${{ github.ref_name }}
           path: release-assets
 
+      - name: Download Browser Companion Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rt-library-companion-${{ github.ref_name }}
+          path: release-assets
+
       - name: Verify Release Assets Set
         run: |
           echo "=== RELEASE ARTIFACTS INVENTORY ==="
@@ -241,6 +285,7 @@ jobs:
           
           APPIMAGE_COUNT=$(ls -1 release-assets/RT-Library-${EXPECTED_VERSION}-linux-*.AppImage 2>/dev/null | wc -l)
           EXE_COUNT=$(ls -1 release-assets/RT-Library-${EXPECTED_VERSION}-windows-*.exe 2>/dev/null | wc -l)
+          COMPANION_COUNT=$(ls -1 release-assets/rt-library-browser-companion-v${EXPECTED_VERSION}.zip 2>/dev/null | wc -l)
           TOTAL_FILES=$(find release-assets -maxdepth 1 -type f | wc -l)
           
           if [ "$APPIMAGE_COUNT" -ne 1 ]; then
@@ -252,9 +297,14 @@ jobs:
             echo "❌ Error: Expected exactly 1 Windows setup EXE matching version ${EXPECTED_VERSION}, found ${EXE_COUNT}"
             exit 1
           fi
+
+          if [ "$COMPANION_COUNT" -ne 1 ]; then
+            echo "❌ Error: Expected exactly 1 Browser Companion zip matching version ${EXPECTED_VERSION}, found ${COMPANION_COUNT}"
+            exit 1
+          fi
           
-          if [ "$TOTAL_FILES" -ne 2 ]; then
-            echo "❌ Error: Expected exactly 2 binary assets in release-assets, found ${TOTAL_FILES}"
+          if [ "$TOTAL_FILES" -ne 3 ]; then
+            echo "❌ Error: Expected exactly 3 binary assets in release-assets, found ${TOTAL_FILES}"
             exit 1
           fi
           
@@ -277,16 +327,16 @@ jobs:
             exit 1
           fi
           
-          echo "✅ Release assets inventory verified successfully (1 Linux AppImage, 1 Windows setup EXE, 0 forbidden files)."
+          echo "✅ Release assets inventory verified successfully (1 Linux AppImage, 1 Windows setup EXE, 1 Companion zip, 0 forbidden files)."
 
       - name: Generate SHA-256 Checksums
         run: |
           cd release-assets
-          sha256sum RT-Library-*.AppImage RT-Library-*.exe > SHA256SUMS.txt
+          sha256sum RT-Library-*.AppImage RT-Library-*.exe rt-library-browser-companion-*.zip > SHA256SUMS.txt
           
           CHECKSUM_ENTRIES=$(wc -l < SHA256SUMS.txt)
-          if [ "$CHECKSUM_ENTRIES" -ne 2 ]; then
-            echo "❌ Error: Expected exactly 2 checksum entries in SHA256SUMS.txt, found ${CHECKSUM_ENTRIES}"
+          if [ "$CHECKSUM_ENTRIES" -ne 3 ]; then
+            echo "❌ Error: Expected exactly 3 checksum entries in SHA256SUMS.txt, found ${CHECKSUM_ENTRIES}"
             exit 1
           fi
           
@@ -301,6 +351,7 @@ jobs:
           files: |
             release-assets/*.AppImage
             release-assets/*setup.exe
+            release-assets/rt-library-browser-companion-*.zip
             release-assets/SHA256SUMS.txt
           generate_release_notes: true
           draft: false

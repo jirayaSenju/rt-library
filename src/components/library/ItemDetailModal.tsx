@@ -7,6 +7,7 @@ import { ScreenshotStatus, getScreenshotDiagnostics } from "@/services/screensho
 import { imageCacheService } from "@/services/imageCache"
 import { openMagnetLink } from "@/services/magnetLauncher"
 import { torrentMetadataService, TorrentMetadataRecord } from "@/services/torrentMetadata"
+import { scraperService } from "@/services/scraperService"
 import { resolveTorrentDisplayData, formatBytes } from "@/utils/torrentSourceResolver"
 import { ScreenshotLightbox } from "@/components/library/ScreenshotLightbox"
 import { ItemDetailHeader } from "@/components/library/ItemDetailHeader"
@@ -42,10 +43,11 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   isFavorite,
   onToggleFavorite,
 }) => {
-  const { t, formatNumber } = useI18n()
+  const { t, locale, formatNumber } = useI18n()
   const [activeTab, setActiveTab] = useState<string>("overview")
   const [detailItem, setDetailItem] = useState<LibraryItem | null>(null)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
+  const [isEnriching, setIsEnriching] = useState(false)
   const [screenshotIndex, setScreenshotIndex] = useState<number | null>(null)
   const [modalScreenshots, setModalScreenshots] = useState<string[]>([])
   const [screenshotOwner, setScreenshotOwner] = useState<string | null>(null)
@@ -176,6 +178,57 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
 
       setModalScreenshots(uniqueScreenshotUrls(fullDetail.screenshots))
       setScreenshotsLoading(false)
+
+      // If item lacks cover or magnet, auto-enrich on-demand via companion
+      if (!fullDetail.coverUrl || !fullDetail.magnet) {
+        const topicId = item.topicId || String(item.id).replace(/^topic_|^rutracker_/, '');
+        if (topicId) {
+          setIsEnriching(true);
+          scraperService.fetchCompanionTopic({
+            topicId,
+            categoryId: item.categoryId,
+            url: item.url,
+          }).then(async (res: any) => {
+            if (!isMounted) return;
+            if (!res?.success) {
+              setIsEnriching(false);
+              return;
+            }
+            const updated = await nativeLibraryService.getItem(item.id);
+            if (!isMounted || !updated) {
+              setIsEnriching(false);
+              return;
+            }
+
+            setDetailItem((prev) => ({
+              ...(prev || item),
+              title: updated.title || prev?.title || item.title,
+              cleanTitle: updated.cleanTitle || prev?.cleanTitle || item.cleanTitle,
+              genre: updated.genre || prev?.genre || item.genre,
+              developer: updated.developer || prev?.developer || item.developer,
+              publisher: (updated as any).publisher || prev?.publisher || item.publisher,
+              releaseYear: updated.releaseYear || prev?.releaseYear || item.releaseYear,
+              magnet: updated.magnet || prev?.magnet || item.magnet,
+              magnetLink: updated.magnet || prev?.magnetLink || item.magnetLink,
+              cover: updated.coverUrl || prev?.cover || item.cover,
+              coverImage: updated.coverUrl || prev?.coverImage || item.coverImage,
+              screenshots: updated.screenshots && updated.screenshots.length > 0 ? updated.screenshots : prev?.screenshots || [],
+            }));
+
+            if (updated.coverUrl) {
+              const resolved = resolveImageUrl(updated.coverUrl);
+              setCoverUrl(resolved || null);
+            }
+            if (updated.screenshots && updated.screenshots.length > 0) {
+              setModalScreenshots(uniqueScreenshotUrls(updated.screenshots));
+            }
+            setIsEnriching(false);
+          }).catch((err: any) => {
+            if (isMounted) setIsEnriching(false);
+            console.debug("[ItemDetailModal] Topic auto-enrichment skipped:", err?.message);
+          });
+        }
+      }
     })
 
     if (item.screenshots) {
@@ -233,13 +286,11 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
     })
   }, [activeItem, parsedFileList, torrentRecord])
 
-  if (!item || !activeItem) return null
-
-  const targetMagnet = activeItem.magnetLink || activeItem.magnet
+  const targetMagnet = activeItem?.magnetLink || activeItem?.magnet
 
   const handleLaunchMagnet = () => {
-    if (targetMagnet) {
-      openMagnetLink(targetMagnet, item.cleanTitle || item.title)
+    if (targetMagnet && activeItem) {
+      openMagnetLink(targetMagnet, activeItem.cleanTitle || activeItem.title)
     } else {
       toast.error(t("itemDetail.noMagnetError"))
     }
@@ -253,7 +304,7 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
   }
 
   const handleRefreshSwarm = async () => {
-    if (isRefreshingTorrent) return
+    if (isRefreshingTorrent || !activeItem) return
     setIsRefreshingTorrent(true)
     try {
       const success = await torrentMetadataService.refreshItemMetadata(
@@ -270,6 +321,56 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
       setIsRefreshingTorrent(false)
     }
   }
+
+  const handleEnrichTopic = useCallback(async () => {
+    if (isEnriching || !activeItem) return
+    const topicId = activeItem.topicId || String(activeItem.id).replace(/^topic_|^rutracker_/, '')
+    if (!topicId) return
+
+    setIsEnriching(true)
+    try {
+      const res = await scraperService.fetchCompanionTopic({
+        topicId,
+        categoryId: activeItem.categoryId,
+        url: activeItem.url,
+      })
+      if (res?.success) {
+        const updated = await nativeLibraryService.getItem(activeItem.id)
+        if (updated) {
+          setDetailItem((prev) => ({
+            ...(prev || activeItem),
+            title: updated.title || prev?.title || activeItem.title,
+            cleanTitle: updated.cleanTitle || prev?.cleanTitle || activeItem.cleanTitle,
+            genre: updated.genre || prev?.genre || activeItem.genre,
+            developer: updated.developer || prev?.developer || activeItem.developer,
+            publisher: (updated as any).publisher || prev?.publisher || activeItem.publisher,
+            releaseYear: updated.releaseYear || prev?.releaseYear || activeItem.releaseYear,
+            magnet: updated.magnet || prev?.magnet || activeItem.magnet,
+            magnetLink: updated.magnet || prev?.magnetLink || activeItem.magnetLink,
+            cover: updated.coverUrl || prev?.cover || activeItem.cover,
+            coverImage: updated.coverUrl || prev?.coverImage || activeItem.coverImage,
+            screenshots: updated.screenshots && updated.screenshots.length > 0 ? updated.screenshots : prev?.screenshots || [],
+          }))
+          if (updated.coverUrl) {
+            const resolved = resolveImageUrl(updated.coverUrl)
+            imageCacheService.getImage(resolved).then((blob) => setCoverUrl(blob)).catch(() => setCoverUrl(resolved || null))
+          }
+          if (updated.screenshots && updated.screenshots.length > 0) {
+            setModalScreenshots(uniqueScreenshotUrls(updated.screenshots))
+          }
+          toast.success(locale === "pt-BR" ? "Dados e magnet link carregados com sucesso!" : "Topic metadata loaded successfully!")
+        }
+      } else {
+        toast.error(res?.error || (locale === "pt-BR" ? "Não foi possível carregar os dados. Verifique a conexão do Browser Companion." : "Could not fetch topic. Check Browser Companion."))
+      }
+    } catch (err: any) {
+      toast.error(err?.message || (locale === "pt-BR" ? "Erro ao carregar dados do tópico." : "Error fetching topic details."))
+    } finally {
+      setIsEnriching(false)
+    }
+  }, [activeItem, isEnriching, locale])
+
+  if (!item || !activeItem) return null
 
   const fileCountBadge =
     resolvedData.fileCount !== null
@@ -292,6 +393,8 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
             onToggleFavorite={onToggleFavorite}
             onLaunchMagnet={handleLaunchMagnet}
             onCopyMagnet={handleCopyMagnet}
+            isEnriching={isEnriching}
+            onEnrich={handleEnrichTopic}
           />
 
           {/* 2. TABS CONTAINER */}

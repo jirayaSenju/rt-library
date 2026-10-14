@@ -16,7 +16,26 @@ vi.mock('@/services/scraperService', () => ({
     getState: vi.fn().mockResolvedValue({ state: 'idle', isRunning: false, progress: null, logs: [] }),
     onStateChanged: vi.fn().mockReturnValue(() => {}),
     onProgress: vi.fn().mockReturnValue(() => {}),
+    onAccessChanged: vi.fn().mockReturnValue(() => {}),
     onLog: vi.fn().mockReturnValue(() => {}),
+    getSchedulerStatus: vi.fn().mockResolvedValue({
+      enabled: false,
+      scheduleType: '6h',
+      intervalMinutes: 360,
+      scope: 'ALL_ENABLED',
+      categoryIds: [],
+      nextRunAt: null,
+      lastAttemptAt: null,
+      lastStartedAt: null,
+      lastSkipReason: null,
+      activeTransport: 'BROWSER_COMPANION',
+      isCompanionReady: true,
+    }),
+    updateSchedulerConfig: vi.fn().mockImplementation((cfg) => Promise.resolve({ ...cfg })),
+    runSchedulerDueCheck: vi.fn().mockResolvedValue({ executed: false, skipped: true }),
+    onSchedulerStatusChanged: vi.fn().mockReturnValue(() => {}),
+    getSyncHealth: vi.fn().mockResolvedValue([]),
+    getSyncRuns: vi.fn().mockResolvedValue({ runs: [], total: 0 }),
   },
 }));
 
@@ -57,11 +76,11 @@ describe('ScraperPanel Advanced Options UI Integration (V3-12)', () => {
     await user.click(screen.getByRole('button', { name: /opções avançadas|advanced options/i }));
 
     const switches = screen.getAllByRole('switch');
-    // switches: [0: Full Scan, 1: Screenshots, 2: Sizes, 3: Files]
-    const fullScanSwitch = switches[0];
-    const screenshotsSwitch = switches[1];
-    const sizesSwitch = switches[2];
-    const filesSwitch = switches[3];
+    // switches: [0: AutoSync, 1: Full Scan, 2: Screenshots, 3: Sizes, 4: Files, 5: Deep Scan, 6: Notifications]
+    const fullScanSwitch = switches[1];
+    const screenshotsSwitch = switches[2];
+    const sizesSwitch = switches[3];
+    const filesSwitch = switches[4];
 
     // 1. Initially all unchecked and enabled
     expect(fullScanSwitch).not.toBeChecked();
@@ -101,4 +120,29 @@ describe('ScraperPanel Advanced Options UI Integration (V3-12)', () => {
     expect(filesSwitch).toBeChecked();
     expect(filesSwitch).not.toBeDisabled();
   });
+
+  it('renders Restore SQLite Database section and triggers database restore', async () => {
+    const user = userEvent.setup();
+    const restoreMock = vi.fn().mockResolvedValue({ canceled: false, success: true });
+    (window as any).rtLibrary = {
+      ...((window as any).rtLibrary || {}),
+      database: {
+        restoreBackup: restoreMock,
+      },
+    };
+
+    renderWithI18n(<ScraperPanel />);
+
+    expect(screen.getByText(/Restore SQLite Database|Restaurar Banco de Dados SQLite/i)).toBeInTheDocument();
+
+    const restoreBtn = screen.getByRole('button', { name: /restore database|restaurar backup/i });
+    expect(restoreBtn).toBeInTheDocument();
+
+    await user.click(restoreBtn);
+
+    await waitFor(() => {
+      expect(restoreMock).toHaveBeenCalled();
+    });
+  });
 });
+
