@@ -40,7 +40,7 @@
     "package:inspect": "node scripts/verify-package-runtime.cjs --inspect",
     "package:smoke": "node scripts/package-smoke.cjs",
     "package:linux": "npm run build && npx electron-builder --linux AppImage --publish never",
-    "package:win": "npm run build && npx electron-builder --win nsis --publish never",
+    "package:win": "npm run build && npx electron-builder --win portable --publish never",
     "audit:licenses": "node scripts/audit-third-party-licenses.cjs",
     "benchmark": "node scripts/benchmark-runtime.cjs",
     "benchmark:electron": "node scripts/benchmark-electron.cjs",
@@ -146,9 +146,9 @@
     "win": {
       "icon": "build/icons/rt-library.ico",
       "target": [
-        "nsis"
+        "portable"
       ],
-      "artifactName": "RT-Library-${version}-windows-setup.${ext}"
+      "artifactName": "RT-Library-${version}-windows-x64-portable.${ext}"
     },
     "mac": {
       "icon": "build/icons/rt-library.icns",
@@ -156,10 +156,6 @@
         "dmg"
       ],
       "category": "public.app-category.utilities"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
     },
     "publish": [
       {

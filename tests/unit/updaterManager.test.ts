@@ -69,18 +69,34 @@ describe('UpdaterManager Unit Tests', () => {
     expect(status.currentVersion).toBe('1.1.0');
   });
 
-  it('correctly reports SUPPORTED on packaged Windows NSIS build', () => {
+  it('correctly reports SUPPORTED on packaged Windows portable build in writable directory', () => {
+    const testExe = path.join(os.tmpdir(), 'RT-Library-1.1.0-windows-x64-portable.exe');
     const manager = new UpdaterManager({
       app: mockApp,
       isPackaged: true,
       currentVersion: '1.1.0',
       platform: 'win32',
-      env: {},
+      env: { PORTABLE_EXECUTABLE_FILE: testExe },
     });
 
     const status = manager.getStatus();
     expect(status.isSupported).toBe(true);
     expect(status.state).toBe(UpdaterState.IDLE);
+  });
+
+  it('correctly reports UNSUPPORTED on Windows portable build in read-only directory', () => {
+    const manager = new UpdaterManager({
+      app: mockApp,
+      isPackaged: true,
+      currentVersion: '1.1.0',
+      platform: 'win32',
+      env: { PORTABLE_EXECUTABLE_FILE: '/root/read-only-dir/app.exe' },
+    });
+
+    const status = manager.getStatus();
+    expect(status.isSupported).toBe(false);
+    expect(status.state).toBe(UpdaterState.UNSUPPORTED);
+    expect(status.errorCode).toBe(UpdaterErrorCode.READ_ONLY_LOCATION);
   });
 
   it('correctly handles newer version available (SemVer)', () => {

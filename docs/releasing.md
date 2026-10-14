@@ -137,7 +137,7 @@ graph TD
 
 Each public release publishes:
 1. **Linux AppImage**: `RT-Library-${VERSION}-linux-x86_64.AppImage`
-2. **Windows Installer**: `RT-Library-${VERSION}-windows-x64-setup.exe`
+2. **Windows Portable**: `RT-Library-${VERSION}-windows-x64-portable.exe`
 3. **Integrity Checksums**: `SHA256SUMS.txt`
 
 ### Verifying Checksums
@@ -147,7 +147,7 @@ Users can verify the authenticity and integrity of downloaded binaries:
 sha256sum -c SHA256SUMS.txt
 
 # On Windows (PowerShell)
-Get-FileHash -Algorithm SHA256 RT-Library-*-windows-x64-setup.exe
+Get-FileHash -Algorithm SHA256 RT-Library-*-windows-x64-portable.exe
 ```
 
 ---

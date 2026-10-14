@@ -4,9 +4,9 @@
  *
  * Supported environments:
  * - Linux: AppImage (process.env.APPIMAGE defined)
- * - Windows: NSIS packaged installation (app.isPackaged and process.platform === 'win32')
+ * - Windows: Portable Executable (app.isPackaged and process.platform === 'win32')
  *
- * Non-packaged/dev builds and non-AppImage Linux installations (deb/rpm/snap/source)
+ * Non-packaged/dev builds and unsupported installation formats
  * gracefully report UNSUPPORTED.
  */
 
@@ -15,6 +15,7 @@ const path = require('path');
 const fs = require('fs');
 const semver = require('semver');
 const { UpdaterState, UpdaterErrorCode, createInitialStatus } = require('./updaterTypes.cjs');
+const { WindowsPortableUpdater } = require('./windowsPortableUpdater.cjs');
 
 const REPO_OWNER = 'jirayaSenju';
 const REPO_NAME = 'rt-library';
@@ -68,8 +69,19 @@ class UpdaterManager extends EventEmitter {
         return false;
       }
     } else if (this.platform === 'win32') {
-      // NSIS installation is supported when packaged
-      this.status.isSupported = true;
+      // Portable executable update is supported when packaged
+      try {
+        const targetExe = this.env.PORTABLE_EXECUTABLE_FILE || (this.app && typeof this.app.getPath === 'function' ? this.app.getPath('exe') : process.execPath);
+        if (targetExe) {
+          fs.accessSync(path.dirname(targetExe), fs.constants.W_OK);
+        }
+      } catch (err) {
+        this.status.isSupported = false;
+        this.status.state = UpdaterState.UNSUPPORTED;
+        this.status.errorCode = UpdaterErrorCode.READ_ONLY_LOCATION;
+        this.status.errorMessage = 'Current portable executable directory is read-only. Move it to a writable folder to enable updates.';
+        return false;
+      }
     } else {
       this.status.isSupported = false;
       this.status.state = UpdaterState.UNSUPPORTED;
@@ -87,8 +99,7 @@ class UpdaterManager extends EventEmitter {
     if (!this.status.isSupported) return null;
 
     try {
-      const { AppImageUpdater } = require('electron-updater/out/AppImageUpdater');
-      const { NsisUpdater } = require('electron-updater/out/NsisUpdater');
+      const { AppImageUpdater } = require('electron-updater');
 
       const self = this;
       const appAdapter = {
@@ -105,6 +116,8 @@ class UpdaterManager extends EventEmitter {
             const p = path.join(self.app.getPath('userData'), 'app-update.yml');
             if (fs.existsSync(p)) return p;
           }
+          const winUnpacked = path.join(process.cwd(), 'dist-desktop', 'win-unpacked', 'resources', 'app-update.yml');
+          if (fs.existsSync(winUnpacked)) return winUnpacked;
           return path.join(process.cwd(), 'dist-desktop', 'linux-unpacked', 'resources', 'app-update.yml');
         },
         get userDataPath() { return self.app ? self.app.getPath('userData') : '/tmp'; },
@@ -117,7 +130,7 @@ class UpdaterManager extends EventEmitter {
       if (this.platform === 'linux') {
         this.autoUpdater = new AppImageUpdater(null, appAdapter);
       } else if (this.platform === 'win32') {
-        this.autoUpdater = new NsisUpdater(null, appAdapter);
+        this.autoUpdater = new WindowsPortableUpdater(null, appAdapter);
       } else {
         return null;
       }

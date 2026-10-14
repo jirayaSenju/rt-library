@@ -194,8 +194,8 @@ jobs:
       - name: Build Frontend Bundle
         run: npm run build
 
-      - name: Package Windows NSIS Installer
-        run: npx electron-builder --win nsis --publish never
+      - name: Package Windows Portable Executable
+        run: npx electron-builder --win portable --publish never
         env:
           # Prevent electron-builder from attempting auto-publish when a tag is detected
           GH_TOKEN: ""
@@ -209,12 +209,12 @@ jobs:
       - name: Validate Update Metadata Artifacts
         run: node scripts/validate-update-artifacts.cjs dist-desktop "${{ steps.validate.outputs.version || '' }}"
 
-      - name: Upload Windows Installer & Update Artifacts
+      - name: Upload Windows Portable & Update Artifacts
         uses: actions/upload-artifact@v7
         with:
           name: rt-library-windows-${{ github.ref_name }}
           path: |
-            dist-desktop/*setup.exe
+            dist-desktop/*portable.exe
             dist-desktop/latest.yml
             dist-desktop/*.blockmap
           if-no-files-found: error
@@ -348,7 +348,7 @@ jobs:
             exit 1
           fi
           
-          echo "✅ Release assets inventory verified successfully (AppImage, NSIS exe, Companion zip, latest metadata, 0 forbidden files)."
+          echo "✅ Release assets inventory verified successfully (AppImage, Portable exe, Companion zip, latest metadata, 0 forbidden files)."
 
       - name: Generate SHA-256 Checksums
         run: |
@@ -371,7 +371,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: |
             release-assets/*.AppImage
-            release-assets/*setup.exe
+            release-assets/*portable.exe
             release-assets/rt-library-browser-companion-*.zip
             release-assets/latest-linux.yml
             release-assets/latest.yml

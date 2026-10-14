@@ -18,37 +18,40 @@ TABLE OF CONTENTS
    - Playwright (Apache-2.0)
 
 2. Direct Production Runtime Dependencies:
-   1. @radix-ui/react-accordion (1.2.20) - MIT
-   2. @radix-ui/react-alert-dialog (1.1.23) - MIT
-   3. @radix-ui/react-aspect-ratio (1.1.15) - MIT
-   4. @radix-ui/react-avatar (1.2.6) - MIT
-   5. @radix-ui/react-checkbox (1.3.11) - MIT
-   6. @radix-ui/react-context-menu (2.3.7) - MIT
-   7. @radix-ui/react-dialog (1.1.23) - MIT
-   8. @radix-ui/react-dropdown-menu (2.1.24) - MIT
-   9. @radix-ui/react-label (2.1.15) - MIT
-   10. @radix-ui/react-popover (1.1.23) - MIT
-   11. @radix-ui/react-progress (1.1.16) - MIT
-   12. @radix-ui/react-select (2.3.7) - MIT
-   13. @radix-ui/react-separator (1.1.15) - MIT
-   14. @radix-ui/react-slot (1.3.3) - MIT
-   15. @radix-ui/react-switch (1.3.7) - MIT
-   16. @radix-ui/react-tabs (1.1.21) - MIT
-   17. @radix-ui/react-tooltip (1.2.16) - MIT
-   18. @tanstack/react-virtual (3.14.13) - MIT
+   1. @radix-ui/react-accordion (1.2.21) - MIT
+   2. @radix-ui/react-alert-dialog (1.1.24) - MIT
+   3. @radix-ui/react-aspect-ratio (1.1.16) - MIT
+   4. @radix-ui/react-avatar (1.2.7) - MIT
+   5. @radix-ui/react-checkbox (1.3.12) - MIT
+   6. @radix-ui/react-context-menu (2.3.8) - MIT
+   7. @radix-ui/react-dialog (1.2.0) - MIT
+   8. @radix-ui/react-dropdown-menu (2.1.25) - MIT
+   9. @radix-ui/react-label (2.1.16) - MIT
+   10. @radix-ui/react-popover (1.2.0) - MIT
+   11. @radix-ui/react-progress (1.1.17) - MIT
+   12. @radix-ui/react-select (2.3.8) - MIT
+   13. @radix-ui/react-separator (1.1.16) - MIT
+   14. @radix-ui/react-slot (1.4.0) - MIT
+   15. @radix-ui/react-switch (1.3.8) - MIT
+   16. @radix-ui/react-tabs (1.1.22) - MIT
+   17. @radix-ui/react-tooltip (1.3.0) - MIT
+   18. @tanstack/react-virtual (3.14.14) - MIT
    19. better-sqlite3 (11.10.0) - MIT
    20. class-variance-authority (0.7.1) - Apache-2.0
    21. clsx (2.1.1) - MIT
    22. cmdk (1.1.1) - MIT
-   23. framer-motion (11.18.2) - MIT
-   24. lucide-react (0.439.0) - ISC
-   25. playwright (1.63.0) - Apache-2.0
-   26. react (18.3.1) - MIT
-   27. react-dom (18.3.1) - MIT
-   28. react-window (1.8.11) - MIT
-   29. sonner (1.7.4) - MIT
-   30. tailwind-merge (2.6.1) - MIT
-   31. tailwindcss-animate (1.0.7) - MIT
+   23. electron-updater (6.8.9) - MIT
+   24. framer-motion (14.1.0) - MIT
+   25. jsdom (25.0.1) - MIT
+   26. lucide-react (1.55.0) - ISC
+   27. playwright (1.64.0) - Apache-2.0
+   28. react (18.3.1) - MIT
+   29. react-dom (18.3.1) - MIT
+   30. react-window (2.3.4) - MIT
+   31. semver (6.3.1) - ISC
+   32. sonner (2.0.8) - MIT
+   33. tailwind-merge (3.7.0) - MIT
+   34. tailwindcss-animate (1.0.7) - MIT
 
 ================================================================================
 CORE PACKAGED COMPONENTS
@@ -108,7 +111,7 @@ PRODUCTION RUNTIME DEPENDENCIES
 ================================================================================
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-accordion (Version: 1.2.20)
+Package: @radix-ui/react-accordion (Version: 1.2.21)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -135,7 +138,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-alert-dialog (Version: 1.1.23)
+Package: @radix-ui/react-alert-dialog (Version: 1.1.24)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -162,7 +165,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-aspect-ratio (Version: 1.1.15)
+Package: @radix-ui/react-aspect-ratio (Version: 1.1.16)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -189,7 +192,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-avatar (Version: 1.2.6)
+Package: @radix-ui/react-avatar (Version: 1.2.7)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -216,7 +219,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-checkbox (Version: 1.3.11)
+Package: @radix-ui/react-checkbox (Version: 1.3.12)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -243,7 +246,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-context-menu (Version: 2.3.7)
+Package: @radix-ui/react-context-menu (Version: 2.3.8)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -270,7 +273,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-dialog (Version: 1.1.23)
+Package: @radix-ui/react-dialog (Version: 1.2.0)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -297,7 +300,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-dropdown-menu (Version: 2.1.24)
+Package: @radix-ui/react-dropdown-menu (Version: 2.1.25)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -324,7 +327,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-label (Version: 2.1.15)
+Package: @radix-ui/react-label (Version: 2.1.16)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -351,7 +354,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-popover (Version: 1.1.23)
+Package: @radix-ui/react-popover (Version: 1.2.0)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -378,7 +381,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-progress (Version: 1.1.16)
+Package: @radix-ui/react-progress (Version: 1.1.17)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -405,7 +408,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-select (Version: 2.3.7)
+Package: @radix-ui/react-select (Version: 2.3.8)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -432,7 +435,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-separator (Version: 1.1.15)
+Package: @radix-ui/react-separator (Version: 1.1.16)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -459,7 +462,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-slot (Version: 1.3.3)
+Package: @radix-ui/react-slot (Version: 1.4.0)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -486,7 +489,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-switch (Version: 1.3.7)
+Package: @radix-ui/react-switch (Version: 1.3.8)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -513,7 +516,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-tabs (Version: 1.1.21)
+Package: @radix-ui/react-tabs (Version: 1.1.22)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -540,7 +543,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @radix-ui/react-tooltip (Version: 1.2.16)
+Package: @radix-ui/react-tooltip (Version: 1.3.0)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -567,7 +570,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: @tanstack/react-virtual (Version: 3.14.13)
+Package: @tanstack/react-virtual (Version: 3.14.14)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -859,7 +862,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: framer-motion (Version: 11.18.2)
+Package: electron-updater (Version: 6.8.9)
+License: MIT
+--------------------------------------------------------------------------------
+
+The MIT License (MIT)
+
+Copyright (c) 2015 Loopline Systems
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+Package: framer-motion (Version: 14.1.0)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -886,13 +916,41 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: lucide-react (Version: 0.439.0)
+Package: jsdom (Version: 25.0.1)
+License: MIT
+--------------------------------------------------------------------------------
+
+Copyright (c) 2010 Elijah Insua
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+Package: lucide-react (Version: 1.55.0)
 License: ISC
 --------------------------------------------------------------------------------
 
 ISC License
 
-Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are held by Lucide Contributors 2022.
+Copyright (c) 2026 Lucide Icons and Contributors
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
@@ -906,8 +964,36 @@ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+---
+
+The following Lucide icons are derived from the Feather project:
+
+airplay, alert-circle, alert-octagon, alert-triangle, aperture, arrow-down-circle, arrow-down-left, arrow-down-right, arrow-down, arrow-left-circle, arrow-left, arrow-right-circle, arrow-right, arrow-up-circle, arrow-up-left, arrow-up-right, arrow-up, at-sign, calendar, cast, check, chevron-down, chevron-left, chevron-right, chevron-up, chevrons-down, chevrons-left, chevrons-right, chevrons-up, circle, clipboard, clock, code, columns, command, compass, corner-down-left, corner-down-right, corner-left-down, corner-left-up, corner-right-down, corner-right-up, corner-up-left, corner-up-right, crosshair, database, divide-circle, divide-square, dollar-sign, download, external-link, feather, frown, hash, headphones, help-circle, info, italic, key, layout, life-buoy, link-2, link, loader, lock, log-in, log-out, maximize, meh, minimize, minimize-2, minus-circle, minus-square, minus, monitor, moon, more-horizontal, more-vertical, move, music, navigation-2, navigation, octagon, pause-circle, percent, plus-circle, plus-square, plus, power, radio, rss, search, server, share, shopping-bag, sidebar, smartphone, smile, square, table-2, tablet, target, terminal, trash-2, trash, triangle, tv, type, upload, x-circle, x-octagon, x-square, x, zoom-in, zoom-out
+
+The MIT License (MIT) (for the icons listed above)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
 --------------------------------------------------------------------------------
-Package: playwright (Version: 1.63.0)
+Package: playwright (Version: 1.64.0)
 License: Apache-2.0
 --------------------------------------------------------------------------------
 
@@ -1176,7 +1262,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: react-window (Version: 1.8.11)
+Package: react-window (Version: 2.3.4)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -1203,7 +1289,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: sonner (Version: 1.7.4)
+Package: semver (Version: 6.3.1)
+License: ISC
+--------------------------------------------------------------------------------
+
+The ISC License
+
+Copyright (c) Isaac Z. Schlueter and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
+IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+--------------------------------------------------------------------------------
+Package: sonner (Version: 2.0.8)
 License: MIT
 --------------------------------------------------------------------------------
 
@@ -1230,7 +1337,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-Package: tailwind-merge (Version: 2.6.1)
+Package: tailwind-merge (Version: 3.7.0)
 License: MIT
 --------------------------------------------------------------------------------
 

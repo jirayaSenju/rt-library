@@ -68,7 +68,7 @@ jobs:
 
       - name: Build Windows Release Candidate Package
         if: matrix.os == 'windows-latest'
-        run: npx electron-builder --win nsis --publish never
+        run: npx electron-builder --win portable --publish never
         env:
           GH_TOKEN: ""
 
@@ -87,7 +87,7 @@ jobs:
           name: windows-validation-report
           path: |
             windows-runtime-report.json
-            dist-desktop/*setup.exe
+            dist-desktop/*portable.exe
           if-no-files-found: warn
           retention-days: 7
 

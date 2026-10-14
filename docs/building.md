@@ -67,7 +67,7 @@ npm run package:linux
 
 ### Package for Windows
 ```bash
-# Build NSIS installer into dist-desktop/ (RT-Library-${version}-windows-x64-setup.exe)
+# Build portable executable into dist-desktop/ (RT-Library-${version}-windows-x64-portable.exe)
 npm run package:win
 ```
 

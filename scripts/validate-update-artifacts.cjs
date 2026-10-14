@@ -1,6 +1,6 @@
 /**
  * Release validation script to ensure all auto-updater metadata and binary assets
- * required for Linux AppImage and Windows NSIS self-updating exist and are consistent.
+ * required for Linux AppImage and Windows Portable self-updating exist and are consistent.
  */
 
 const fs = require('fs');

@@ -35,10 +35,15 @@ For Debian, Ubuntu, Linux Mint, and derivatives:
 
 ## Windows Installation
 
-### 1. NSIS Installer (`.exe`)
-1. Download `RT-Library-Setup-<version>.exe`.
-2. Run the installer and select your preferred installation directory.
-3. Launch **RT Library** from the Start Menu or desktop shortcut.
+### Portable Executable (`.exe`)
+RT-Library for Windows is distributed as a standalone portable executable:
+
+1. Download `RT-Library-<version>-windows-x64-portable.exe` from GitHub Releases.
+2. Place the executable in any writable directory (e.g. `C:\Tools\RT-Library\` or your user folder).
+3. Run `RT-Library-<version>-windows-x64-portable.exe` directly. No installation is required.
+4. User data, SQLite catalog database (`rt-library-v2.sqlite`), settings, and favorites are stored in `%APPDATA%\rt-library` and persist safely across updates.
+
+> **Migrating from Legacy NSIS Installer**: If you previously installed RT-Library using the NSIS setup installer, you can safely uninstall the previous version via Windows *Settings > Apps*. Your catalog database and preferences located in `%APPDATA%\rt-library` are preserved and will automatically load when running the portable executable.
 
 ---
 

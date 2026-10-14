@@ -64,7 +64,7 @@ async function validatePublishedRelease(version) {
   const requiredAssets = [
     { name: `RT-Library-${cleanVersion}-linux-x86_64.AppImage`, category: 'Linux Binary', required: true },
     { name: 'latest-linux.yml', category: 'Linux Update Metadata', required: true },
-    { name: `RT-Library-${cleanVersion}-windows-setup.exe`, category: 'Windows Installer', required: true },
+    { name: `RT-Library-${cleanVersion}-windows-x64-portable.exe`, category: 'Windows Portable', required: true },
     { name: 'latest.yml', category: 'Windows Update Metadata', required: true },
     { name: `rt-library-browser-companion-v${cleanVersion}.zip`, category: 'Browser Companion', required: true },
     { name: 'SHA256SUMS.txt', category: 'Integrity Checksums', required: true },
@@ -108,3 +108,4 @@ if (require.main === module) {
 module.exports = {
   validatePublishedRelease,
 };
+

@@ -95,7 +95,7 @@ This checklist must be strictly completed and verified prior to any public relea
 
 ## 8. Windows Packaging & Verification
 
-- [ ] Windows NSIS setup installer generated on Windows runner (`RT-Library-${version}-windows-x64-setup.exe`)
+- [ ] Windows portable executable generated on Windows runner (`RT-Library-${version}-windows-x64-portable.exe`)
 - [ ] Native `better-sqlite3` compiled for Electron Windows x64
 - [ ] Package verification passes with zero local data or cookies bundled
 - [ ] Code signing status documented (`WINDOWS_CODE_SIGNING: NOT CONFIGURED`)
