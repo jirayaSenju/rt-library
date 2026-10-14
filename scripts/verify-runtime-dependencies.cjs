@@ -67,11 +67,15 @@ function verifyRuntimeDependencies() {
   const hasJsdom = asarFiles.has('node_modules/jsdom/package.json');
   console.log(`  - node_modules/jsdom: ${hasJsdom ? '✅ PRESENT in app.asar' : '❌ MISSING from app.asar'}`);
 
-  // 2. Verify parser presence in app.asar
+  // 2. Verify semver presence in app.asar
+  const hasSemver = asarFiles.has('node_modules/semver/package.json');
+  console.log(`  - node_modules/semver: ${hasSemver ? '✅ PRESENT in app.asar' : '❌ MISSING from app.asar'}`);
+
+  // 3. Verify parser presence in app.asar
   const hasParser = asarFiles.has('scraper/parsers/rutrackerHtmlParser.cjs');
   console.log(`  - rutrackerHtmlParser: ${hasParser ? '✅ PRESENT in app.asar' : '❌ MISSING from app.asar'}`);
 
-  // 3. Verify better-sqlite3 in app.asar.unpacked
+  // 4. Verify better-sqlite3 in app.asar.unpacked
   const resourcesDir = path.dirname(asarPath);
   const unpackedDir = path.join(resourcesDir, 'app.asar.unpacked');
   const sqliteNativeExists =
@@ -79,7 +83,7 @@ function verifyRuntimeDependencies() {
     fs.existsSync(path.join(resourcesDir, 'node_modules', 'better-sqlite3'));
   console.log(`  - native better-sqlite3: ${sqliteNativeExists ? '✅ UNPACKED OK' : '❌ MISSING from unpacked'}`);
 
-  if (!hasJsdom || !hasParser || !sqliteNativeExists) {
+  if (!hasJsdom || !hasSemver || !hasParser || !sqliteNativeExists) {
     console.error('\n❌ [DEPENDENCY_AUDIT][FAILED] Mandatory runtime modules missing from package.');
     process.exit(1);
   }
@@ -101,6 +105,15 @@ function verifyRuntimeDependencies() {
         // Test jsdom
         const jsdom = require(path.join(asarPath, 'node_modules', 'jsdom'));
         console.log('JSDOM_LOAD: PASS');
+
+        // Test semver
+        const semver = require(path.join(asarPath, 'node_modules', 'semver'));
+        if (typeof semver.valid !== 'function') throw new Error('semver.valid is not a function');
+        console.log('SEMVER_LOAD: PASS');
+
+        // Test updaterManager
+        const { getUpdaterManager } = require(path.join(asarPath, 'electron', 'updater', 'updaterManager.cjs'));
+        console.log('UPDATER_LOAD: PASS');
 
         // Test parser
         const parser = require(path.join(asarPath, 'scraper', 'parsers', 'rutrackerHtmlParser.cjs'));
