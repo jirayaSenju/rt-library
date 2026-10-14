@@ -68,6 +68,7 @@ async function validatePublishedRelease(version) {
     { name: 'latest.yml', category: 'Windows Update Metadata', required: true },
     { name: `rt-library-browser-companion-v${cleanVersion}.zip`, category: 'Browser Companion', required: true },
     { name: 'SHA256SUMS.txt', category: 'Integrity Checksums', required: true },
+    { name: 'release-manifest.json', category: 'Build Provenance', required: true },
   ];
 
   let anyFailed = false;

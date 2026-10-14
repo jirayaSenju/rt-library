@@ -49,9 +49,14 @@ async function packageCompanion(targetOutputDir) {
     throw new Error(`Version mismatch: package.json (${version}) does not match manifest.json (${manifestVersion})`);
   }
 
-  // 1. Build & Validate
-  console.log('\n>>> Building browser-companion/dist...');
-  execSync('npm run companion:build', { cwd: PROJECT_ROOT, stdio: 'inherit' });
+  // 1. Build & Validate. CI release jobs can reuse the exact validated main artifact.
+  const skipBuild = process.argv.includes('--skip-build');
+  if (skipBuild) {
+    console.log('\n>>> Reusing the validated browser-companion/dist artifact...');
+  } else {
+    console.log('\n>>> Building browser-companion/dist...');
+    execSync('npm run companion:build', { cwd: PROJECT_ROOT, stdio: 'inherit' });
+  }
 
   console.log('>>> Validating browser-companion/dist...');
   execSync('npm run companion:validate', { cwd: PROJECT_ROOT, stdio: 'inherit' });
@@ -122,7 +127,7 @@ async function packageCompanion(targetOutputDir) {
 }
 
 if (require.main === module) {
-  const targetDir = process.argv[2] || null;
+  const targetDir = process.argv.slice(2).find((arg) => arg !== '--skip-build') || null;
   packageCompanion(targetDir).catch((err) => {
     console.error(`\n❌ Error packaging Browser Companion: ${err.message}`);
     process.exit(1);

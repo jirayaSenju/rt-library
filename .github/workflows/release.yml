@@ -62,58 +62,11 @@ jobs:
             echo "No previous release tag found; checking repository history."
           fi
 
-          should_release=false
-          release_commit_regex='^(feat|fix|perf|revert)(\([^)]*\))?:[[:space:]]+'
-          breaking_commit_regex='^([[:alnum:]_-]+)(\([^)]*\))?!:[[:space:]]+'
-          conventional_commit_regex='^([[:alnum:]_-]+)(\([^)]*\))?:[[:space:]]+'
-          while IFS= read -r commit; do
-            subject="$(git show -s --format=%s "$commit")"
-            body="$(git show -s --format=%b "$commit")"
-
-            has_code_changes=false
-            while IFS= read -r changed_file; do
-              case "$changed_file" in
-                .github/*|docs/*|*/README.md|README.md|CHANGELOG.md|CONTRIBUTING.md|SECURITY.md|LEGAL.md|LICENSE|LICENSE.*|THIRD_PARTY_*|benchmark-results/*|scratch/*|dist/*|dist-desktop/*|*.md)
-                  ;;
-                *)
-                  has_code_changes=true
-                  break
-                  ;;
-              esac
-            done < <(git diff-tree --no-commit-id --name-only -r --root "$commit")
-
-            if [[ "$has_code_changes" != true ]]; then
-              echo "Ignoring non-code commit: ${subject}"
-              continue
-            fi
-
-            if [[ "$subject" =~ $release_commit_regex ]]; then
-              should_release=true
-              echo "Release enabled by Conventional Commit: ${subject}"
-              break
-            fi
-
-            if [[ "$subject" =~ $breaking_commit_regex ]]; then
-              commit_type="${BASH_REMATCH[1]}"
-              if [[ "$commit_type" != "docs" ]]; then
-                should_release=true
-                echo "Release enabled by breaking Conventional Commit: ${subject}"
-                break
-              fi
-            fi
-
-            if [[ "$subject" =~ $conventional_commit_regex ]]; then
-              commit_type="${BASH_REMATCH[1]}"
-              if [[ "$commit_type" != "docs" ]] && grep -qE '^BREAKING[ -]CHANGE:' <<< "$body"; then
-                should_release=true
-                echo "Release enabled by breaking change footer in: ${subject}"
-                break
-              fi
-            fi
-          done < <(git rev-list "$commit_range")
+          classification="$(node scripts/classify-workflow-changes.cjs release "${TARGET_SHA}")"
+          should_release="${classification#release_candidate=}"
 
           if [[ "$should_release" == false ]]; then
-            echo "No release-triggering Conventional Commits found. Documentation-only and maintenance-only changes will not be released."
+            echo "No release-triggering Conventional Commit with application code changes found."
           else
             release_version="${RELEASE_TAG#v}"
             if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
@@ -163,27 +116,60 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
+        if: inputs.target_sha == ''
         run: npm ci
 
       - name: Run Test Suite
+        if: inputs.target_sha == ''
         run: npm test
 
       - name: Build Frontend Bundle
+        if: inputs.target_sha == ''
         run: npm run build
 
       - name: Audit Third-Party Licenses
+        if: inputs.target_sha == ''
         run: npm run audit:licenses
 
       - name: Run Publication Readiness & Privacy Scanner
+        if: inputs.target_sha == ''
         run: npm run release:check
 
       - name: Build & Validate Browser Companion
+        if: inputs.target_sha == ''
         run: |
           npm run companion:build
           npm run companion:validate
 
       - name: Validate Semantic Versioning & Tag Consistency
         run: node scripts/validate-release-version.cjs "${{ needs.release-eligibility.outputs.release_tag }}"
+
+      - name: Stage Validated Build Inputs for Manual Tag Release
+        if: inputs.target_sha == ''
+        run: |
+          mkdir -p .release-inputs/frontend/payload .release-inputs/companion/payload
+          cp -a dist/. .release-inputs/frontend/payload/
+          cp -a browser-companion/dist/. .release-inputs/companion/payload/
+          node scripts/workflow-artifacts.cjs create-input .release-inputs/frontend frontend universal
+          node scripts/workflow-artifacts.cjs create-input .release-inputs/companion companion universal
+
+      - name: Upload Validated Frontend Build
+        if: inputs.target_sha == ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: rt-library-frontend-${{ needs.release-eligibility.outputs.target_sha }}
+          path: .release-inputs/frontend/**
+          if-no-files-found: error
+          retention-days: 5
+
+      - name: Upload Validated Browser Companion Build
+        if: inputs.target_sha == ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: rt-library-companion-build-${{ needs.release-eligibility.outputs.target_sha }}
+          path: .release-inputs/companion/**
+          if-no-files-found: error
+          retention-days: 5
 
   # ----------------------------------------------------------------------------
   # 2. Linux AppImage Build
@@ -192,6 +178,8 @@ jobs:
     name: Build Linux AppImage
     needs: [validate, release-eligibility]
     runs-on: ubuntu-latest
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v7
@@ -204,17 +192,51 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Read Electron Version
+        id: electron-version
+        shell: bash
+        run: |
+          electron_version="$(node -p "require('./package-lock.json').packages['node_modules/electron'].version")"
+          echo "version=${electron_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Electron Build Downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: ${{ runner.os }}-electron-${{ steps.electron-version.outputs.version }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-${{ steps.electron-version.outputs.version }}-
+
       - name: Install Dependencies
         run: npm ci
+        env:
+          ELECTRON_CACHE: ~/.cache/electron
+          ELECTRON_BUILDER_CACHE: ~/.cache/electron-builder
 
-      - name: Build Frontend Bundle
-        run: npm run build
+      - name: Download Validated Frontend Build
+        uses: actions/download-artifact@v8
+        with:
+          name: rt-library-frontend-${{ needs.release-eligibility.outputs.target_sha }}
+          path: .release-inputs/frontend
+
+      - name: Verify Frontend Build Provenance and Restore Output
+        run: |
+          node scripts/workflow-artifacts.cjs verify-input .release-inputs/frontend frontend "${RELEASE_COMMIT}" "${RELEASE_TAG}" "${GITHUB_RUN_ID}" "${GITHUB_RUN_ATTEMPT}"
+          mkdir -p dist
+          cp -a .release-inputs/frontend/payload/. dist/
+        env:
+          RELEASE_COMMIT: ${{ needs.release-eligibility.outputs.target_sha }}
+          RELEASE_TAG: ${{ needs.release-eligibility.outputs.release_tag }}
 
       - name: Package Linux Desktop AppImage
         run: npx electron-builder --linux AppImage --publish never
         env:
           # Prevent electron-builder from attempting auto-publish when a tag is detected
           GH_TOKEN: ""
+          ELECTRON_CACHE: ~/.cache/electron
+          ELECTRON_BUILDER_CACHE: ~/.cache/electron-builder
 
       - name: Verify Packaged Runtime Integrity
         run: npm run package:verify
@@ -228,6 +250,7 @@ jobs:
           RELEASE_TAG: ${{ needs.release-eligibility.outputs.release_tag }}
 
       - name: Upload Linux AppImage & Update Artifacts
+        id: upload
         uses: actions/upload-artifact@v7
         with:
           name: rt-library-linux-${{ needs.release-eligibility.outputs.release_tag }}
@@ -245,6 +268,8 @@ jobs:
     name: Build Windows Portable Executable
     needs: [validate, release-eligibility]
     runs-on: windows-latest
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v7
@@ -257,11 +282,44 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Read Electron Version
+        id: electron-version
+        shell: bash
+        run: |
+          electron_version="$(node -p "require('./package-lock.json').packages['node_modules/electron'].version")"
+          echo "version=${electron_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Electron Build Downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}\electron-cache
+            ${{ runner.temp }}\electron-builder-cache
+          key: ${{ runner.os }}-electron-${{ steps.electron-version.outputs.version }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-${{ steps.electron-version.outputs.version }}-
+
       - name: Install Dependencies
         run: npm ci
+        env:
+          ELECTRON_CACHE: ${{ runner.temp }}\electron-cache
+          ELECTRON_BUILDER_CACHE: ${{ runner.temp }}\electron-builder-cache
 
-      - name: Build Frontend Bundle
-        run: npm run build
+      - name: Download Validated Frontend Build
+        uses: actions/download-artifact@v8
+        with:
+          name: rt-library-frontend-${{ needs.release-eligibility.outputs.target_sha }}
+          path: .release-inputs/frontend
+
+      - name: Verify Frontend Build Provenance and Restore Output
+        shell: bash
+        run: |
+          node scripts/workflow-artifacts.cjs verify-input .release-inputs/frontend frontend "$RELEASE_COMMIT" "$RELEASE_TAG" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+          mkdir -p dist
+          cp -a .release-inputs/frontend/payload/. dist/
+        env:
+          RELEASE_COMMIT: ${{ needs.release-eligibility.outputs.target_sha }}
+          RELEASE_TAG: ${{ needs.release-eligibility.outputs.release_tag }}
 
       - name: Package Windows Portable Executable
         run: |
@@ -270,6 +328,8 @@ jobs:
         env:
           # Prevent electron-builder from attempting auto-publish when a tag is detected
           GH_TOKEN: ""
+          ELECTRON_CACHE: ${{ runner.temp }}\electron-cache
+          ELECTRON_BUILDER_CACHE: ${{ runner.temp }}\electron-builder-cache
 
       - name: Verify Packaged Runtime Integrity
         run: npm run package:verify
@@ -283,6 +343,7 @@ jobs:
           RELEASE_TAG: ${{ needs.release-eligibility.outputs.release_tag }}
 
       - name: Upload Windows Portable & Update Artifacts
+        id: upload
         uses: actions/upload-artifact@v7
         with:
           name: rt-library-windows-${{ needs.release-eligibility.outputs.release_tag }}
@@ -299,6 +360,8 @@ jobs:
     name: Package Browser Companion
     needs: [validate, release-eligibility]
     runs-on: ubuntu-latest
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v7
@@ -312,14 +375,30 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
+
+      - name: Download Validated Browser Companion Build
+        uses: actions/download-artifact@v8
+        with:
+          name: rt-library-companion-build-${{ needs.release-eligibility.outputs.target_sha }}
+          path: .release-inputs/companion
+
+      - name: Verify Companion Build Provenance and Restore Output
+        run: |
+          node scripts/workflow-artifacts.cjs verify-input .release-inputs/companion companion "${RELEASE_COMMIT}" "${RELEASE_TAG}" "${GITHUB_RUN_ID}" "${GITHUB_RUN_ATTEMPT}"
+          mkdir -p browser-companion/dist
+          cp -a .release-inputs/companion/payload/. browser-companion/dist/
+        env:
+          RELEASE_COMMIT: ${{ needs.release-eligibility.outputs.target_sha }}
+          RELEASE_TAG: ${{ needs.release-eligibility.outputs.release_tag }}
 
       - name: Package Browser Companion Archive
         run: |
           mkdir -p dist-companion
-          node scripts/package-browser-companion.cjs dist-companion
+          node scripts/package-browser-companion.cjs dist-companion --skip-build
 
       - name: Upload Browser Companion Artifact
+        id: upload
         uses: actions/upload-artifact@v7
         with:
           name: rt-library-companion-${{ needs.release-eligibility.outputs.release_tag }}
@@ -448,6 +527,15 @@ jobs:
           echo "=== SHA256SUMS.txt ==="
           cat SHA256SUMS.txt
 
+      - name: Create Release Provenance Manifest
+        run: node scripts/workflow-artifacts.cjs create-release release-assets
+        env:
+          RELEASE_COMMIT: ${{ needs.release-eligibility.outputs.target_sha }}
+          RELEASE_VERSION: ${{ needs.release-eligibility.outputs.release_tag }}
+          LINUX_ARTIFACT_ID: ${{ needs.build-linux.outputs.artifact_id }}
+          WINDOWS_ARTIFACT_ID: ${{ needs.build-windows.outputs.artifact_id }}
+          COMPANION_ARTIFACT_ID: ${{ needs.package-companion.outputs.artifact_id }}
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
         with:
@@ -462,6 +550,7 @@ jobs:
             release-assets/latest.yml
             release-assets/*.blockmap
             release-assets/SHA256SUMS.txt
+            release-assets/release-manifest.json
           generate_release_notes: true
           draft: false
           prerelease: false

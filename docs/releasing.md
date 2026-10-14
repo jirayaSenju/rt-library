@@ -105,7 +105,9 @@ The tag-triggered release workflow remains available for manually pushed release
 
 ## 3. Automated GitHub Actions Pipeline
 
-After a push to `main`, `.github/workflows/ci.yml` waits for the Linux and Windows validation matrix to pass, reads the SemVer version from `package.json`, and calls `.github/workflows/release.yml`. The reusable release workflow checks Conventional Commits since the previous release, confirms at least one application code file changed, and verifies the version is strict SemVer newer than the previous tag. It validates, packages, and publishes only release-worthy code changes. Documentation-only and CI-only changes skip publication. The GitHub Release action creates the tag automatically; no manual tag push is needed. Manually pushed `v*.*.*` tags continue to use the same release workflow.
+`.github/workflows/ci.yml` starts on pull requests to `main` and pushes to `main`. It classifies changed paths, then runs tests, typecheck, and Windows native runtime validation on Ubuntu and Windows. Ubuntu builds the frontend, audits licenses, checks publication readiness, and builds the Companion only when Companion files changed or a release is eligible. Pull requests package Linux and Windows smoke binaries only when desktop packaging or updater files changed; these are validation artifacts retained for one day and are never release inputs.
+
+After a successful `main` matrix, a release-worthy code change with a newer strict SemVer version stages the validated frontend and Companion outputs. The reusable `.github/workflows/release.yml` then builds the Linux AppImage and Windows portable executable for the exact commit, verifies the staged build inputs, packages the Companion, and publishes the assets. Automatic release validation reuses the successful CI tests and builds instead of repeating them. Manually pushed `v*.*.*` tags still run the full validation and build the frontend and Companion in that tag-triggered run.
 
 ```mermaid
 graph TD
@@ -113,7 +115,7 @@ graph TD
     Version --> Eligibility["0. Check Conventional Commit types and version"]
     Eligibility -->|"Release-worthy code change"| Validate["1. Validate Job<br/>(Linux Runner)"]
     Validate --> BuildLinux["2a. Build Linux<br/>(AppImage)"]
-    Validate --> BuildWin["2b. Build Windows<br/>(NSIS EXE)"]
+    Validate --> BuildWin["2b. Build Windows<br/>(Portable EXE)"]
     BuildLinux --> Release["3. Release Job<br/>(Aggregate & Verify)"]
     BuildWin --> Release
     Release --> Checksums["Generate SHA256SUMS.txt"]
@@ -123,15 +125,26 @@ graph TD
 ```
 
 ### Pipeline Jobs & Guarantees:
-0. **`prepare-release` / `release-eligibility`**: After the successful main CI matrix, reads the package version and scans commits since the previous release tag. Only commits using `feat`, `fix`, `perf`, `revert`, or a non-documentation breaking change and changing application code, with a newer strict SemVer version, enable the release jobs. CI-only and documentation-only changes are ignored.
-1. **`validate` Gate**: Runs on `ubuntu-latest` when the eligibility gate passes. Executes the test suite, frontend compilation, license audit, release readiness scan, and SemVer tag consistency check. If any check fails, packaging jobs do not start.
-2. **`build-linux`**: Runs on `ubuntu-latest`. Compiles native `better-sqlite3` for Linux, packages the desktop AppImage, and verifies archive runtime integrity (`npm run package:verify`).
-3. **`build-windows`**: Runs on native `windows-latest`. Compiles native `better-sqlite3` for Windows x64 and generates the NSIS setup installer (`.exe`).
-4. **`release`**: Runs on `ubuntu-latest` after both builds succeed:
+0. **`detect-changes`**: Uses the shared path classifier to identify desktop, Companion, packaging, updater, and release-worthy changes. Documentation, CI, tests, and generated files do not independently trigger an application release.
+1. **`test-matrix`**: Runs tests and typecheck on Ubuntu and Windows, the frontend build/license/readiness checks on Ubuntu, and the Windows native runtime smoke check on Windows. PR package smoke builds run only for packaging-sensitive changes. `npm ci` already invokes `electron-builder install-app-deps` through `postinstall`, so the duplicate explicit install step was removed.
+2. **`prepare-release` / `release-eligibility`**: After the successful main matrix, reads the package version and scans commits since the previous release tag. Only `feat`, `fix`, `perf`, `revert`, or a non-documentation breaking change that changes application code, with a newer strict SemVer version, enables release jobs. CI-only and documentation-only changes skip publication.
+3. **`validate` Gate**: Automatic releases reuse the successful main CI validation. A manual tag run performs the full test, frontend, license, readiness, and Companion checks and stages its own build inputs.
+4. **`build-linux`**: Runs on `ubuntu-latest`, verifies the exact-SHA frontend artifact, packages the AppImage, and verifies runtime integrity and updater metadata.
+5. **`build-windows`**: Runs on native `windows-latest`, verifies the exact-SHA frontend artifact, packages the portable executable, and validates updater metadata.
+6. **`package-companion`**: Verifies the exact-SHA Companion build before creating its zip archive.
+7. **`release`**: Runs on `ubuntu-latest` after platform packages and Companion succeed:
    - Downloads all compiled binary artifacts.
-   - Strictly verifies that only the expected binaries (1 AppImage and 1 NSIS EXE) exist.
-   - Computes `SHA256SUMS.txt` cryptographic hashes.
-   - Deploys the release assets and release notes directly to GitHub Releases.
+   - Strictly verifies the expected AppImage, portable executable, Companion zip, and update metadata.
+   - Computes `SHA256SUMS.txt` and a `release-manifest.json` with source commit, version, workflow run, artifact IDs, platform, and SHA-256 for each asset.
+   - Publishes the release assets and release notes directly to GitHub Releases.
+
+### Artifact and cache policy
+
+- PR package smoke artifacts are retained for one day. They are generated only for package-sensitive changes and cannot be consumed by release jobs.
+- Main frontend and Companion inputs are uploaded only for release candidates, named by commit SHA, and retained for seven days. The release jobs require matching commit, version, workflow run ID and attempt, and file hashes before packaging.
+- Published GitHub Release assets are the durable downloads and include checksums and the provenance manifest. Intermediate package artifacts are retained for five days.
+- `setup-node` caches npm data from `package-lock.json`; Electron and electron-builder download caches are keyed by OS, Electron version, and lockfile with a same-OS/version restore prefix. `node_modules` is not cached.
+- Electron packages still install on each native platform runner because their native modules must match that platform. Linux and Windows packaging therefore remain separate jobs; the release no longer repeats the cross-platform test suite or rebuilds the already validated frontend and Companion inputs.
 
 ---
 
