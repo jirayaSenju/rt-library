@@ -93,3 +93,34 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  prepare-release:
+    name: Prepare Automatic Release
+    needs: [test-matrix]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      target_sha: ${{ github.sha }}
+    steps:
+      - name: Checkout Successful Main Build
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Read Package SemVer
+        id: version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "Detected package version: ${VERSION}"
+          echo "release_tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+  publish-release:
+    name: Build & Publish SemVer Release
+    needs: [prepare-release]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      release_tag: ${{ needs.prepare-release.outputs.release_tag }}
+      target_sha: ${{ needs.prepare-release.outputs.target_sha }}
+
