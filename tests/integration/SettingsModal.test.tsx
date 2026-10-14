@@ -133,13 +133,13 @@ describe("SettingsModal integration tests", () => {
     // Test clicking a terminal theme (e.g. Dracula) via compact combobox
     const themeTrigger = screen.getByRole("combobox", { name: /tema do aplicativo|application theme/i })
     await user.click(themeTrigger)
-    const draculaBtn = screen.getByRole("option", { name: /dracula/i })
+    const draculaBtn = await screen.findByRole("option", { name: /dracula/i })
     await user.click(draculaBtn)
     expect(handleSelectTheme).toHaveBeenCalledWith("dracula")
 
     // Test clicking a community theme (e.g. Pride) via compact combobox
     await user.click(themeTrigger)
-    const prideBtn = screen.getByRole("option", { name: /^Pride\b/i })
+    const prideBtn = await screen.findByRole("option", { name: /^Pride\b/i })
     await user.click(prideBtn)
     expect(handleSelectTheme).toHaveBeenCalledWith("pride")
   })
@@ -164,7 +164,7 @@ describe("SettingsModal integration tests", () => {
 
     const langTrigger = screen.getByRole("combobox", { name: /idioma|language/i })
     await user.click(langTrigger)
-    const enOption = screen.getByRole("option", { name: /english/i })
+    const enOption = await screen.findByRole("option", { name: /english/i })
     await user.click(enOption)
 
     // Verify labels updated to English immediately
@@ -235,19 +235,19 @@ describe("SettingsModal integration tests", () => {
     expect(progressTrigger).toBeInTheDocument()
     await user.click(progressTrigger)
 
-    expect(screen.getByRole("option", { name: /Nyan Cat/i })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: /Claude Code/i })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: /Matrix Rain/i })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: /Synthwave/i })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: /Arcade Pixel/i })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: /Lava Lamp/i })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: /Rainbow Pop/i })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: /Ocean Wave/i })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: /Candy Rush/i })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: /Cosmic Nebula/i })).toBeInTheDocument()
+    expect(await screen.findByRole("option", { name: /Nyan Cat/i })).toBeInTheDocument()
+    expect(await screen.findByRole("option", { name: /Claude Code/i })).toBeInTheDocument()
+    expect(await screen.findByRole("option", { name: /Matrix Rain/i })).toBeInTheDocument()
+    expect(await screen.findByRole("option", { name: /Synthwave/i })).toBeInTheDocument()
+    expect(await screen.findByRole("option", { name: /Arcade Pixel/i })).toBeInTheDocument()
+    expect(await screen.findByRole("option", { name: /Lava Lamp/i })).toBeInTheDocument()
+    expect(await screen.findByRole("option", { name: /Rainbow Pop/i })).toBeInTheDocument()
+    expect(await screen.findByRole("option", { name: /Ocean Wave/i })).toBeInTheDocument()
+    expect(await screen.findByRole("option", { name: /Candy Rush/i })).toBeInTheDocument()
+    expect(await screen.findByRole("option", { name: /Cosmic Nebula/i })).toBeInTheDocument()
 
     // Click on Synthwave progress theme
-    const synthwaveOption = screen.getByRole("option", { name: /Synthwave/i })
+    const synthwaveOption = await screen.findByRole("option", { name: /Synthwave/i })
     await user.click(synthwaveOption)
     expect(screen.getByRole("combobox", { name: /estilo da barra de progresso|progress bar style/i })).toHaveTextContent(/Synthwave/i)
   })
@@ -279,7 +279,7 @@ describe("SettingsModal integration tests", () => {
     await user.click(themeTrigger)
 
     // Hover over Nord theme option
-    const nordBtn = screen.getByRole("option", { name: /nord/i })
+    const nordBtn = await screen.findByRole("option", { name: /nord/i })
     await user.hover(nordBtn)
     expect(screen.getByText(/(Preview|Prévia): Nord/i)).toBeInTheDocument()
     expect(handleSelectTheme).not.toHaveBeenCalled()
@@ -310,7 +310,7 @@ describe("SettingsModal integration tests", () => {
     const themeTrigger = screen.getByRole("combobox", { name: /tema do aplicativo|application theme/i })
     await user.click(themeTrigger)
 
-    const draculaBtn = screen.getByRole("option", { name: /dracula/i })
+    const draculaBtn = await screen.findByRole("option", { name: /dracula/i })
     await user.hover(draculaBtn)
     expect(screen.getByText(/(Preview|Prévia): Dracula/i)).toBeInTheDocument()
 
@@ -343,7 +343,7 @@ describe("SettingsModal integration tests", () => {
     await user.click(progressTrigger)
 
     // Hover over Matrix Rain option
-    const matrixBtn = screen.getByRole("option", { name: /Matrix Rain/i })
+    const matrixBtn = await screen.findByRole("option", { name: /Matrix Rain/i })
     await user.hover(matrixBtn)
     expect(screen.getAllByText(/Matrix Rain/i).length).toBeGreaterThan(0)
   })
