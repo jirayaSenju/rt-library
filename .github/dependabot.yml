@@ -5,16 +5,44 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
     ignore:
       # Native bindings and critical runtime cores require manual evaluation
       - dependency-name: "electron"
       - dependency-name: "better-sqlite3"
       - dependency-name: "electron-builder"
+      # Major framework versions require manual architectural migration
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@radix-ui/*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      react-ecosystem:
+        patterns:
+          - "react*"
+          - "@types/react*"
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
+    groups:
+      actions-artifacts:
+        patterns:
+          - "actions/*-artifact"
+
 
