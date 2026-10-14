@@ -10,7 +10,6 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const yaml = require('js-yaml');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 
@@ -38,21 +37,16 @@ function generatePortableMetadata(dirPath = 'dist-desktop', targetVersion) {
   const size = fileBuffer.length;
   const releaseDate = new Date().toISOString();
 
-  const metadata = {
-    version,
-    files: [
-      {
-        url: portableExe,
-        sha512,
-        size,
-      },
-    ],
-    path: portableExe,
-    sha512,
-    releaseDate,
-  };
+  const yamlContent = `version: ${version}
+files:
+  - url: ${portableExe}
+    sha512: ${sha512}
+    size: ${size}
+path: ${portableExe}
+sha512: ${sha512}
+releaseDate: '${releaseDate}'
+`;
 
-  const yamlContent = yaml.dump(metadata, { lineWidth: -1 });
   const outPath = path.join(root, 'latest.yml');
   fs.writeFileSync(outPath, yamlContent, 'utf8');
 

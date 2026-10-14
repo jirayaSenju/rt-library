@@ -5,7 +5,33 @@
 
 const fs = require('fs');
 const path = require('path');
-const yaml = require('js-yaml');
+
+let yaml;
+try {
+  yaml = require('js-yaml');
+} catch (_) {
+  // Zero-dependency fallback parser for flat latest*.yml metadata files
+  yaml = {
+    load: (content) => {
+      const result = { files: [] };
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        const vMatch = trimmed.match(/^version:\s*['"]?([^'"]+)['"]?$/);
+        if (vMatch) result.version = vMatch[1];
+        const urlMatch = trimmed.match(/^-\s*url:\s*['"]?([^'"]+)['"]?$/) || trimmed.match(/^url:\s*['"]?([^'"]+)['"]?$/);
+        if (urlMatch) {
+          result.files.push({ url: urlMatch[1] });
+        }
+        const pathMatch = trimmed.match(/^path:\s*['"]?([^'"]+)['"]?$/);
+        if (pathMatch && result.files.length === 0) {
+          result.files.push({ url: pathMatch[1] });
+        }
+      }
+      return result;
+    },
+  };
+}
 
 function validateUpdateArtifacts(dirPath, targetVersion) {
   const root = path.resolve(dirPath);
