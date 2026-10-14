@@ -135,7 +135,7 @@ describe('Scraper access preflight', () => {
   });
 
   it('resolves the profile from the canonical Electron userData directory', () => {
-    expect(resolveScraperProfileDirectory('/home/test/.config/rt-library'))
+    expect(resolveScraperProfileDirectory('/home/test/.config/rt-library', 'linux'))
       .toBe('/home/test/.config/rt-library/scraper-profile');
     expect(resolveScraperProfileDirectory('C:\\Users\\test\\AppData\\Roaming\\rt-library', 'win32'))
       .toBe('C:\\Users\\test\\AppData\\Roaming\\rt-library\\scraper-profile');
