@@ -220,7 +220,10 @@ function verifyPackageRuntime() {
   }
 
   console.log('\n[PACKAGE_VERIFIER][SUCCESS] All mandatory runtime modules are present, and NO private/scraped/database files were packaged!\n');
-  process.exit(0);
+
+  // Verify external runtime dependencies (jsdom, better-sqlite3) and packaged parser execution
+  const { verifyRuntimeDependencies } = require('./verify-runtime-dependencies.cjs');
+  verifyRuntimeDependencies();
 }
 
 if (require.main === module) {

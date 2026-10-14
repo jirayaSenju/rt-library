@@ -59,6 +59,7 @@ import { useCompanionConnection } from '@/hooks/useCompanionConnection';
 import { SyncHealthCard } from './SyncHealthCard';
 import { AutomaticSyncCard } from './AutomaticSyncCard';
 import { toast } from 'sonner';
+import { normalizeIpcError, type NormalizedError } from '@/utils/errorNormalizer';
 
 interface ScraperPanelProps {
   onNavigateToCategories?: () => void;
@@ -114,6 +115,8 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
   const [transportPreference, setTransportPreferenceState] = useState<string>('AUTOMATIC');
   const [isEmbeddedPromoted, setIsEmbeddedPromotedState] = useState<boolean>(false);
   const [embeddedStatus, setEmbeddedStatus] = useState<'NOT_CHECKED' | 'CHECKING' | 'READY' | 'VERIFICATION_REQUIRED' | 'ERROR'>('NOT_CHECKED');
+  const [embeddedError, setEmbeddedError] = useState<NormalizedError | null>(null);
+  const [showDiagnosticsModal, setShowDiagnosticsModal] = useState(false);
   const companion = useCompanionConnection();
   const [copiedField, setCopiedField] = useState<'port' | 'token' | 'all' | 'code' | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
@@ -225,6 +228,7 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
 
   const handleEmbeddedProbe = async () => {
     setEmbeddedStatus('CHECKING');
+    setEmbeddedError(null);
     try {
       toast.info(t('settings.scraper.checkingAccess'));
       const res = await scraperService.embeddedProbe();
@@ -234,13 +238,22 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
       } else if (res?.status === 'CHALLENGE_REQUIRED') {
         setEmbeddedStatus('VERIFICATION_REQUIRED');
         toast.warning(t('settings.scraper.embeddedVerificationRequired'));
+      } else if (res?.error) {
+        setEmbeddedStatus('ERROR');
+        const norm = normalizeIpcError(res.error);
+        setEmbeddedError(norm);
+        toast.error(norm.userMessage);
       } else {
         setEmbeddedStatus('ERROR');
-        toast.error(`${t('settings.scraper.status') || 'Status'}: ${res?.status || 'Unknown'}`);
+        const norm = normalizeIpcError(res?.status ? `Status: ${res.status}` : 'Unknown error');
+        setEmbeddedError(norm);
+        toast.error(norm.userMessage);
       }
     } catch (err: any) {
       setEmbeddedStatus('ERROR');
-      toast.error(err?.message || t('settings.scraper.accessCheckFailed'));
+      const norm = normalizeIpcError(err);
+      setEmbeddedError(norm);
+      toast.error(norm.userMessage);
     }
   };
 
@@ -951,6 +964,54 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
                   </Button>
                 </div>
               </div>
+
+              {embeddedStatus === 'ERROR' && embeddedError && (
+                <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-200 text-xs space-y-2 mt-2">
+                  <div className="flex items-center gap-2 font-semibold text-rose-300">
+                    <XCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                    <span>{embeddedError.userMessage}</span>
+                  </div>
+                  {embeddedError.secondaryMessage && (
+                    <p className="text-[11px] text-rose-300/80 pl-6">
+                      {embeddedError.secondaryMessage}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 pl-6">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleEmbeddedProbe}
+                      className="h-7 text-xs border-rose-500/40 hover:bg-rose-500/20 text-rose-200"
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      <span>Retry</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSetTransportPreference('BROWSER_COMPANION')}
+                      className="h-7 text-xs border-blue-500/40 hover:bg-blue-500/20 text-blue-200"
+                    >
+                      <Globe className="h-3 w-3 mr-1" />
+                      <span>Use Browser Companion</span>
+                    </Button>
+                    {embeddedError.technicalDetails && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowDiagnosticsModal(true)}
+                        className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <Terminal className="h-3 w-3 mr-1" />
+                        <span>View Diagnostics</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1936,6 +1997,26 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
             <p>{t('onboarding.installStep3')}</p>
             <p>{t('onboarding.installStep4')}</p>
             <p>{t('onboarding.installStep5')}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Technical Diagnostics Dialog */}
+      <Dialog open={showDiagnosticsModal} onOpenChange={setShowDiagnosticsModal}>
+        <DialogContent className="max-w-xl bg-card border-border text-foreground">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <Terminal className="h-4 w-4 text-primary" />
+              <span>Technical Diagnostics</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <p className="text-xs text-muted-foreground">
+              Diagnostic trace for technical support and troubleshooting:
+            </p>
+            <pre className="p-3 bg-neutral-950 border border-border/80 rounded-lg text-[11px] font-mono text-neutral-300 max-h-60 overflow-y-auto whitespace-pre-wrap select-text">
+              {embeddedError?.technicalDetails || 'No technical details available.'}
+            </pre>
           </div>
         </DialogContent>
       </Dialog>

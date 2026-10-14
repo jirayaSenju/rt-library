@@ -3,6 +3,8 @@
  * Interfaces with Electron Preload scraper IPC
  */
 
+import { normalizeIpcError, type NormalizedError } from '../utils/errorNormalizer';
+
 export type ScraperState =
   | 'idle'
   | 'preflight'
@@ -414,14 +416,40 @@ class ScraperService {
     return await this.api.setEmbeddedPromoted(promoted);
   }
 
-  async embeddedVerify(options: { url?: string; categoryId?: string; timeoutMs?: number } = {}): Promise<{ success: boolean; status: string; url?: string }> {
+  async embeddedVerify(options: { url?: string; categoryId?: string; timeoutMs?: number } = {}): Promise<{ success: boolean; status: string; url?: string; error?: NormalizedError }> {
     if (!this.api?.embeddedVerify) throw new Error('Embedded verify API is not available');
-    return await this.api.embeddedVerify(options);
+    try {
+      const res = await this.api.embeddedVerify(options);
+      if (res && res.error) {
+        res.error = normalizeIpcError(res.error);
+      }
+      return res;
+    } catch (err: any) {
+      const normalized = normalizeIpcError(err);
+      return {
+        success: false,
+        status: 'ERROR',
+        error: normalized,
+      };
+    }
   }
 
   async embeddedProbe(options: { categoryId?: string } = {}): Promise<any> {
     if (!this.api?.embeddedProbe) throw new Error('Embedded probe API is not available');
-    return await this.api.embeddedProbe(options);
+    try {
+      const res = await this.api.embeddedProbe(options);
+      if (res && res.error) {
+        res.error = normalizeIpcError(res.error);
+      }
+      return res;
+    } catch (err: any) {
+      const normalized = normalizeIpcError(err);
+      return {
+        success: false,
+        status: normalized.code === 'SCRAPER_RUNTIME_DEPENDENCY_MISSING' ? 'RUNTIME_DEPENDENCY_MISSING' : 'ERROR',
+        error: normalized,
+      };
+    }
   }
 
   async embeddedResetSession(): Promise<{ success: boolean; error?: string }> {

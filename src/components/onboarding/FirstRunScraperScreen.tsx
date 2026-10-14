@@ -40,6 +40,7 @@ import { CategorySelector } from '@/components/scraper/CategorySelector'
 import { TemporaryConnectionNotice } from '@/components/scraper/TemporaryConnectionNotice'
 import { ScraperProgress } from '@/components/scraper/ScraperProgress'
 import { openExternal } from '@/platform/shell'
+import { normalizeIpcError, type NormalizedError } from '@/utils/errorNormalizer'
 
 const RUTRACKER_TARGET_FORUM_URL = 'https://rutracker.org/forum/viewforum.php?f=548'
 
@@ -107,6 +108,8 @@ export const FirstRunScraperScreen: React.FC<FirstRunScraperScreenProps> = ({
   const [isResuming, setIsResuming] = useState(false)
   const [transportChoice, setTransportChoice] = useState<'BUILT_IN' | 'COMPANION'>('COMPANION')
   const [embeddedStatus, setEmbeddedStatus] = useState<'UNCHECKED' | 'CHECKING' | 'READY' | 'VERIFICATION_REQUIRED' | 'ERROR'>('UNCHECKED')
+  const [embeddedProbeError, setEmbeddedProbeError] = useState<NormalizedError | null>(null)
+  const [showDiagnosticsModal, setShowDiagnosticsModal] = useState(false)
 
   // Database restore state (for restoring backup in initial setup)
   const [isRestoring, setIsRestoring] = useState(false)
@@ -309,6 +312,7 @@ export const FirstRunScraperScreen: React.FC<FirstRunScraperScreenProps> = ({
 
   const handleProbeEmbedded = async () => {
     setEmbeddedStatus('CHECKING')
+    setEmbeddedProbeError(null)
     try {
       const res = await scraperService.embeddedProbe()
       if (res?.status === 'FORUM_READY' || res?.forumDetected) {
@@ -317,13 +321,22 @@ export const FirstRunScraperScreen: React.FC<FirstRunScraperScreenProps> = ({
       } else if (res?.status === 'CHALLENGE_REQUIRED') {
         setEmbeddedStatus('VERIFICATION_REQUIRED')
         toast.warning(t('onboarding.statusVerificationHuman'))
+      } else if (res?.error) {
+        setEmbeddedStatus('ERROR')
+        const norm = normalizeIpcError(res.error)
+        setEmbeddedProbeError(norm)
+        toast.error(norm.userMessage)
       } else {
         setEmbeddedStatus('ERROR')
-        toast.error(`Status: ${res?.status || 'Unknown'}`)
+        const norm = normalizeIpcError(`Status: ${res?.status || 'Unknown'}`)
+        setEmbeddedProbeError(norm)
+        toast.error(norm.userMessage)
       }
     } catch (err: any) {
       setEmbeddedStatus('ERROR')
-      toast.error(err?.message || 'Access probe failed')
+      const norm = normalizeIpcError(err)
+      setEmbeddedProbeError(norm)
+      toast.error(norm.userMessage)
     }
   }
 
@@ -1101,35 +1114,86 @@ export const FirstRunScraperScreen: React.FC<FirstRunScraperScreenProps> = ({
                 </div>
 
                 {/* Built-in Status Feedback */}
-                <div
-                  className={cn(
-                    'p-3.5 rounded-xl border text-xs space-y-1',
-                    embeddedStatus === 'READY'
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-                      : embeddedStatus === 'VERIFICATION_REQUIRED'
-                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                      : 'border-neutral-800 bg-neutral-950/60 text-neutral-300'
-                  )}
-                >
-                  <div className="flex items-center gap-2 font-semibold">
-                    {embeddedStatus === 'READY' ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    ) : embeddedStatus === 'VERIFICATION_REQUIRED' ? (
-                      <AlertCircle className="h-4 w-4 text-amber-400" />
-                    ) : (
-                      <HelpCircle className="h-4 w-4 text-neutral-400" />
+                {embeddedStatus === 'ERROR' && embeddedProbeError ? (
+                  <div className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-200 text-xs space-y-2">
+                    <div className="flex items-center gap-2 font-semibold text-rose-300">
+                      <XCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                      <span>{embeddedProbeError.userMessage}</span>
+                    </div>
+                    {embeddedProbeError.secondaryMessage && (
+                      <p className="text-[11px] text-rose-300/80 pl-6">
+                        {embeddedProbeError.secondaryMessage}
+                      </p>
                     )}
-                    <span>
-                      {embeddedStatus === 'READY'
-                        ? t('settings.scraper.rutrackerAccessible')
-                        : embeddedStatus === 'VERIFICATION_REQUIRED'
-                        ? t('settings.scraper.rutrackerVerificationRequired')
-                        : embeddedStatus === 'CHECKING'
-                        ? t('onboarding.checkingAccess')
-                        : t('settings.scraper.rutrackerUnknown')}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2 pt-1 pl-6">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleProbeEmbedded}
+                        className="h-7 text-xs border-rose-500/40 hover:bg-rose-500/20 text-rose-200"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        <span>Retry</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setTransportChoice('COMPANION')
+                          setCurrentStep('COMPANION')
+                        }}
+                        className="h-7 text-xs border-blue-500/40 hover:bg-blue-500/20 text-blue-200"
+                      >
+                        <Globe className="h-3 w-3 mr-1" />
+                        <span>Use Browser Companion</span>
+                      </Button>
+                      {embeddedProbeError.technicalDetails && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowDiagnosticsModal(true)}
+                          className="h-7 text-xs text-neutral-400 hover:text-neutral-200"
+                        >
+                          <Terminal className="h-3 w-3 mr-1" />
+                          <span>View Diagnostics</span>
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div
+                    className={cn(
+                      'p-3.5 rounded-xl border text-xs space-y-1',
+                      embeddedStatus === 'READY'
+                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                        : embeddedStatus === 'VERIFICATION_REQUIRED'
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                        : 'border-neutral-800 bg-neutral-950/60 text-neutral-300'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 font-semibold">
+                      {embeddedStatus === 'READY' ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      ) : embeddedStatus === 'VERIFICATION_REQUIRED' ? (
+                        <AlertCircle className="h-4 w-4 text-amber-400" />
+                      ) : (
+                        <HelpCircle className="h-4 w-4 text-neutral-400" />
+                      )}
+                      <span>
+                        {embeddedStatus === 'READY'
+                          ? t('settings.scraper.rutrackerAccessible')
+                          : embeddedStatus === 'VERIFICATION_REQUIRED'
+                          ? t('settings.scraper.rutrackerVerificationRequired')
+                          : embeddedStatus === 'CHECKING'
+                          ? t('onboarding.checkingAccess')
+                          : t('settings.scraper.rutrackerUnknown')}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Ready Summary Checklist */}
                 <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-950/40 space-y-2">
@@ -1617,6 +1681,26 @@ export const FirstRunScraperScreen: React.FC<FirstRunScraperScreenProps> = ({
             >
               <span>{t('common.close')}</span>
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Technical Diagnostics Modal */}
+      <Dialog open={showDiagnosticsModal} onOpenChange={setShowDiagnosticsModal}>
+        <DialogContent className="max-w-xl bg-neutral-900 border-neutral-800 text-neutral-100">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+              <Terminal className="h-4 w-4 text-neutral-400" />
+              <span>Technical Diagnostics</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <p className="text-xs text-neutral-400">
+              Diagnostic trace for technical support and troubleshooting:
+            </p>
+            <pre className="p-3 bg-neutral-950 border border-neutral-800 rounded-lg text-[11px] font-mono text-neutral-300 max-h-60 overflow-y-auto whitespace-pre-wrap select-text">
+              {embeddedProbeError?.technicalDetails || 'No technical details available.'}
+            </pre>
           </div>
         </DialogContent>
       </Dialog>

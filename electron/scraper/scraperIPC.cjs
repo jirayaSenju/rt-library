@@ -253,17 +253,68 @@ function registerScraperIPCHandlers(browserCompanion) {
     return { success, isPromoted: Boolean(promoted) };
   });
 
+  function formatMainError(err, context = '') {
+    console.error(`[SCRAPER_IPC][${context}][ERROR]:`, err);
+    const isMissingModule =
+      err.code === 'MODULE_NOT_FOUND' ||
+      (err.message && (err.message.includes('Cannot find module') || err.message.includes('MODULE_NOT_FOUND')));
+
+    const code = isMissingModule
+      ? 'SCRAPER_RUNTIME_DEPENDENCY_MISSING'
+      : (err.code || 'SCRAPER_RUNTIME_ERROR');
+
+    const userMessage = isMissingModule
+      ? 'Built-in Scraper could not start.'
+      : 'Something went wrong while starting the scraper.';
+
+    const secondaryMessage = isMissingModule
+      ? 'A required component is missing from this installation.'
+      : undefined;
+
+    return {
+      success: false,
+      status: isMissingModule ? 'RUNTIME_DEPENDENCY_MISSING' : 'ERROR',
+      error: {
+        code,
+        category: 'RUNTIME',
+        userMessage,
+        secondaryMessage,
+        recoverable: !isMissingModule,
+        actions: isMissingModule
+          ? ['RETRY', 'USE_COMPANION', 'VIEW_DIAGNOSTICS']
+          : ['RETRY', 'VIEW_DIAGNOSTICS'],
+        technicalDetails: err.stack || err.message,
+      },
+    };
+  }
+
   ipcMain.handle('scraper:embedded-verify', async (_event, options = {}) => {
-    return await manager.openEmbeddedVerification(options);
+    try {
+      return await manager.openEmbeddedVerification(options);
+    } catch (err) {
+      return formatMainError(err, 'embedded-verify');
+    }
   });
   ipcMain.handle('scraper:embedded-probe', async (_event, options = {}) => {
-    return await manager.probeEmbeddedAccess(options);
+    try {
+      return await manager.probeEmbeddedAccess(options);
+    } catch (err) {
+      return formatMainError(err, 'embedded-probe');
+    }
   });
   ipcMain.handle('scraper:embedded-reset-session', async () => {
-    return await manager.resetEmbeddedSession();
+    try {
+      return await manager.resetEmbeddedSession();
+    } catch (err) {
+      return formatMainError(err, 'embedded-reset-session');
+    }
   });
   ipcMain.handle('scraper:embedded-status', async () => {
-    return manager.getEmbeddedStatus();
+    try {
+      return manager.getEmbeddedStatus();
+    } catch (err) {
+      return formatMainError(err, 'embedded-status');
+    }
   });
 
   ipcMain.handle(SCRAPER_IPC_MESSAGES.CHANNEL_GET_CATEGORIES, async () => {
