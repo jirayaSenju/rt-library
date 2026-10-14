@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   ShieldAlert,
   Layers,
-  Sparkles,
   CheckCircle2,
   AlertTriangle,
   XCircle,
@@ -93,7 +92,6 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
   const [category, setCategory] = useState('all');
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
-  const [isFallbacksOpen, setIsFallbacksOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
@@ -112,7 +110,7 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
 
   // Transport and connection states
   const [activeTransport, setActiveTransport] = useState<string>('BROWSER_COMPANION');
-  const [transportPreference, setTransportPreferenceState] = useState<string>('AUTOMATIC');
+  const [transportPreference, setTransportPreferenceState] = useState<string>('EMBEDDED_ELECTRON');
   const [isEmbeddedPromoted, setIsEmbeddedPromotedState] = useState<boolean>(false);
   const [embeddedStatus, setEmbeddedStatus] = useState<'NOT_CHECKED' | 'CHECKING' | 'READY' | 'VERIFICATION_REQUIRED' | 'ERROR'>('NOT_CHECKED');
   const [embeddedError, setEmbeddedError] = useState<NormalizedError | null>(null);
@@ -210,7 +208,15 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
     });
 
     scraperService.getTransportPreference?.()?.then((res) => {
-      if (res?.preference) setTransportPreferenceState(res.preference);
+      if (res?.preference) {
+        const normalizedPref =
+          res.preference === 'BROWSER_COMPANION' || res.preference === 'EMBEDDED_ELECTRON'
+            ? res.preference
+            : res.activeTransport === 'BROWSER_COMPANION'
+            ? 'BROWSER_COMPANION'
+            : 'EMBEDDED_ELECTRON';
+        setTransportPreferenceState(normalizedPref);
+      }
       if (res?.activeTransport) setActiveTransport(res.activeTransport);
       if (res?.isPromoted !== undefined) setIsEmbeddedPromotedState(res.isPromoted);
     })?.catch(() => {});
@@ -724,51 +730,13 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
       >
         <div className="space-y-4 pt-1">
           {/* Engine Selection Radios / Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-            {/* 1. AUTOMATIC */}
-            <button
-              type="button"
-              onClick={() => handleSetTransportPreference('AUTOMATIC')}
-              className={cn(
-                'p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer min-h-[96px] group',
-                transportPreference === 'AUTOMATIC'
-                  ? 'border-primary bg-primary/10 ring-1 ring-primary shadow-xs'
-                  : 'border-border/70 bg-card/50 hover:bg-card hover:border-border'
-              )}
-            >
-              <div className="w-full">
-                <div className="flex items-center justify-between mb-2">
-                  <div
-                    className={cn(
-                      'h-6 w-6 rounded-md flex items-center justify-center transition-colors',
-                      transportPreference === 'AUTOMATIC'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary/70 text-muted-foreground group-hover:text-foreground'
-                    )}
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                  </div>
-                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border leading-none border-primary/30 text-primary bg-primary/10">
-                    {t('settings.scraper.methodRecommended')}
-                  </span>
-                </div>
-                <span className="text-xs font-semibold text-foreground tracking-tight block">
-                  {t('settings.scraper.transportAutomatic').replace(/\s*\(.*\)/, '')}
-                </span>
-                <p className="text-[10px] text-muted-foreground leading-snug mt-1 line-clamp-2">
-                  {isEmbeddedPromoted
-                    ? t('settings.scraper.transportAutomaticDescEmbedded')
-                    : t('settings.scraper.transportAutomaticDescCompanion')}
-                </p>
-              </div>
-            </button>
-
-            {/* 2. BUILT-IN SCRAPER (EMBEDDED) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* 1. BUILT-IN SCRAPER (EMBEDDED) */}
             <button
               type="button"
               onClick={() => handleSetTransportPreference('EMBEDDED_ELECTRON')}
               className={cn(
-                'p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer min-h-[96px] group',
+                'p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer min-h-[96px] group',
                 transportPreference === 'EMBEDDED_ELECTRON'
                   ? 'border-primary bg-primary/10 ring-1 ring-primary shadow-xs'
                   : 'border-border/70 bg-card/50 hover:bg-card hover:border-border'
@@ -801,12 +769,12 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
               </div>
             </button>
 
-            {/* 3. BROWSER COMPANION */}
+            {/* 2. BROWSER COMPANION */}
             <button
               type="button"
               onClick={() => handleSetTransportPreference('BROWSER_COMPANION')}
               className={cn(
-                'p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer min-h-[96px] group',
+                'p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer min-h-[96px] group',
                 transportPreference === 'BROWSER_COMPANION'
                   ? 'border-primary bg-primary/10 ring-1 ring-primary shadow-xs'
                   : 'border-border/70 bg-card/50 hover:bg-card hover:border-border'
@@ -835,39 +803,6 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
                 </span>
                 <p className="text-[10px] text-muted-foreground leading-snug mt-1 line-clamp-2">
                   {t('settings.scraper.transportCompanionDesc')}
-                </p>
-              </div>
-            </button>
-
-            {/* 4. PLAYWRIGHT */}
-            <button
-              type="button"
-              onClick={() => handleSetTransportPreference('PLAYWRIGHT')}
-              className={cn(
-                'p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer min-h-[96px] group',
-                transportPreference === 'PLAYWRIGHT'
-                  ? 'border-primary bg-primary/10 ring-1 ring-primary shadow-xs'
-                  : 'border-border/70 bg-card/50 hover:bg-card hover:border-border'
-              )}
-            >
-              <div className="w-full">
-                <div className="flex items-center justify-between mb-2">
-                  <div
-                    className={cn(
-                      'h-6 w-6 rounded-md flex items-center justify-center transition-colors',
-                      transportPreference === 'PLAYWRIGHT'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary/70 text-muted-foreground group-hover:text-foreground'
-                    )}
-                  >
-                    <Terminal className="h-3.5 w-3.5" />
-                  </div>
-                </div>
-                <span className="text-xs font-semibold text-foreground tracking-tight block">
-                  Playwright
-                </span>
-                <p className="text-[10px] text-muted-foreground leading-snug mt-1 line-clamp-2">
-                  {t('settings.scraper.transportPlaywrightDesc')}
                 </p>
               </div>
             </button>
@@ -1012,242 +947,6 @@ export const ScraperPanel: React.FC<ScraperPanelProps> = ({ onNavigateToCategori
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* CONTEXTUAL VIEW 2: PLAYWRIGHT (Direct Scraper) */}
-          {/* ========================================================================= */}
-          {transportPreference === 'PLAYWRIGHT' && (
-            <div className="p-3.5 rounded-xl border border-border/70 bg-card/40 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">
-                      {t('settings.scraper.transportPlaywright')}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {t('settings.scraper.playwrightDesc')}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    {t('settings.scraper.directScraperProfileLabel')}: ~/.config/rt-library/scraper-profile
-                  </p>
-                </div>
-                <div className="shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCheckAccess}
-                    disabled={isStarting || isRunning}
-                    className="h-8 text-xs font-medium"
-                  >
-                    <RefreshCw className={cn('h-3 w-3 mr-1.5', (isStarting || isRunning) && 'animate-spin')} />
-                    <span>{t('onboarding.verifyAccess')}</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-
-
-          {/* ========================================================================= */}
-          {/* CONTEXTUAL VIEW 4: AUTOMATIC */}
-          {/* ========================================================================= */}
-          {transportPreference === 'AUTOMATIC' && (
-            <div className="space-y-3">
-              {/* Active Resolved Transport Strip */}
-              <div className="p-3 rounded-xl border border-border/70 bg-card/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className={cn(
-                      'h-2.5 w-2.5 rounded-full shrink-0',
-                      activeTransport === 'EMBEDDED_ELECTRON'
-                        ? embeddedStatus === 'READY'
-                          ? 'bg-emerald-400'
-                          : embeddedStatus === 'VERIFICATION_REQUIRED'
-                          ? 'bg-amber-400 animate-pulse'
-                          : embeddedStatus === 'CHECKING'
-                          ? 'bg-primary'
-                          : 'bg-neutral-500'
-                        : isConnected
-                        ? 'bg-emerald-400'
-                        : companion.state === 'CONNECTING'
-                        ? 'bg-amber-400 animate-pulse'
-                        : 'bg-neutral-500'
-                    )}
-                  />
-                  <div>
-                    <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <span>{t('settings.scraper.activeSyncMethodLabel')}:</span>
-                      <span className="text-primary font-bold">
-                        {getTransportLabel(activeTransport)}
-                      </span>
-                      <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-emerald-500/30 text-emerald-400 bg-emerald-500/10 font-mono">
-                        {activeTransport === 'EMBEDDED_ELECTRON'
-                          ? embeddedStatus === 'READY'
-                            ? t('settings.scraper.rutrackerAccessible')
-                            : embeddedStatus === 'VERIFICATION_REQUIRED'
-                            ? t('settings.scraper.rutrackerVerificationRequired')
-                            : t('settings.scraper.rutrackerUnknown')
-                          : isConnected
-                          ? t('settings.scraper.statusConnected')
-                          : t('settings.scraper.statusDisconnected')}
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      {activeTransport === 'EMBEDDED_ELECTRON'
-                        ? 'Persistent Electron session (persist:rutracker-v1)'
-                        : 'Desktop Chrome/Brave tab via browser companion'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {activeTransport === 'EMBEDDED_ELECTRON' ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleEmbeddedProbe}
-                        disabled={embeddedStatus === 'CHECKING'}
-                        className="h-7 text-xs border-border/80"
-                      >
-                        <RefreshCw className={cn('h-3 w-3 mr-1', embeddedStatus === 'CHECKING' && 'animate-spin')} />
-                        <span>{t('settings.scraper.testAccess')}</span>
-                      </Button>
-                      {embeddedStatus === 'VERIFICATION_REQUIRED' && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={handleEmbeddedVerify}
-                          className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white font-medium"
-                        >
-                          <ShieldCheck className="h-3 w-3 mr-1" />
-                          <span>{t('settings.scraper.verifyNow')}</span>
-                        </Button>
-                      )}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleEmbeddedReset}
-                        className="h-7 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        <RotateCcw className="h-3 w-3 mr-1" />
-                        <span>{t('settings.scraper.resetSession')}</span>
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => companion.checkAccess(category === 'all' ? undefined : category)}
-                        className="h-7 text-xs"
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        <span>{t('settings.scraper.testAccess')}</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={companion.connect}
-                        className="h-7 text-xs"
-                      >
-                        <span>{t('settings.scraper.reconnectButton')}</span>
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Collapsible Fallback Configuration */}
-              <div className="pt-2 border-t border-border/60">
-                <button
-                  type="button"
-                  onClick={() => setIsFallbacksOpen((prev) => !prev)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-                  aria-expanded={isFallbacksOpen}
-                >
-                  {isFallbacksOpen ? (
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                  <Layers className="h-3.5 w-3.5 text-primary" />
-                  <span>{t('settings.scraper.manageFallbacks')}</span>
-                </button>
-
-                {isFallbacksOpen && (
-                  <div className="mt-3 p-3.5 bg-background/80 border border-border/80 rounded-xl space-y-3 animate-in fade-in-0 duration-150">
-                    <p className="text-[11px] text-muted-foreground">
-                      {t('settings.scraper.fallbackTransportsDesc')}
-                    </p>
-
-                    {/* Secondary Fallback 1: Browser Companion if active is Embedded */}
-                    {activeTransport === 'EMBEDDED_ELECTRON' && (
-                      <div className="space-y-2 p-3 rounded-lg border border-border/60 bg-card/30">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-foreground">
-                            {t('settings.scraper.transportCompanion')}
-                          </span>
-                          <Badge variant="outline" className="text-[9px] font-mono">
-                            {isConnected ? t('settings.scraper.statusConnected') : t('settings.scraper.statusDisconnected')}
-                          </Badge>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={companion.connect}
-                            className="h-7 text-xs"
-                          >
-                            <RefreshCw className="h-3 w-3 mr-1" />
-                            <span>{t('settings.scraper.reconnectButton')}</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsInstallModalOpen(true)}
-                            className="h-7 text-xs"
-                          >
-                            <HelpCircle className="h-3 w-3 mr-1" />
-                            <span>{t('settings.scraper.showSetupInstructions')}</span>
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Secondary Fallback 2: Direct Scraper (Playwright) */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border border-border/60 bg-card/30">
-                      <div className="space-y-0.5">
-                        <span className="text-xs font-semibold text-foreground">
-                          {t('settings.scraper.playwrightTitle')}
-                        </span>
-                        <p className="text-[11px] text-muted-foreground">
-                          {t('settings.scraper.playwrightDesc')}
-                        </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCheckAccess}
-                        disabled={isStarting || isRunning}
-                        className="h-7 text-xs shrink-0"
-                      >
-                        <RefreshCw className="h-3 w-3 mr-1" />
-                        <span>{t('onboarding.verifyAccess')}</span>
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>

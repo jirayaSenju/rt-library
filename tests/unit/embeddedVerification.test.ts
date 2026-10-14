@@ -84,6 +84,34 @@ describe('In-App Verification & Embedded Session Recovery (V3-81)', () => {
     manager.pendingScanIntent = null;
   });
 
+  it('keeps Chromium certificate validation enabled and escapes network errors in the retry page', async () => {
+    const mockElectron = createMockElectron();
+    const transport = new EmbeddedElectronTransport({ electron: mockElectron });
+    const targetUrl = "https://rutracker.org/forum/index.php?value=%27%20onclick%3D%27alert(1)";
+
+    const verifyPromise = transport.openVerificationWindow(targetUrl);
+    const listeners = mockElectron._listeners;
+    expect(listeners['certificate-error']).toBeUndefined();
+
+    const preventDefault = vi.fn();
+    listeners['will-navigate'][0]({ preventDefault }, 'data:text/html,<script>alert(1)</script>');
+    expect(preventDefault).toHaveBeenCalledOnce();
+
+    const failLoad = listeners['did-fail-load']?.[0];
+    expect(failLoad).toBeTypeOf('function');
+    failLoad({}, -105, '<img src=x onerror=alert(1)>', targetUrl, true);
+
+    const loadCalls = mockElectron._mockWindowInstance.loadURL.mock.calls;
+    const retryPage = loadCalls[loadCalls.length - 1][0];
+    const html = decodeURIComponent(retryPage.slice(retryPage.indexOf(',') + 1));
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(html).toContain('href="https://rutracker.org/forum/index.php?value=%27%20onclick%3D%27alert(1)"');
+    expect(html).not.toContain("onclick=\"location.href='");
+
+    transport.closeVerificationWindow();
+    await verifyPromise.catch(() => {});
+  });
+
   it('creates verification window with exact persist:rutracker-v1 session and hardened sandbox', async () => {
     const mockElectron = createMockElectron();
     const transport = new EmbeddedElectronTransport({

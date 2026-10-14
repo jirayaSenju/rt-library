@@ -10,6 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.1.3] - 2026-10-14
+
+### Fixed
+- Fixed in-app verification page loading on Windows (`Verify Now`) by expanding navigation allowlists to cover all RuTracker mirror domains (`*.rutracker.net`, `*.rutracker.nl`, `*.rutracker.cc`, `*.t-ru.org`) and Cloudflare verification assets (`about:blank`, `challenges.cloudflare.com`, `cf-assets.net`, `hcaptcha.com`, `recaptcha.net`).
+- Kept Chromium TLS certificate validation enabled in the verification window and escaped network failure details in its retry page.
+- Added interactive dark-themed network failure screen on `did-fail-load` with retry button and mirror switch buttons (`.net` / `.nl`).
+- Enabled reload shortcuts (`F5` / `Ctrl+R`) and `Esc` to close the verification window while keeping DevTools disabled.
+- Defaulted Settings `Verify Now` action to clean root forum URL (`https://rutracker.org/forum/index.php`) and fixed `isSettled` timeout check.
+
+### Changed
+- Simplified Scraper Engine & Transport settings to display exclusively the two supported sync methods (**Built-in Scraper** and **Browser Companion**) in a clean 2-column grid.
+
+---
+
 ## [1.1.2] - 2026-10-14
 
 ### Changed

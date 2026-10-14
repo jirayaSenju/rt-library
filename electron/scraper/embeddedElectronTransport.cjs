@@ -39,12 +39,20 @@ const ALLOWED_HOSTS = new Set([
   'rutracker.org',
   'rutracker.net',
   'rutracker.nl',
+  'rutracker.cc',
+  't-ru.org',
   'challenges.cloudflare.com',
   'cloudflare.com',
   'static.cloudflareinsights.com',
+  'cloudflareinsights.com',
+  'cf-assets.net',
+  'hcaptcha.com',
+  'recaptcha.net',
 ]);
 
 function isAllowedUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return false;
+  if (rawUrl === 'about:blank') return true;
   try {
     const parsed = new URL(rawUrl);
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
@@ -52,12 +60,29 @@ function isAllowedUrl(rawUrl) {
     return (
       ALLOWED_HOSTS.has(host) ||
       host.endsWith('.rutracker.org') ||
+      host.endsWith('.rutracker.net') ||
+      host.endsWith('.rutracker.nl') ||
+      host.endsWith('.rutracker.cc') ||
+      host.endsWith('.t-ru.org') ||
       host.endsWith('.cloudflare.com') ||
-      host.endsWith('.cloudflareinsights.com')
+      host.endsWith('.cloudflareinsights.com') ||
+      host.endsWith('.cf-assets.net') ||
+      host.endsWith('.hcaptcha.com') ||
+      host.endsWith('.recaptcha.net')
     );
   } catch (_) {
     return false;
   }
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[character]);
 }
 
 function inspectContent(body, title, httpStatus = 200) {
@@ -958,6 +983,127 @@ class EmbeddedElectronTransport {
         win.webContents.on('did-finish-load', () => {
           scheduleVerificationClassification('did-finish-load');
         });
+
+        win.webContents.on('before-input-event', (event, input) => {
+          if (input.type === 'keyDown') {
+            if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r') || (input.meta && input.key.toLowerCase() === 'r')) {
+              event.preventDefault();
+              if (typeof win.webContents?.reload === 'function') win.webContents.reload();
+            } else if (input.key === 'Escape') {
+              event.preventDefault();
+              if (typeof win.close === 'function') win.close();
+            }
+          }
+        });
+
+        win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+          if (isMainFrame !== false && errorCode !== -3 && !isSettled) {
+            console.warn(`[EMBEDDED_TRANSPORT][VERIFY] Failed to load ${validatedURL}: [${errorCode}] ${errorDescription}`);
+            const safeErrorCode = escapeHtml(errorCode);
+            const safeErrorDescription = escapeHtml(errorDescription);
+            const safeValidatedUrl = escapeHtml(validatedURL || urlToLoad);
+            const safeRetryUrl = escapeHtml(urlToLoad);
+            const errorHtml = `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="utf-8" />
+                <title>RuTracker - Connection Issue</title>
+                <style>
+                  body {
+                    background-color: #121214;
+                    color: #e1e1e6;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 100vh;
+                    margin: 0;
+                    padding: 24px;
+                    box-sizing: border-box;
+                  }
+                  .card {
+                    background: #202024;
+                    border: 1px solid #323238;
+                    border-radius: 12px;
+                    padding: 32px;
+                    max-width: 520px;
+                    text-align: center;
+                    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+                  }
+                  h2 { margin-top: 0; color: #f75a68; font-size: 18px; }
+                  p { font-size: 13px; color: #a8a8b3; line-height: 1.6; margin: 12px 0; }
+                  .error-badge {
+                    background: #29292e;
+                    border: 1px solid #3e3e46;
+                    color: #e1e1e6;
+                    font-family: monospace;
+                    font-size: 11px;
+                    padding: 4px 8px;
+                    border-radius: 6px;
+                    display: inline-block;
+                    margin-bottom: 16px;
+                  }
+                  .actions {
+                    margin-top: 24px;
+                    display: flex;
+                    gap: 10px;
+                    justify-content: center;
+                    flex-wrap: wrap;
+                  }
+                  .button {
+                    display: inline-block;
+                    background: #00875f;
+                    color: #fff;
+                    border: none;
+                    padding: 10px 18px;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                    text-decoration: none;
+                  }
+                  .button:hover { background: #00b37e; }
+                  .button.secondary {
+                    background: #29292e;
+                    color: #e1e1e6;
+                    border: 1px solid #3e3e46;
+                  }
+                  .button.secondary:hover { background: #323238; }
+                  .hint {
+                    font-size: 11px;
+                    color: #7c7c8a;
+                    margin-top: 20px;
+                    border-top: 1px solid #29292e;
+                    padding-top: 16px;
+                  }
+                </style>
+              </head>
+              <body>
+                <div class="card">
+                  <h2>Não foi possível carregar o RuTracker</h2>
+                  <div class="error-badge">${safeErrorCode} - ${safeErrorDescription}</div>
+                  <p>
+                    O endereço <strong>${safeValidatedUrl}</strong> não respondeu ou foi bloqueado pelo provedor / firewall.
+                  </p>
+                  <div class="actions">
+                    <a class="button" href="${safeRetryUrl}">Tentar Novamente (F5)</a>
+                    <a class="button secondary" href="https://rutracker.net/forum/index.php">Tentar Espelho (.net)</a>
+                    <a class="button secondary" href="https://rutracker.nl/forum/index.php">Tentar Espelho (.nl)</a>
+                  </div>
+                  <p class="hint">
+                    Dica: Se o RuTracker estiver bloqueado pelo seu provedor de internet no Windows, você também pode utilizar o <strong>Browser Companion</strong> no Chrome/Brave com sua extensão normal de VPN/Proxy.
+                  </p>
+                </div>
+              </body>
+              </html>
+            `;
+            if (typeof win.loadURL === 'function') {
+              win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(errorHtml)}`).catch(() => {});
+            }
+          }
+        });
       }
 
       if (typeof win.on === 'function') {
@@ -973,8 +1119,8 @@ class EmbeddedElectronTransport {
       }
 
       this._verificationTimeoutTimer = setTimeout(() => {
-        if (!isResolved) {
-          isResolved = true;
+        if (!isSettled) {
+          isSettled = true;
           cleanup();
           try {
             if (typeof win.isDestroyed === 'function' && !win.isDestroyed() && typeof win.close === 'function') {
@@ -989,7 +1135,16 @@ class EmbeddedElectronTransport {
 
       // Load target URL
       if (typeof win.loadURL === 'function') {
-        win.loadURL(urlToLoad).catch((err) => {
+        const userAgent = (typeof this.session?.getUserAgent === 'function')
+          ? this.session.getUserAgent()
+          : undefined;
+        if (userAgent && typeof win.webContents?.setUserAgent === 'function') {
+          win.webContents.setUserAgent(userAgent);
+        }
+        win.loadURL(urlToLoad, {
+          ...(userAgent ? { userAgent } : {}),
+          extraHeaders: 'Accept-Language: pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7,ru;q=0.6\n',
+        }).catch((err) => {
           console.warn('[EMBEDDED_TRANSPORT][VERIFY] loadURL initial notice:', err.message);
         });
       }

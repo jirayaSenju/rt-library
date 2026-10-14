@@ -1130,7 +1130,7 @@ class ScraperManager {
     const targetCategory = options.categoryId
       ? categories.find(c => c.id === options.categoryId)
       : (categories.find(c => c.enabled !== false) || categories[0]);
-    const targetUrl = options.url || targetCategory?.baseUrl || 'https://rutracker.org/forum/index.php';
+    const targetUrl = options.url || (options.categoryId ? targetCategory?.baseUrl : null) || 'https://rutracker.org/forum/index.php';
 
     this.addLog({
       level: 'info',
