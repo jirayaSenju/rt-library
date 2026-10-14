@@ -40,7 +40,7 @@
     "package:inspect": "node scripts/verify-package-runtime.cjs --inspect",
     "package:smoke": "node scripts/package-smoke.cjs",
     "package:linux": "npm run build && npx electron-builder --linux AppImage --publish never",
-    "package:win": "npm run build && npx electron-builder --win portable --publish never",
+    "package:win": "npm run build && npx electron-builder --win portable --publish never && node scripts/generate-portable-metadata.cjs dist-desktop",
     "audit:licenses": "node scripts/audit-third-party-licenses.cjs",
     "benchmark": "node scripts/benchmark-runtime.cjs",
     "benchmark:electron": "node scripts/benchmark-electron.cjs",

@@ -175,7 +175,7 @@ jobs:
   # 3. Windows NSIS Installer Build
   # ----------------------------------------------------------------------------
   build-windows:
-    name: Build Windows NSIS Installer
+    name: Build Windows Portable Executable
     needs: [validate]
     runs-on: windows-latest
     steps:
@@ -195,7 +195,9 @@ jobs:
         run: npm run build
 
       - name: Package Windows Portable Executable
-        run: npx electron-builder --win portable --publish never
+        run: |
+          npx electron-builder --win portable --publish never
+          node scripts/generate-portable-metadata.cjs dist-desktop
         env:
           # Prevent electron-builder from attempting auto-publish when a tag is detected
           GH_TOKEN: ""
@@ -216,7 +218,6 @@ jobs:
           path: |
             dist-desktop/*portable.exe
             dist-desktop/latest.yml
-            dist-desktop/*.blockmap
           if-no-files-found: error
           retention-days: 5
 
