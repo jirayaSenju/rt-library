@@ -10,6 +10,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.1.5] - 2026-10-14
+
+### Fixed
+- Implemented Windows portable update downloads so the updater can fetch and verify the published executable.
+
 ## [1.1.4] - 2026-10-14
 
 ### Fixed
