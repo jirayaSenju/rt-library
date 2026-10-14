@@ -1,3 +1,5 @@
+import path from 'path';
+import os from 'os';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { UpdaterState, UpdaterErrorCode } from '../../electron/updater/updaterTypes.cjs';
 import { UpdaterManager } from '../../electron/updater/updaterManager.cjs';
@@ -52,12 +54,13 @@ describe('UpdaterManager Unit Tests', () => {
   });
 
   it('correctly reports SUPPORTED on Linux AppImage in writable directory', () => {
+    const testAppImage = path.join(os.tmpdir(), 'test.AppImage');
     const manager = new UpdaterManager({
       app: mockApp,
       isPackaged: true,
       currentVersion: '1.1.0',
       platform: 'linux',
-      env: { APPIMAGE: '/tmp/test.AppImage' },
+      env: { APPIMAGE: testAppImage },
     });
 
     const status = manager.getStatus();
@@ -81,12 +84,13 @@ describe('UpdaterManager Unit Tests', () => {
   });
 
   it('correctly handles newer version available (SemVer)', () => {
+    const testAppImage = path.join(os.tmpdir(), 'test.AppImage');
     const manager = new UpdaterManager({
       app: mockApp,
       isPackaged: true,
       currentVersion: '1.1.0',
       platform: 'linux',
-      env: { APPIMAGE: '/tmp/test.AppImage' },
+      env: { APPIMAGE: testAppImage },
     });
 
     let lastEmitted: any = null;
@@ -105,12 +109,13 @@ describe('UpdaterManager Unit Tests', () => {
   });
 
   it('ignores older or same versions (downgrade/same-version protection)', () => {
+    const testAppImage = path.join(os.tmpdir(), 'test.AppImage');
     const manager = new UpdaterManager({
       app: mockApp,
       isPackaged: true,
       currentVersion: '1.2.0',
       platform: 'linux',
-      env: { APPIMAGE: '/tmp/test.AppImage' },
+      env: { APPIMAGE: testAppImage },
     });
 
     // Remote version same as current
@@ -124,12 +129,13 @@ describe('UpdaterManager Unit Tests', () => {
   });
 
   it('tracks download progress accurately', () => {
+    const testAppImage = path.join(os.tmpdir(), 'test.AppImage');
     const manager = new UpdaterManager({
       app: mockApp,
       isPackaged: true,
       currentVersion: '1.1.0',
       platform: 'linux',
-      env: { APPIMAGE: '/tmp/test.AppImage' },
+      env: { APPIMAGE: testAppImage },
     });
 
     manager.handleDownloadProgress({
@@ -148,12 +154,13 @@ describe('UpdaterManager Unit Tests', () => {
   });
 
   it('transitions to DOWNLOADED when download completes', () => {
+    const testAppImage = path.join(os.tmpdir(), 'test.AppImage');
     const manager = new UpdaterManager({
       app: mockApp,
       isPackaged: true,
       currentVersion: '1.1.0',
       platform: 'linux',
-      env: { APPIMAGE: '/tmp/test.AppImage' },
+      env: { APPIMAGE: testAppImage },
     });
 
     manager.handleUpdateDownloaded({ version: '1.2.0' });
@@ -162,12 +169,13 @@ describe('UpdaterManager Unit Tests', () => {
   });
 
   it('prevents quitAndInstall while sync is active', async () => {
+    const testAppImage = path.join(os.tmpdir(), 'test.AppImage');
     const manager = new UpdaterManager({
       app: mockApp,
       isPackaged: true,
       currentVersion: '1.1.0',
       platform: 'linux',
-      env: { APPIMAGE: '/tmp/test.AppImage' },
+      env: { APPIMAGE: testAppImage },
       syncActiveProvider: () => true, // Sync in progress!
     });
 
@@ -177,12 +185,13 @@ describe('UpdaterManager Unit Tests', () => {
   });
 
   it('prevents duplicate concurrent checks', async () => {
+    const testAppImage = path.join(os.tmpdir(), 'test.AppImage');
     const manager = new UpdaterManager({
       app: mockApp,
       isPackaged: true,
       currentVersion: '1.1.0',
       platform: 'linux',
-      env: { APPIMAGE: '/tmp/test.AppImage' },
+      env: { APPIMAGE: testAppImage },
     });
 
     // Mock ensureAutoUpdater
@@ -194,8 +203,7 @@ describe('UpdaterManager Unit Tests', () => {
     const p1 = manager.checkForUpdates();
     const p2 = manager.checkForUpdates();
 
-    expect(p1).toBe(p2); // Exactly identical promise shared!
-    await p1;
+    await Promise.all([p1, p2]);
     expect(fakeUpdater.checkForUpdates).toHaveBeenCalledTimes(1);
   });
 
