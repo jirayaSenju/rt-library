@@ -183,6 +183,20 @@ function isBusy() {
   return false;
 }
 
+async function renameWithRetry(sourcePath, destinationPath) {
+  const retryable = new Set(['EBUSY', 'EPERM', 'EACCES']);
+  const maxAttempts = 8;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await fs.promises.rename(sourcePath, destinationPath);
+      return;
+    } catch (error) {
+      if (!retryable.has(error.code) || attempt >= maxAttempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+    }
+  }
+}
+
 function registerDatabaseIPCHandlers() {
   ipcMain.handle('database:getOverview', () => overview());
   ipcMain.handle('database:getTables', () => listTables());
@@ -272,6 +286,17 @@ function registerDatabaseIPCHandlers() {
     return { canceled: false, directory: result.filePaths[0] };
   });
 
+  ipcMain.handle('database:selectRestoreFile', async (event) => {
+    const parent = BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showOpenDialog(parent, {
+      title: 'Choose SQLite file to restore',
+      properties: ['openFile'],
+      filters: [{ name: 'SQLite database', extensions: ['sqlite', 'db'] }],
+    });
+    if (result.canceled || !result.filePaths[0]) return { canceled: true };
+    return { canceled: false, filePath: result.filePaths[0] };
+  });
+
   // Manual Backup
   ipcMain.handle('database:createBackup', async (event, options = {}) => {
     if (options.useSaveDialog) {
@@ -333,10 +358,10 @@ function registerDatabaseIPCHandlers() {
           throw new Error('Staged backup validation failed');
         }
       } finally { staged.close(); }
-      dbMain.closeDatabase();
-      fs.renameSync(currentPath, rollbackPath);
+      dbMain.closeDatabase({ throwOnError: true });
+      await renameWithRetry(currentPath, rollbackPath);
       movedCurrent = true;
-      fs.renameSync(stagingPath, currentPath);
+      await renameWithRetry(stagingPath, currentPath);
       dbMain.initDatabase(dataDir);
       try { fs.unlinkSync(rollbackPath); } catch (_) {}
 
@@ -351,7 +376,7 @@ function registerDatabaseIPCHandlers() {
     } catch (error) {
       try { dbMain.closeDatabase(); } catch (_) {}
       try { if (fs.existsSync(currentPath) && movedCurrent) fs.unlinkSync(currentPath); } catch (_) {}
-      try { if (movedCurrent && fs.existsSync(rollbackPath)) fs.renameSync(rollbackPath, currentPath); } catch (_) {}
+      try { if (movedCurrent && fs.existsSync(rollbackPath)) await renameWithRetry(rollbackPath, currentPath); } catch (_) {}
       try { dbMain.initDatabase(dataDir); } catch (reopenError) { error.message += `; database reopen failed: ${reopenError.message}`; }
       try { if (fs.existsSync(stagingPath)) fs.unlinkSync(stagingPath); } catch (_) {}
 

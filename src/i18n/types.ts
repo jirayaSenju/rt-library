@@ -357,7 +357,7 @@ export interface Translations {
       healthHealthy: string; healthWarning: string; healthCorrupted: string; healthReadOnly: string
       integrity: string; quickCheck: string; fullCheck: string; checkDone: string; rows: string; columns: string; indexes: string; pageSize: string; previous: string; next: string; schemaSql: string
       querySafeNote: string; runQuery: string; explain: string; queryStats: string; backupDescription: string; createBackup: string; backupDone: string
-      checkpoint: string; checkpointDone: string; optimize: string; optimizeDone: string; restore: string; restoreDescription: string; confirmRestore: string; confirmWord: string; restoreDone: string
+      checkpoint: string; checkpointDone: string; optimize: string; optimizeDone: string; restore: string; restoreDescription: string; confirmRestore: string; confirmWord: string; restoreDone: string; chooseRestoreFile: string; externalRestoreTarget: string
       [key: string]: any
     }
     scraper: {

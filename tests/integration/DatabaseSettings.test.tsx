@@ -13,6 +13,8 @@ const getRows = vi.fn(async ({ offset }: { offset: number }) => ({
 
 describe("DatabaseSettings", () => {
   it("shows database overview and requests table pages from the Main process", async () => {
+    const selectRestoreFile = vi.fn(async () => ({ canceled: false, filePath: "/outside/backups/catalog.sqlite" }))
+    const restoreBackup = vi.fn(async () => ({ canceled: false, success: true }))
     Object.defineProperty(window, "rtLibrary", {
       configurable: true,
       value: {
@@ -48,6 +50,8 @@ describe("DatabaseSettings", () => {
           getRows,
           getBackupSchedule: async () => ({ enabled: true, retentionCount: 7 }),
           getBackupHistory: async () => [],
+          selectRestoreFile,
+          restoreBackup,
         },
       },
     })
@@ -58,6 +62,14 @@ describe("DatabaseSettings", () => {
     expect(await screen.findByText("Item 1")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: /Próxima|Next/i }))
     await waitFor(() => expect(getRows).toHaveBeenLastCalledWith(expect.objectContaining({ table: "items", offset: 50, limit: 50 })))
+
+    fireEvent.click(screen.getByRole("tab", { name: /Backup/i }))
+    fireEvent.click(await screen.findByRole("button", { name: /Choose SQLite file|Escolher arquivo SQLite/i }))
+    expect(selectRestoreFile).toHaveBeenCalled()
+    expect(await screen.findByText("/outside/backups/catalog.sqlite")).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/Type RESTORE|Digite RESTORE/i), { target: { value: "RESTORE" } })
+    fireEvent.click(screen.getByRole("button", { name: /^Restore backup|^Restaurar backup/i }))
+    await waitFor(() => expect(restoreBackup).toHaveBeenCalledWith("/outside/backups/catalog.sqlite"))
   })
 
   it("handles query execution, integrity check, and backup actions", async () => {

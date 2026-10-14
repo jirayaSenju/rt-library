@@ -75,6 +75,7 @@ const rtLibrary = {
     verifyBackup: (filePath) => ipcRenderer.invoke('database:verifyBackup', filePath),
     deleteBackup: (filePath) => ipcRenderer.invoke('database:deleteBackup', filePath),
     selectBackupDirectory: () => ipcRenderer.invoke('database:selectBackupDirectory'),
+    selectRestoreFile: () => ipcRenderer.invoke('database:selectRestoreFile'),
     createBackup: (options) => ipcRenderer.invoke('database:createBackup', options),
     restoreBackup: (customFilePath) => ipcRenderer.invoke('database:restoreBackup', customFilePath),
     runVacuum: () => ipcRenderer.invoke('database:runVacuum'),
