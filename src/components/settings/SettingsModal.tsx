@@ -38,6 +38,7 @@ import { AppearanceSegmentedControl } from "./AppearanceSegmentedControl"
 import { LanguageSelector } from "./LanguageSelector"
 import { GlobalThemeSelector } from "./GlobalThemeSelector"
 import { ProgressThemeSelector } from "./ProgressThemeSelector"
+import { AboutUpdatesSettings } from "./AboutUpdatesSettings"
 import { ScraperPanel } from "@/components/scraper/ScraperPanel"
 import { CategoryManagement } from "@/components/scraper/CategoryManagement"
 import { SyncHistoryView } from "@/components/scraper/SyncHistoryView"
@@ -53,6 +54,7 @@ export type SettingsSectionKey =
   | "metadata"
   | "images"
   | "appearance"
+  | "about"
 
 export interface SettingsModalProps {
   isOpen: boolean
@@ -178,6 +180,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { key: "metadata" as const, label: t("settings.metadataTab"), icon: Clock },
     { key: "images" as const, label: t("settings.imagesTab"), icon: Database },
     { key: "appearance" as const, label: t("settings.appearanceTab"), icon: Palette },
+    { key: "about" as const, label: t("updater.title"), icon: Sparkles },
   ]
 
   return (
@@ -664,6 +667,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <LanguageSelector />
                   </div>
                 </SettingsSection>
+              </div>
+            )}
+
+            {/* 7. ABOUT & UPDATES SECTION */}
+            {activeSection === "about" && (
+              <div className="animate-in fade-in-0 duration-150">
+                <AboutUpdatesSettings />
               </div>
             )}
           </main>

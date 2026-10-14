@@ -201,6 +201,18 @@ const rtLibrary = {
     fetchXboxPage: () => ipcRenderer.invoke('companion:fetch-xbox-page'),
     fetchTopic: (options) => ipcRenderer.invoke('companion:fetch-topic', options),
   },
+  updater: {
+    getStatus: () => ipcRenderer.invoke('updater:get-status'),
+    check: () => ipcRenderer.invoke('updater:check'),
+    download: () => ipcRenderer.invoke('updater:download'),
+    install: () => ipcRenderer.invoke('updater:install'),
+    onStatusChanged: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const handler = (_event, data) => callback(data);
+      ipcRenderer.on('updater:status-changed', handler);
+      return () => ipcRenderer.removeListener('updater:status-changed', handler);
+    },
+  },
 };
 
 contextBridge.exposeInMainWorld('rtLibrary', rtLibrary);

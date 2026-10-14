@@ -180,6 +180,54 @@ export interface RTLibraryAPI {
       error?: string;
     }>;
   };
+  updater?: {
+    getStatus: () => Promise<UpdaterStatus>;
+    check: () => Promise<UpdaterStatus>;
+    download: () => Promise<UpdaterStatus>;
+    install: () => Promise<void>;
+    onStatusChanged: (callback: (status: UpdaterStatus) => void) => () => void;
+  };
+}
+
+export type UpdaterState =
+  | 'IDLE'
+  | 'CHECKING'
+  | 'UP_TO_DATE'
+  | 'UPDATE_AVAILABLE'
+  | 'DOWNLOADING'
+  | 'DOWNLOADED'
+  | 'INSTALLING'
+  | 'ERROR'
+  | 'UNSUPPORTED';
+
+export type UpdaterErrorCode =
+  | 'DEV_MODE_UNSUPPORTED'
+  | 'UNSUPPORTED_INSTALL_TYPE'
+  | 'READ_ONLY_LOCATION'
+  | 'UPDATE_CHECK_FAILED'
+  | 'UPDATE_DOWNLOAD_FAILED'
+  | 'UPDATE_INSTALL_FAILED'
+  | 'NETWORK_UNAVAILABLE'
+  | 'RELEASE_METADATA_INVALID'
+  | 'SYNC_IN_PROGRESS'
+  | 'UNKNOWN';
+
+export interface UpdaterStatus {
+  state: UpdaterState;
+  currentVersion: string;
+  availableVersion: string | null;
+  releaseDate: string | null;
+  releaseNotes: string | null;
+  downloadUrl: string | null;
+  progress: number;
+  bytesPerSecond: number;
+  transferred: number;
+  total: number;
+  errorCode: UpdaterErrorCode | null;
+  errorMessage: string | null;
+  lastCheckedAt: string | null;
+  isSupported: boolean;
+  channel: string;
 }
 
 declare global {

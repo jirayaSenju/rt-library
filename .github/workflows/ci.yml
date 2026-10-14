@@ -76,6 +76,10 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: node scripts/verify-package-runtime.cjs
 
+      - name: Validate Windows Update Artifacts
+        if: matrix.os == 'windows-latest'
+        run: node scripts/validate-update-artifacts.cjs dist-desktop
+
       - name: Upload Windows Runtime Validation Artifacts
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v7

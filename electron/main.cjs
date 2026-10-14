@@ -421,6 +421,24 @@ app.whenReady().then(async () => {
     require('./scraper/syncScheduler.cjs').initSyncScheduler();
     console.log('[DB][NATIVE] Native SQLite initialized in Main process');
 
+    // Register Auto-Updater IPC & start background checks
+    try {
+      const { registerUpdaterIPC } = require('./updater/updaterIPC.cjs');
+      const updaterManager = registerUpdaterIPC({
+        syncActiveProvider: () => {
+          try {
+            const sm = ScraperManager.getInstance();
+            return sm && (sm.getState().state === 'running' || sm.getState().state === 'preflight');
+          } catch {
+            return false;
+          }
+        },
+      });
+      updaterManager.startPeriodicChecks({ initialDelayMs: 10000, intervalMs: 4 * 60 * 60 * 1000 });
+    } catch (updaterErr) {
+      console.warn('[UPDATER][INIT_WARN] Auto-updater could not be initialized:', updaterErr.message);
+    }
+
     // Run legacy JSON catalog migration to SQLite (idempotent, automatic)
     const jsonMigRes = migration.runJsonMigration(nativeDb, userDataDir);
     console.log(`[DB][MIGRATION] JSON migration status: ${jsonMigRes.status} (migrated: ${jsonMigRes.migratedItems || 0} items)`);
@@ -449,6 +467,10 @@ app.on('will-quit', () => {
   browserCompanion.stop().catch(() => {});
   try {
     ScraperManager.getInstance().cancel();
+  } catch (_) {}
+  try {
+    const { getUpdaterManager } = require('./updater/updaterManager.cjs');
+    getUpdaterManager().shutdown();
   } catch (_) {}
   metadataManager.shutdown();
   dbMain.closeDatabase();

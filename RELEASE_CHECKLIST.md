@@ -180,12 +180,32 @@ This checklist must be strictly completed and verified prior to any public relea
 ---
 
 ## 12. Automated Release & Deployment
+ 
+ - [ ] Release pipeline triggered exclusively via SemVer tag `v*.*.*`
+ - [ ] `validate` gate passes before build jobs start
+ - [ ] Build jobs run on native platform runners (`ubuntu-latest` and `windows-latest`)
+ - [ ] Exactly expected artifacts collected (AppImage, Windows setup EXE, Companion zip, latest metadata, blockmaps)
+ - [ ] `latest-linux.yml` and `latest.yml` metadata generated and verified by `validate-update-artifacts.cjs`
+ - [ ] `SHA256SUMS.txt` cryptographic checksum manifest generated and uploaded
+ - [ ] GitHub Release title formatted as `RT-Library v${VERSION}`
+ - [ ] Release notes generated from tag changes and changelog
+ - [ ] No database files, cookies, or catalog data published
 
-- [ ] Release pipeline triggered exclusively via SemVer tag `v*.*.*`
-- [ ] `validate` gate passes before build jobs start
-- [ ] Build jobs run on native platform runners (`ubuntu-latest` and `windows-latest`)
-- [ ] Exactly expected artifacts collected (1 AppImage, 1 Windows setup EXE)
-- [ ] `SHA256SUMS.txt` cryptographic checksum manifest generated and uploaded
-- [ ] GitHub Release title formatted as `RT-Library v${VERSION}`
-- [ ] Release notes generated from tag changes and changelog
-- [ ] No database files, cookies, or catalog data published
+---
+
+## 13. Auto-Updater Verification
+
+- [ ] GitHub Releases configured as authoritative update source in `package.json` (`build.publish`)
+- [ ] Electron Main process owns updater (`UpdaterManager`); Renderer only communicates via typed IPC
+- [ ] No arbitrary URLs accepted by preload or IPC for updater operations
+- [ ] SemVer upgrade and downgrade protection verified (ignores older/same versions and prereleases on stable channel)
+- [ ] Linux AppImage auto-update supported and verified (`process.env.APPIMAGE` check)
+- [ ] Non-AppImage Linux installations (deb/snap/flatpak/dev) report `UNSUPPORTED` gracefully
+- [ ] Read-only AppImage directories handled with user guidance
+- [ ] Windows NSIS auto-update supported and verified (`app.isPackaged` check)
+- [ ] Startup background update check waits 10s and does not block app launch
+- [ ] Manual update check available in Settings > About & Updates
+- [ ] Active sync locks updater: prevents restart while scan is in progress
+- [ ] Safe shutdown of SQLite connections before relaunching during update
+- [ ] User data and SQLite database preserved across updates
+- [ ] UI displays human-friendly messages and never leaks stack traces or filepaths

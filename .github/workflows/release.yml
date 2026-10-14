@@ -157,11 +157,17 @@ jobs:
       - name: Inspect Packaged Archive Contents
         run: npm run package:inspect
 
-      - name: Upload Linux AppImage Artifact
+      - name: Validate Update Metadata Artifacts
+        run: node scripts/validate-update-artifacts.cjs dist-desktop "${{ steps.validate.outputs.version || '' }}"
+
+      - name: Upload Linux AppImage & Update Artifacts
         uses: actions/upload-artifact@v7
         with:
           name: rt-library-linux-${{ github.ref_name }}
-          path: dist-desktop/*.AppImage
+          path: |
+            dist-desktop/*.AppImage
+            dist-desktop/latest-linux.yml
+            dist-desktop/*.blockmap
           if-no-files-found: error
           retention-days: 5
 
@@ -200,11 +206,17 @@ jobs:
       - name: Inspect Packaged Archive Contents
         run: npm run package:inspect
 
-      - name: Upload Windows Installer Artifact
+      - name: Validate Update Metadata Artifacts
+        run: node scripts/validate-update-artifacts.cjs dist-desktop "${{ steps.validate.outputs.version || '' }}"
+
+      - name: Upload Windows Installer & Update Artifacts
         uses: actions/upload-artifact@v7
         with:
           name: rt-library-windows-${{ github.ref_name }}
-          path: dist-desktop/*setup.exe
+          path: |
+            dist-desktop/*setup.exe
+            dist-desktop/latest.yml
+            dist-desktop/*.blockmap
           if-no-files-found: error
           retention-days: 5
 
@@ -286,7 +298,8 @@ jobs:
           APPIMAGE_COUNT=$(ls -1 release-assets/RT-Library-${EXPECTED_VERSION}-linux-*.AppImage 2>/dev/null | wc -l)
           EXE_COUNT=$(ls -1 release-assets/RT-Library-${EXPECTED_VERSION}-windows-*.exe 2>/dev/null | wc -l)
           COMPANION_COUNT=$(ls -1 release-assets/rt-library-browser-companion-v${EXPECTED_VERSION}.zip 2>/dev/null | wc -l)
-          TOTAL_FILES=$(find release-assets -maxdepth 1 -type f | wc -l)
+          LATEST_LINUX_COUNT=$(ls -1 release-assets/latest-linux.yml 2>/dev/null | wc -l)
+          LATEST_WIN_COUNT=$(ls -1 release-assets/latest.yml 2>/dev/null | wc -l)
           
           if [ "$APPIMAGE_COUNT" -ne 1 ]; then
             echo "❌ Error: Expected exactly 1 Linux AppImage matching version ${EXPECTED_VERSION}, found ${APPIMAGE_COUNT}"
@@ -302,11 +315,19 @@ jobs:
             echo "❌ Error: Expected exactly 1 Browser Companion zip matching version ${EXPECTED_VERSION}, found ${COMPANION_COUNT}"
             exit 1
           fi
-          
-          if [ "$TOTAL_FILES" -ne 3 ]; then
-            echo "❌ Error: Expected exactly 3 binary assets in release-assets, found ${TOTAL_FILES}"
+
+          if [ "$LATEST_LINUX_COUNT" -ne 1 ]; then
+            echo "❌ Error: Expected exactly 1 latest-linux.yml update metadata file, found ${LATEST_LINUX_COUNT}"
             exit 1
           fi
+
+          if [ "$LATEST_WIN_COUNT" -ne 1 ]; then
+            echo "❌ Error: Expected exactly 1 latest.yml update metadata file, found ${LATEST_WIN_COUNT}"
+            exit 1
+          fi
+
+          # Validate update artifacts integrity
+          node scripts/validate-update-artifacts.cjs release-assets "${EXPECTED_VERSION}"
           
           # Rigorous check for disallowed data, secrets, databases, or cookies
           FORBIDDEN_FILES=$(find release-assets/ -type f \( \
@@ -327,7 +348,7 @@ jobs:
             exit 1
           fi
           
-          echo "✅ Release assets inventory verified successfully (1 Linux AppImage, 1 Windows setup EXE, 1 Companion zip, 0 forbidden files)."
+          echo "✅ Release assets inventory verified successfully (AppImage, NSIS exe, Companion zip, latest metadata, 0 forbidden files)."
 
       - name: Generate SHA-256 Checksums
         run: |
@@ -352,6 +373,9 @@ jobs:
             release-assets/*.AppImage
             release-assets/*setup.exe
             release-assets/rt-library-browser-companion-*.zip
+            release-assets/latest-linux.yml
+            release-assets/latest.yml
+            release-assets/*.blockmap
             release-assets/SHA256SUMS.txt
           generate_release_notes: true
           draft: false

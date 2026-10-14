@@ -72,6 +72,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
+    "electron-updater": "^6.8.9",
     "framer-motion": "^14.1.0",
     "jsdom": "^25.0.1",
     "lucide-react": "^1.55.0",
@@ -158,6 +159,13 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jirayaSenju",
+        "repo": "rt-library"
+      }
+    ]
   }
 }

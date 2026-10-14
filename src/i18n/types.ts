@@ -1269,4 +1269,34 @@ export interface Translations {
     enabledSuccessToast: string
     disabledSuccessToast: string
   }
+  updater: {
+    title: string
+    description: string
+    currentVersion: string
+    channel: string
+    lastChecked: string
+    neverChecked: string
+    checkForUpdates: string
+    checking: string
+    upToDate: string
+    updateAvailable: string
+    updateAvailableDesc: string
+    downloadUpdate: string
+    downloading: string
+    downloaded: string
+    downloadedDesc: string
+    restartAndUpdate: string
+    installing: string
+    later: string
+    releaseNotes: string
+    viewOnGitHub: string
+    unsupported: string
+    unsupportedDev: string
+    unsupportedLinux: string
+    unsupportedReadonly: string
+    badgeUpdateAvailable: string
+    badgeDownloaded: string
+    syncRunningWarning: string
+  }
 }
+
