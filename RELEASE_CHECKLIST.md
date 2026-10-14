@@ -190,6 +190,7 @@ This checklist must be strictly completed and verified prior to any public relea
  - [ ] GitHub Release title formatted as `RT-Library v${VERSION}`
  - [ ] Release notes generated from tag changes and changelog
  - [ ] No database files, cookies, or catalog data published
+ - [ ] Post-release validation script passes verifying all public assets: `node scripts/validate-published-release.cjs <version>`
 
 ---
 

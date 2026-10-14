@@ -277,15 +277,23 @@ class UpdaterManager extends EventEmitter {
 
   handleError(err) {
     const rawMsg = err ? (err.message || String(err)) : 'Unknown error';
-    console.error('[UPDATER][ERROR]', rawMsg);
+
+    // Deduplicate identical immediate error logging
+    if (this._lastLoggedError !== rawMsg) {
+      this._lastLoggedError = rawMsg;
+      console.error('[UPDATER][ERROR]', rawMsg);
+      setTimeout(() => {
+        if (this._lastLoggedError === rawMsg) this._lastLoggedError = null;
+      }, 5000);
+    }
 
     this.status.state = UpdaterState.ERROR;
     if (rawMsg.includes('ENOTFOUND') || rawMsg.includes('EAI_AGAIN') || rawMsg.includes('ETIMEDOUT') || rawMsg.includes('net::ERR_INTERNET_DISCONNECTED')) {
       this.status.errorCode = UpdaterErrorCode.NETWORK_UNAVAILABLE;
       this.status.errorMessage = 'Unable to check for updates. Please check your internet connection.';
     } else if (rawMsg.includes('404') || rawMsg.includes('latest-linux.yml') || rawMsg.includes('latest.yml')) {
-      this.status.errorCode = UpdaterErrorCode.RELEASE_METADATA_INVALID;
-      this.status.errorMessage = 'Update metadata could not be found on GitHub Releases.';
+      this.status.errorCode = UpdaterErrorCode.UPDATE_METADATA_MISSING;
+      this.status.errorMessage = 'Update information is temporarily unavailable. Please try again later or view releases on GitHub.';
     } else {
       this.status.errorCode = UpdaterErrorCode.UPDATE_CHECK_FAILED;
       this.status.errorMessage = 'Unable to check for updates at this time.';

@@ -222,8 +222,8 @@ describe('UpdaterManager Unit Tests', () => {
     expect(manager.getStatus().errorMessage).toContain('check your internet connection');
 
     manager.handleError(new Error('Cannot find /home/user/dist-desktop/latest-linux.yml 404'));
-    expect(manager.getStatus().errorCode).toBe(UpdaterErrorCode.RELEASE_METADATA_INVALID);
-    expect(manager.getStatus().errorMessage).toContain('Update metadata could not be found');
+    expect(manager.getStatus().errorCode).toBe(UpdaterErrorCode.UPDATE_METADATA_MISSING);
+    expect(manager.getStatus().errorMessage).toContain('Update information is temporarily unavailable');
   });
 });
 
