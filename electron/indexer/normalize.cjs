@@ -335,11 +335,17 @@ function normalizeItem(raw, fallbackCategoryId, fallbackCategoryName) {
   const infoHash = raw.infoHash || extractBTIH(magnet) || null;
 
   const rawSize = raw.content?.size ?? raw.size;
-  const sizeStr = (typeof rawSize === 'string' && rawSize !== 'N/A') ? rawSize : null;
+  const sizeStr = (typeof rawSize === 'string' && rawSize !== 'N/A') ? rawSize.trim() : null;
   const sizeBytes = (raw.sizeBytes ?? raw.content?.sizeBytes ?? raw.content?.fileListTotalSizeBytes ?? raw.fileListTotalSizeBytes) || null;
 
   const rawFileList = raw.content?.fileList ?? raw.fileList;
-  const fileList = Array.isArray(rawFileList) ? rawFileList : null;
+  let fileList = null;
+  if (Array.isArray(rawFileList)) {
+    fileList = rawFileList.map(f => (typeof f === 'string' ? f.trim() : f)).filter(Boolean);
+  } else if (typeof rawFileList === 'string' && rawFileList.trim()) {
+    const lines = rawFileList.split('\n').map(l => l.trim()).filter(Boolean);
+    fileList = lines.length > 0 ? lines : [rawFileList.trim()];
+  }
   const fileCount = raw.content?.fileCount ?? raw.fileCount ?? (fileList ? fileList.length : null);
   const fileListTotalSizeBytes = raw.content?.fileListTotalSizeBytes ?? raw.fileListTotalSizeBytes ?? sizeBytes;
   const fileListSource = raw.content?.fileListSource ?? raw.fileListSource ?? null;

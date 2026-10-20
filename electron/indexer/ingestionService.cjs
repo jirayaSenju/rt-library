@@ -50,7 +50,7 @@ function ingestRawBatch(db, category, rawItems, { preserveMissingFields = false,
       itemsRepo.upsertBatch(db, normalized);
 
       // 3. Update category with accurate item count
-      const totalCount = itemsRepo.countByCategory(db, category.id);
+      const totalCount = itemsRepo.countPhysicalByCategory(db, category.id);
       categoriesRepo.upsert(db, { ...category, itemCount: totalCount, lastScrapedAt: now });
     })();
   }
