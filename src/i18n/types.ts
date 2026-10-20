@@ -41,6 +41,8 @@ export interface Translations {
     allItems: string
     favorites: string
     platforms: string
+    tools: string
+    toolsAria: string
     collapseSidebar: string
     expandSidebar: string
     allGamesAria: string
@@ -63,6 +65,10 @@ export interface Translations {
     viewModeGridTooltip: string
     toggleThemeTooltip: string
     settingsTooltip: string
+    windowMinimize: string
+    windowMaximize: string
+    windowRestore: string
+    windowClose: string
     activeFiltersLabel: string
     seedsFilterChip: string
     leechersFilterChip: string
@@ -482,6 +488,8 @@ export interface Translations {
       elapsed: string
       progressLabel: string
       scanningLabel: string
+      enrichingLabel: string
+      enrichingNewItems: string
       updateCompleted: string
       pagesVisited: string
       newItemsSaved: string
@@ -1301,5 +1309,36 @@ export interface Translations {
     badgeDownloaded: string
     syncRunningWarning: string
   }
+  tools: {
+    title: string
+    subtitle: string
+    disclaimer: string
+    disclaimerAuth: string
+    openInBrowser: string
+    openError: string
+    categories: {
+      converter: string
+      firmware: string
+      resources: string
+      utilities: string
+    }
+    sourceTypes: {
+      github: string
+      releases: string
+      resource: string
+    }
+    items: {
+      nscbDesktop: {
+        description: string
+      }
+      nxFirmware: {
+        description: string
+      }
+      keys: {
+        description: string
+      }
+    }
+  }
 }
+
 

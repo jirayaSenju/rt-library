@@ -39,6 +39,8 @@ export const ptBR: Translations = {
     allItems: "Todos os Itens",
     favorites: "Favoritos",
     platforms: "Plataformas",
+    tools: "Ferramentas",
+    toolsAria: "Ferramentas",
     collapseSidebar: "Recolher barra lateral (>>)",
     expandSidebar: "Expandir barra lateral (<<)",
     allGamesAria: "Todos os Itens ({count})",
@@ -61,6 +63,10 @@ export const ptBR: Translations = {
     viewModeGridTooltip: "Alternar para Grade",
     toggleThemeTooltip: "Alternar Tema",
     settingsTooltip: "Configurações",
+    windowMinimize: "Minimizar",
+    windowMaximize: "Maximizar",
+    windowRestore: "Restaurar",
+    windowClose: "Fechar",
     activeFiltersLabel: "Filtros Ativos:",
     seedsFilterChip: "Seeds ≥ {minSeeds}",
     leechersFilterChip: "Leechers ≥ {minLeechers}",
@@ -606,6 +612,8 @@ export const ptBR: Translations = {
       elapsed: "Tempo Decorrido",
       progressLabel: "Progresso",
       scanningLabel: "Varrendo...",
+      enrichingLabel: "Obtendo detalhes...",
+      enrichingNewItems: "Obtendo screenshots, tamanhos e arquivos dos novos itens...",
       updateCompleted: "Atualização Concluída com Sucesso",
       pagesVisited: "Páginas Visitadas",
       newItemsSaved: "Novos Itens Salvos",
@@ -1421,5 +1429,36 @@ export const ptBR: Translations = {
     badgeDownloaded: "Pronto para atualizar",
     syncRunningWarning: "Uma sincronização de catálogo está em andamento. Aguarde ou cancele a sincronização antes de atualizar.",
   },
+  tools: {
+    title: "Ferramentas",
+    subtitle: "Acesso rápido a ferramentas e recursos externos úteis.",
+    disclaimer: "Ferramentas e recursos externos são mantidos por terceiros e não possuem afiliação com o RT-Library.",
+    disclaimerAuth: "Utilize recursos externos apenas com conteúdos e hardware que você possui autorização para utilizar.",
+    openInBrowser: "Abrir no navegador",
+    openError: "Não foi possível abrir este recurso externo.",
+    categories: {
+      converter: "Conversor",
+      firmware: "Firmware",
+      resources: "Recursos",
+      utilities: "Utilitários",
+    },
+    sourceTypes: {
+      github: "Projeto GitHub",
+      releases: "Releases do GitHub",
+      resource: "Recurso Externo",
+    },
+    items: {
+      nscbDesktop: {
+        description: "Conversão e gerenciamento de formatos Nintendo Switch.",
+      },
+      nxFirmware: {
+        description: "Acesse as releases disponíveis de firmware.",
+      },
+      keys: {
+        description: "Abrir recurso externo configurado.",
+      },
+    },
+  },
 }
+
 

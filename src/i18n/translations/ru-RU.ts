@@ -39,6 +39,8 @@ export const ruRU: Translations = {
     allItems: "Все элементы",
     favorites: "Избранное",
     platforms: "Платформы",
+    tools: "Инструменты",
+    toolsAria: "Инструменты",
     collapseSidebar: "Свернуть боковую панель (>>)",
     expandSidebar: "Развернуть боковую панель (<<)",
     allGamesAria: "Все элементы ({count})",
@@ -61,6 +63,10 @@ export const ruRU: Translations = {
     viewModeGridTooltip: "Переключить на сетку",
     toggleThemeTooltip: "Сменить тему",
     settingsTooltip: "Настройки",
+    windowMinimize: "Свернуть",
+    windowMaximize: "Развернуть",
+    windowRestore: "Восстановить",
+    windowClose: "Закрыть",
     activeFiltersLabel: "Активные фильтры:",
     seedsFilterChip: "Сиды ≥ {minSeeds}",
     leechersFilterChip: "Личи ≥ {minLeechers}",
@@ -641,6 +647,8 @@ export const ruRU: Translations = {
       elapsed: "Прошло времени",
       progressLabel: "Прогресс",
       scanningLabel: "Сканирование...",
+      enrichingLabel: "Получение деталей...",
+      enrichingNewItems: "Получение скриншотов, размеров и файлов для новых элементов...",
       updateCompleted: "Обновление успешно завершено",
       pagesVisited: "Посещено страниц",
       newItemsSaved: "Сохранено новых игр",
@@ -1456,5 +1464,36 @@ export const ruRU: Translations = {
     badgeDownloaded: "Готово к установке",
     syncRunningWarning: "В данный момент выполняется синхронизация каталога. Дождитесь завершения или отмените её перед обновлением.",
   },
+  tools: {
+    title: "Инструменты",
+    subtitle: "Быстрый доступ к полезным внешним инструментам и ресурсам.",
+    disclaimer: "Внешние инструменты и ресурсы поддерживаются третьими сторонами и не связаны с RT-Library.",
+    disclaimerAuth: "Используйте внешние ресурсы только с контентом и оборудованием, на использование которых у вас есть права.",
+    openInBrowser: "Открыть в браузере",
+    openError: "Не удалось открыть этот внешний ресурс.",
+    categories: {
+      converter: "Конвертер",
+      firmware: "Прошивка",
+      resources: "Ресурсы",
+      utilities: "Утилиты",
+    },
+    sourceTypes: {
+      github: "Проект GitHub",
+      releases: "Релизы GitHub",
+      resource: "Внешний ресурс",
+    },
+    items: {
+      nscbDesktop: {
+        description: "Конвертация и управление форматами пакетов Nintendo Switch.",
+      },
+      nxFirmware: {
+        description: "Доступ к доступным релизам прошивок NX.",
+      },
+      keys: {
+        description: "Открыть настроенный внешний ресурс ключей.",
+      },
+    },
+  },
 }
+
 

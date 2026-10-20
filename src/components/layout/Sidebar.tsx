@@ -11,6 +11,7 @@ import {
   PanelLeftOpen,
   Settings,
   Sparkles,
+  Wrench,
 } from "lucide-react"
 import { useUpdater } from "@/hooks/useUpdater"
 import { cn } from "@/lib/utils"
@@ -32,6 +33,8 @@ interface SidebarProps {
   isCollapsed?: boolean
   onToggleCollapse?: () => void
   onOpenSettings?: (section?: any) => void
+  activeView?: "library" | "tools"
+  onSelectTools?: () => void
 }
 
 interface PlatformGroup {
@@ -137,6 +140,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed = false,
   onToggleCollapse,
   onOpenSettings,
+  activeView = "library",
+  onSelectTools,
 }: SidebarProps) => {
   const { t, formatNumber } = useI18n()
   const { status: updaterStatus } = useUpdater()
@@ -249,7 +254,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => onSelectCategory("all")}
                     className={cn(
                       "w-full h-10 flex items-center justify-center rounded-lg transition-colors",
-                      selectedCategory === "all"
+                      activeView !== "tools" && selectedCategory === "all"
                         ? "bg-primary/20 text-primary border border-primary/40 font-semibold shadow-sm"
                         : "text-foreground/80 hover:bg-secondary hover:text-foreground"
                     )}
@@ -269,7 +274,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => onSelectCategory("favorites")}
                     className={cn(
                       "w-full h-10 flex items-center justify-center rounded-lg transition-colors",
-                      selectedCategory === "favorites"
+                      activeView !== "tools" && selectedCategory === "favorites"
                         ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold shadow-sm"
                         : "text-foreground/80 hover:bg-secondary hover:text-foreground"
                     )}
@@ -289,7 +294,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => onSelectCategory("all")}
                 className={cn(
                   "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors",
-                  selectedCategory === "all"
+                  activeView !== "tools" && selectedCategory === "all"
                     ? "bg-primary/20 text-primary border border-primary/40 font-semibold shadow-sm"
                     : "text-foreground/90 hover:bg-secondary hover:text-foreground"
                 )}
@@ -307,7 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => onSelectCategory("favorites")}
                 className={cn(
                   "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors",
-                  selectedCategory === "favorites"
+                  activeView !== "tools" && selectedCategory === "favorites"
                     ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 font-semibold shadow-sm"
                     : "text-foreground/90 hover:bg-secondary hover:text-foreground"
                 )}
@@ -342,7 +347,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {group.iconLetter}
                 </div>
                 {group.categories.map((cat) => {
-                  const isSelected = selectedCategory === cat.id
+                  const isSelected = activeView !== "tools" && selectedCategory === cat.id
                   const abbr = getPlatformAbbreviation(cat.name, cat.id)
                   return (
                     <Tooltip key={cat.id}>
@@ -375,7 +380,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             // Expanded: Accordion of platform groups
             platformGroups.map((group) => {
               const isOpen = expandedGroups[group.id] ?? false
-              const hasSelectedCategory = group.categories.some((c) => c.id === selectedCategory)
+              const hasSelectedCategory = activeView !== "tools" && group.categories.some((c) => c.id === selectedCategory)
 
               return (
                 <div key={group.id} className="rounded-lg overflow-hidden border border-border/70 bg-card/60">
@@ -404,7 +409,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {isOpen && (
                     <div className="py-1 px-1.5 space-y-0.5 border-t border-border/50 bg-card/40">
                       {group.categories.map((cat) => {
-                        const isSelected = selectedCategory === cat.id
+                        const isSelected = activeView !== "tools" && selectedCategory === cat.id
                         return (
                           <button
                             key={cat.id}
@@ -428,6 +433,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               )
             })
+          )}
+        </div>
+
+        {/* Tools Section */}
+        <div className={cn("p-2 border-t border-border shrink-0", isCollapsed && "px-1.5")}>
+          {isCollapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onSelectTools}
+                  className={cn(
+                    "w-full h-10 flex items-center justify-center rounded-lg transition-colors",
+                    activeView === "tools"
+                      ? "bg-primary/20 text-primary border border-primary/40 font-semibold shadow-sm"
+                      : "text-foreground/80 hover:bg-secondary hover:text-foreground"
+                  )}
+                  aria-label={t("navigation.toolsAria") || t("navigation.tools")}
+                  data-testid="sidebar-tools-button"
+                >
+                  <Wrench className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {t("navigation.tools")}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              type="button"
+              onClick={onSelectTools}
+              className={cn(
+                "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                activeView === "tools"
+                  ? "bg-primary/20 text-primary border border-primary/40 font-semibold shadow-sm"
+                  : "text-foreground/90 hover:bg-secondary hover:text-foreground"
+              )}
+              aria-label={t("navigation.toolsAria") || t("navigation.tools")}
+              data-testid="sidebar-tools-button"
+            >
+              <div className="flex items-center space-x-2.5">
+                <Wrench className="h-4 w-4" />
+                <span>{t("navigation.tools")}</span>
+              </div>
+            </button>
           )}
         </div>
 

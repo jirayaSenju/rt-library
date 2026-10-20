@@ -39,6 +39,8 @@ export const en: Translations = {
     allItems: "All Items",
     favorites: "Favorites",
     platforms: "Platforms",
+    tools: "Tools",
+    toolsAria: "Tools",
     collapseSidebar: "Collapse sidebar (>>)",
     expandSidebar: "Expand sidebar (<<)",
     allGamesAria: "All Items ({count})",
@@ -61,6 +63,10 @@ export const en: Translations = {
     viewModeGridTooltip: "Switch to Grid View",
     toggleThemeTooltip: "Toggle Theme",
     settingsTooltip: "Settings",
+    windowMinimize: "Minimize",
+    windowMaximize: "Maximize",
+    windowRestore: "Restore",
+    windowClose: "Close",
     activeFiltersLabel: "Active Filters:",
     seedsFilterChip: "Seeds ≥ {minSeeds}",
     leechersFilterChip: "Leechers ≥ {minLeechers}",
@@ -606,6 +612,8 @@ export const en: Translations = {
       elapsed: "Elapsed",
       progressLabel: "Progress",
       scanningLabel: "Scanning...",
+      enrichingLabel: "Fetching details...",
+      enrichingNewItems: "Fetching screenshots, sizes, and file lists for new items...",
       updateCompleted: "Update Completed Successfully",
       pagesVisited: "Pages Visited",
       newItemsSaved: "New Items Saved",
@@ -1421,5 +1429,36 @@ export const en: Translations = {
     badgeDownloaded: "Ready to update",
     syncRunningWarning: "A catalog sync is currently running. Please wait or cancel the sync before updating.",
   },
+  tools: {
+    title: "Tools",
+    subtitle: "Quick access to useful external tools and resources.",
+    disclaimer: "External tools and resources are maintained by third parties and are not affiliated with RT-Library.",
+    disclaimerAuth: "Use external resources only with content and hardware you are authorized to use.",
+    openInBrowser: "Open in browser",
+    openError: "Unable to open this external resource.",
+    categories: {
+      converter: "Converter",
+      firmware: "Firmware",
+      resources: "Resources",
+      utilities: "Utilities",
+    },
+    sourceTypes: {
+      github: "GitHub Project",
+      releases: "GitHub Releases",
+      resource: "External Resource",
+    },
+    items: {
+      nscbDesktop: {
+        description: "Convert and manage Nintendo Switch package formats.",
+      },
+      nxFirmware: {
+        description: "Access available NX Firmware releases.",
+      },
+      keys: {
+        description: "Open the configured external keys resource.",
+      },
+    },
+  },
 }
+
 
