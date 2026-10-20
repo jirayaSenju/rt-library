@@ -214,6 +214,22 @@ const rtLibrary = {
       return () => ipcRenderer.removeListener('updater:status-changed', handler);
     },
   },
+  window: {
+    isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
+    minimize: () => ipcRenderer.invoke('window:minimize'),
+    toggleMaximize: () => ipcRenderer.invoke('window:toggle-maximize'),
+    close: () => ipcRenderer.invoke('window:close'),
+    onMaximizedChange: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const handler = (_event, isMaximized) => callback(isMaximized);
+      ipcRenderer.on('window:maximized-change', handler);
+      return () => ipcRenderer.removeListener('window:maximized-change', handler);
+    },
+  },
+  tools: {
+    openExternal: (payload) => ipcRenderer.invoke('tools:open-external', payload),
+    getRegistry: () => ipcRenderer.invoke('tools:get-registry'),
+  },
 };
 
 contextBridge.exposeInMainWorld('rtLibrary', rtLibrary);
@@ -230,4 +246,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   torrent: rtLibrary.torrent,
   scraper: rtLibrary.scraper,
   companion: rtLibrary.companion,
+  window: rtLibrary.window,
+  tools: rtLibrary.tools,
 });

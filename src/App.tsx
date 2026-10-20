@@ -18,15 +18,18 @@ import { Pagination } from "@/components/library/Pagination"
 import { ItemDetailModal } from "@/components/library/ItemDetailModal"
 import { FirstRunScraperScreen } from "@/components/onboarding/FirstRunScraperScreen"
 import { SettingsModal, SettingsSectionKey } from "@/components/settings/SettingsModal"
+import { ToolsView } from "@/components/tools"
 import { Button } from "@/components/ui/button"
 import { Toaster, toast } from "sonner"
 import { LibraryItem, LibraryFilters, DEFAULT_LIBRARY_FILTERS } from "@/types"
 import { Loader2, AlertCircle, RefreshCw } from "lucide-react"
 import { SyncActionBanner } from "@/components/layout/SyncActionBanner"
 import { useSyncNotificationCoordinator } from "@/hooks/useSyncNotificationCoordinator"
+import { useWindowState } from "@/hooks/useWindowState"
 
 export function App() {
   const { t } = useI18n()
+  const { isMaximized } = useWindowState()
   const { themeId, theme, setTheme } = useTheme()
   const { favorites, isFavorite, toggleFavorite, setFavoritesBatch } = useFavorites()
   const {
@@ -93,7 +96,10 @@ export function App() {
     }
   }
 
+  const [activeView, setActiveView] = useState<"library" | "tools">("library")
+
   const handleSelectCategory = (catId: string) => {
+    setActiveView("library")
     setSelectedCategory(catId)
     clearSelection()
   }
@@ -287,7 +293,7 @@ export function App() {
   const isAllPageSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id))
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans select-none antialiased">
+    <div className={`flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans select-none antialiased ${isMaximized ? "window-maximized" : "window-normal"}`}>
       <Toaster
           theme={theme.type}
           position="bottom-right"
@@ -310,6 +316,8 @@ export function App() {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebarCollapse}
         onOpenSettings={(section) => handleOpenSettings(section || "library")}
+        activeView={activeView}
+        onSelectTools={() => setActiveView("tools")}
       />
 
       <main className="flex-1 min-h-0 flex flex-col h-screen overflow-hidden bg-background">
@@ -330,108 +338,115 @@ export function App() {
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
           onOpenSettings={() => handleOpenSettings("scraper")}
+          activeView={activeView}
         />
 
-        <SyncActionBanner
-          banner={actionBanner}
-          onDismiss={dismissActionBanner}
-          onAction={handleBannerAction}
-        />
-
-        <ScraperActivityBar
-          state={scraperState}
-          progress={scraperProgress}
-          error={scraperError}
-          onOpenDetails={() => handleOpenSettings("scraper")}
-          onCancel={cancelScraper}
-          onRenewSession={renewSession}
-        />
-
-        {isIndexing && (
-          <div className="bg-primary/10 border-b border-primary/20 px-6 py-2 flex items-center justify-between text-xs text-primary">
-            <span className="font-medium animate-pulse">
-              {indexingProgress || t("common.indexing")}
-            </span>
-          </div>
-        )}
-
-        <SelectionBar
-          selectedCount={selectedCount}
-          selectedItems={selectedItems}
-          totalPageItems={items.length}
-          onSelectAll={handleSelectAllPage}
-          onClearSelection={clearSelection}
-          isAllSelected={isAllPageSelected}
-          onFavoriteSelected={handleFavoriteSelected}
-          onUnfavoriteSelected={handleUnfavoriteSelected}
-        />
-
-        <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col">
-          {viewMode === "grid" ? (
-            <ItemGrid
-              items={items}
-              isLoading={isLoading}
-              favorites={favorites}
-              onToggleFavorite={handleToggleFavorite}
-              onSelectItem={setSelectedItem}
-              savedScrollPosition={categoryScrollPositions[selectedCategory] || 0}
-              onSaveScrollPosition={(pos) => saveScrollPosition(selectedCategory, pos)}
-              density={density}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelection}
-              isLibraryEmpty={totalItemsCount === 0 && !filters.searchQuery}
-              isFavorites={selectedCategory === "favorites"}
-              hasSearchQuery={Boolean(filters.searchQuery?.trim())}
-              onBrowseAll={() => handleSelectCategory("all")}
-              onOpenSettings={handleOpenSettings}
-              onImportHtml={() => handleOpenSettings("scraper")}
-              isSyncing={isScraperRunning}
-              onViewSync={() => handleOpenSettings("scraper")}
-              pendingNewItemsCount={pendingNewItemsCount}
-              onShowNewItems={showPendingNewItems}
+        {activeView === "tools" ? (
+          <ToolsView />
+        ) : (
+          <>
+            <SyncActionBanner
+              banner={actionBanner}
+              onDismiss={dismissActionBanner}
+              onAction={handleBannerAction}
             />
-          ) : (
-            <ItemList
-              items={items}
-              isLoading={isLoading}
-              favorites={favorites}
-              onToggleFavorite={handleToggleFavorite}
-              onSelectItem={setSelectedItem}
-              savedScrollPosition={categoryScrollPositions[selectedCategory] || 0}
-              onSaveScrollPosition={(pos) => saveScrollPosition(selectedCategory, pos)}
-              selectedIds={selectedIds}
-              onToggleSelect={toggleSelection}
-              onSelectAllPage={handleSelectAllPage}
+
+            <ScraperActivityBar
+              state={scraperState}
+              progress={scraperProgress}
+              error={scraperError}
+              onOpenDetails={() => handleOpenSettings("scraper")}
+              onCancel={cancelScraper}
+              onRenewSession={renewSession}
+            />
+
+            {isIndexing && (
+              <div className="bg-primary/10 border-b border-primary/20 px-6 py-2 flex items-center justify-between text-xs text-primary">
+                <span className="font-medium animate-pulse">
+                  {indexingProgress || t("common.indexing")}
+                </span>
+              </div>
+            )}
+
+            <SelectionBar
+              selectedCount={selectedCount}
+              selectedItems={selectedItems}
+              totalPageItems={items.length}
+              onSelectAll={handleSelectAllPage}
               onClearSelection={clearSelection}
-              isLibraryEmpty={totalItemsCount === 0 && !filters.searchQuery}
-              isFavorites={selectedCategory === "favorites"}
-              hasSearchQuery={Boolean(filters.searchQuery?.trim())}
-              onBrowseAll={() => handleSelectCategory("all")}
-              onOpenSettings={handleOpenSettings}
-              onImportHtml={() => handleOpenSettings("scraper")}
-              isSyncing={isScraperRunning}
-              onViewSync={() => handleOpenSettings("scraper")}
-              pendingNewItemsCount={pendingNewItemsCount}
-              onShowNewItems={showPendingNewItems}
+              isAllSelected={isAllPageSelected}
+              onFavoriteSelected={handleFavoriteSelected}
+              onUnfavoriteSelected={handleUnfavoriteSelected}
             />
-          )}
 
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            pageSize={pageSize}
-            onPageChange={(page) => {
-              saveScrollPosition(selectedCategory, 0)
-              goToPage(page)
-            }}
-            onPageSizeChange={(size) => {
-              saveScrollPosition(selectedCategory, 0)
-              setPageSize(size)
-            }}
-            isLoading={isLoading}
-          />
-        </div>
+            <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col">
+              {viewMode === "grid" ? (
+                <ItemGrid
+                  items={items}
+                  isLoading={isLoading}
+                  favorites={favorites}
+                  onToggleFavorite={handleToggleFavorite}
+                  onSelectItem={setSelectedItem}
+                  savedScrollPosition={categoryScrollPositions[selectedCategory] || 0}
+                  onSaveScrollPosition={(pos) => saveScrollPosition(selectedCategory, pos)}
+                  density={density}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelection}
+                  isLibraryEmpty={totalItemsCount === 0 && !filters.searchQuery}
+                  isFavorites={selectedCategory === "favorites"}
+                  hasSearchQuery={Boolean(filters.searchQuery?.trim())}
+                  onBrowseAll={() => handleSelectCategory("all")}
+                  onOpenSettings={handleOpenSettings}
+                  onImportHtml={() => handleOpenSettings("scraper")}
+                  isSyncing={isScraperRunning}
+                  onViewSync={() => handleOpenSettings("scraper")}
+                  pendingNewItemsCount={pendingNewItemsCount}
+                  onShowNewItems={showPendingNewItems}
+                />
+              ) : (
+                <ItemList
+                  items={items}
+                  isLoading={isLoading}
+                  favorites={favorites}
+                  onToggleFavorite={handleToggleFavorite}
+                  onSelectItem={setSelectedItem}
+                  savedScrollPosition={categoryScrollPositions[selectedCategory] || 0}
+                  onSaveScrollPosition={(pos) => saveScrollPosition(selectedCategory, pos)}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelection}
+                  onSelectAllPage={handleSelectAllPage}
+                  onClearSelection={clearSelection}
+                  isLibraryEmpty={totalItemsCount === 0 && !filters.searchQuery}
+                  isFavorites={selectedCategory === "favorites"}
+                  hasSearchQuery={Boolean(filters.searchQuery?.trim())}
+                  onBrowseAll={() => handleSelectCategory("all")}
+                  onOpenSettings={handleOpenSettings}
+                  onImportHtml={() => handleOpenSettings("scraper")}
+                  isSyncing={isScraperRunning}
+                  onViewSync={() => handleOpenSettings("scraper")}
+                  pendingNewItemsCount={pendingNewItemsCount}
+                  onShowNewItems={showPendingNewItems}
+                />
+              )}
+
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={(page) => {
+                  saveScrollPosition(selectedCategory, 0)
+                  goToPage(page)
+                }}
+                onPageSizeChange={(size) => {
+                  saveScrollPosition(selectedCategory, 0)
+                  setPageSize(size)
+                }}
+                isLoading={isLoading}
+              />
+            </div>
+          </>
+        )}
       </main>
 
       <ItemDetailModal
@@ -450,11 +465,12 @@ export function App() {
         items={items}
         categories={categories}
         onSelectItem={(item) => {
+          setActiveView("library")
           setSelectedItem(item)
           setIsCommandPaletteOpen(false)
         }}
         onSelectCategory={(catId) => {
-          setSelectedCategory(catId)
+          handleSelectCategory(catId)
           setIsCommandPaletteOpen(false)
         }}
         onRefresh={refreshLibrary}
