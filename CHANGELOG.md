@@ -10,6 +10,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.2.0] - 2026-10-20
+
+### Added
+- External Tools Hub for quick access to community tools (NSCB Desktop, NX Firmware, Keys) with safe external navigation and security isolation.
+- Minimal cover-only card grid design with responsive hover/focus title overlays and tightened borders.
+- Compact application window chrome when maximized on Linux and Windows.
+- Post-scan detail enrichment pipeline targeting newly added items without requiring full catalog rescans.
+- Category page progress tracking and percentage calculation with completed page semantics.
+
+### Fixed
+- Prevented pagination state desynchronization during rapid navigation between catalog pages.
+- Improved Nintendo Switch forum classification to properly include Homebrew (`хоумбрю`) alongside Ports (`порт`).
+- Protected existing screenshots and covers from being overwritten by empty arrays during catalog re-indexing.
+- Improved RuTracker spoiler file list parsing from single-line string to file list array.
+
+---
+
 ## [1.1.5] - 2026-10-14
 
 ### Fixed

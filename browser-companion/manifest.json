@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "RT Library Browser Companion",
-  "version": "1.1.5",
+  "version": "1.2.0",
   "description": "Fetch RuTracker forum pages for RT Library in your normal browser session.",
   "permissions": [
     "tabs",
