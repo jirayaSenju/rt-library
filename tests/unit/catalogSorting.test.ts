@@ -266,7 +266,7 @@ describe('Catalog Default Sorting by Scrape/Discovery Date Descending (V3-24)', 
       const ids = result.items.map((i: any) => i.id);
 
       const selectSql = lastPreparedSql.find((s) => s.includes('SELECT') && !s.includes('COUNT(*)'))!;
-      expect(selectSql).toContain('WHERE category_id = ?');
+      expect(selectSql).toContain('WHERE items.category_id = ?');
       expect(selectSql).toContain('ORDER BY (items.discovered_at IS NULL), items.discovered_at DESC');
 
       // Switch items: item-b (10-07), item-c (10-05), item-a (10-01), item-g (NULL)
@@ -279,6 +279,21 @@ describe('Catalog Default Sorting by Scrape/Discovery Date Descending (V3-24)', 
 
       // PS2 items: 10-06 tie (item-f 'Devil May Cry 3', item-d 'God of War II'), then item-e (10-02)
       expect(ids).toEqual(['item-f', 'item-d', 'item-e']);
+    });
+
+    it('filters Nintendo Switch categories by the stored forum topic_title', () => {
+      itemsRepo.getPaginated(mockDb, { categoryId: 'switch' });
+      let selectSql = lastPreparedSql.filter((s) => s.includes('SELECT') && !s.includes('COUNT(*)')).at(-1)!;
+      expect(selectSql).toContain('items.category_id = ?');
+      expect(selectSql).toContain("instr(replace(");
+      expect(selectSql).toContain("'порт') > 0");
+      expect(selectSql).toContain("'хоумбрю') > 0)");
+
+      itemsRepo.getPaginated(mockDb, { categoryId: 'switch-ports' });
+      selectSql = lastPreparedSql.filter((s) => s.includes('SELECT') && !s.includes('COUNT(*)')).at(-1)!;
+      expect(selectSql).toContain('items.category_id = ?');
+      expect(selectSql).toContain("instr(replace(");
+      expect(selectSql).not.toContain('NOT (instr');
     });
   });
 
