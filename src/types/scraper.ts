@@ -8,6 +8,8 @@ export interface ScraperCategory {
   titleSearch: string[]
   enabled: boolean
   builtIn: boolean
+  virtual?: boolean
+  physicalCategoryId?: string
   createdAt?: string
   updatedAt?: string
 }

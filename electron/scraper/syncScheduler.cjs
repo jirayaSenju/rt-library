@@ -206,7 +206,7 @@ async function runDueCheck(isManualTrigger = false) {
   // 3. Resolve Target Categories Snapshot
   const { CategoryManager } = require('./categoryManager.cjs');
   const catManager = CategoryManager.getInstance();
-  const allCategories = catManager.getResolvedCategories();
+  const allCategories = catManager.getScraperCategories();
   const enabledCategories = allCategories.filter((c) => c.enabled !== false);
 
   let targetCategories = enabledCategories;

@@ -129,6 +129,7 @@ function createExecutionPlan(userOptions = {}, categoryContext = {}) {
       scope,
       mode: 'full',
       enrichTopics: normalized.enrichTopics !== undefined ? Boolean(normalized.enrichTopics) : true,
+      enrichNewTopics: true,
       refresh: {
         images: true,
         size: true,
@@ -173,6 +174,7 @@ function createExecutionPlan(userOptions = {}, categoryContext = {}) {
     scope,
     mode: 'incremental',
     enrichTopics,
+    enrichNewTopics: true,
     refresh: {
       images: false,
       size: false,

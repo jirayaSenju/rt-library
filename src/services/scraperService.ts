@@ -267,7 +267,7 @@ class ScraperService {
   async getCategories(): Promise<import('@/types/scraper').ScraperCategory[]> {
     if (!this.api?.getCategories) {
       const { DEFAULT_CATEGORIES } = await import('@/scraper/defaultCategories');
-      return DEFAULT_CATEGORIES;
+      return DEFAULT_CATEGORIES.filter((category) => category.virtual !== true);
     }
     return await this.api.getCategories();
   }

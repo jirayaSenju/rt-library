@@ -373,7 +373,7 @@ class ScraperManager {
     }
 
     const { CategoryManager } = require('./categoryManager.cjs');
-    const categories = CategoryManager.getInstance().getResolvedCategories();
+    const categories = CategoryManager.getInstance().getScraperCategories();
     const scope = this.getAccessScope(options, categories);
     try {
       return await this.probeScope(scope, { merge: true });
@@ -451,7 +451,7 @@ class ScraperManager {
 
     const { CategoryManager } = require('./categoryManager.cjs');
     const catManager = CategoryManager.getInstance();
-    const allCategories = catManager.getResolvedCategories();
+    const allCategories = catManager.getScraperCategories();
     const enabledCategories = allCategories.filter((c) => c.enabled !== false);
 
     const plan = createExecutionPlan(options, { allCategories, enabledCategories });
@@ -1126,7 +1126,7 @@ class ScraperManager {
       this.embeddedTransport = new EmbeddedElectronTransport();
     }
     const { CategoryManager } = require('./categoryManager.cjs');
-    const categories = CategoryManager.getInstance().getResolvedCategories();
+    const categories = CategoryManager.getInstance().getScraperCategories();
     const targetCategory = options.categoryId
       ? categories.find(c => c.id === options.categoryId)
       : (categories.find(c => c.enabled !== false) || categories[0]);
@@ -1181,7 +1181,7 @@ class ScraperManager {
       this.embeddedTransport = new EmbeddedElectronTransport();
     }
     const { CategoryManager } = require('./categoryManager.cjs');
-    const categories = CategoryManager.getInstance().getResolvedCategories();
+    const categories = CategoryManager.getInstance().getScraperCategories();
     const targetCategory = options.categoryId
       ? categories.find(c => c.id === options.categoryId)
       : (categories.find(c => c.enabled !== false) || categories[0]);
@@ -1213,7 +1213,7 @@ class ScraperManager {
     }
 
     const { CategoryManager } = require('./categoryManager.cjs');
-    const categories = CategoryManager.getInstance().getResolvedCategories().filter((category) => category.enabled !== false);
+    const categories = CategoryManager.getInstance().getScraperCategories().filter((category) => category.enabled !== false);
     const targetCategory = options.category
       || this.access.results.find((result) => result.status === ACCESS_STATUSES.INTERACTION_REQUIRED || result.status === ACCESS_STATUSES.AUTH_REQUIRED)?.categoryId
       || categories[0]?.id;
@@ -1549,7 +1549,7 @@ class ScraperManager {
   getSyncHealth() {
     const db = dbMain.getDatabase();
     const { CategoryManager } = require('./categoryManager.cjs');
-    const categories = CategoryManager.getInstance().getResolvedCategories();
+    const categories = CategoryManager.getInstance().getScraperCategories();
     const syncHistoryRepo = require('../database/repositories/syncHistoryRepo.cjs');
     return syncHistoryRepo.getSyncHealth(db, categories);
   }

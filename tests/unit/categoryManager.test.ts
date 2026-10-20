@@ -35,10 +35,11 @@ describe("categoryManager unit tests", () => {
 
   it("resolves built-in default categories when no config file exists", () => {
     const categories = categoryManager.getResolvedCategories()
-    expect(categories).toHaveLength(16)
+    expect(categories).toHaveLength(17)
 
     const expectedIds = [
       "switch",
+      "switch-ports",
       "psx",
       "ps2",
       "psp",
@@ -58,6 +59,14 @@ describe("categoryManager unit tests", () => {
 
     const actualIds = categories.map((c: any) => c.id)
     expect(actualIds).toEqual(expectedIds)
+
+    const switchPorts = categories.find((c: any) => c.id === "switch-ports")
+    expect(switchPorts.name).toBe("Nintendo Switch Ports")
+    expect(switchPorts.group).toBe("nintendo")
+    expect(switchPorts.titleSearch).toEqual(["[Nintendo Switch]"])
+    expect(switchPorts.virtual).toBe(true)
+    expect(switchPorts.physicalCategoryId).toBe("switch")
+    expect(categoryManager.getScraperCategories().some((c: any) => c.id === "switch-ports")).toBe(false)
 
     // Verify dreamcast built-in
     const dreamcast = categories.find((c: any) => c.id === "dreamcast")
@@ -88,8 +97,8 @@ describe("categoryManager unit tests", () => {
     const cjsDefaults = (await import("../../electron/scraper/defaultCategories.cjs")).DEFAULT_CATEGORIES
     const tsDefaults = (await import("../../src/scraper/defaultCategories")).DEFAULT_CATEGORIES
 
-    expect(cjsDefaults).toHaveLength(16)
-    expect(tsDefaults).toHaveLength(16)
+    expect(cjsDefaults).toHaveLength(17)
+    expect(tsDefaults).toHaveLength(17)
     expect(cjsDefaults).toEqual(tsDefaults)
   })
 
@@ -250,7 +259,7 @@ describe("categoryManager unit tests", () => {
     fs.writeFileSync(configFile, "INVALID_JSON_CORRUPTED_DATA{{{", "utf8")
 
     const resolved = categoryManager.getResolvedCategories()
-    expect(resolved).toHaveLength(16)
+    expect(resolved).toHaveLength(17)
     const ps2 = resolved.find((c: any) => c.id === "ps2")
     expect(ps2).toBeDefined()
     expect(ps2.name).toBe("Playstation 2")

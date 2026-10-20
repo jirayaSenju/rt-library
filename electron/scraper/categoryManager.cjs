@@ -127,6 +127,8 @@ class CategoryManager {
           titleSearch: Array.isArray(override.titleSearch) && override.titleSearch.length > 0
             ? this.normalizeTitleSearch(override.titleSearch)
             : [...def.titleSearch],
+          virtual: def.virtual === true,
+          physicalCategoryId: def.physicalCategoryId,
           enabled: typeof override.enabled === 'boolean' ? override.enabled : def.enabled,
           builtIn: true,
           updatedAt: override.updatedAt,
@@ -155,6 +157,10 @@ class CategoryManager {
     }
 
     return result;
+  }
+
+  getScraperCategories() {
+    return this.getResolvedCategories().filter((category) => category.virtual !== true);
   }
 
   normalizeTitleSearch(titleSearch) {

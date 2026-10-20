@@ -82,7 +82,11 @@ function resolveCategory(db, forumId, selectedCategoryId) {
   const configured = CategoryManager.getInstance().getResolvedCategories();
   if (selectedCategoryId) {
     const selected = configured.find((category) => category.id === selectedCategoryId);
-    if (selected) return selected;
+    if (selected) {
+      return selected.virtual
+        ? configured.find((category) => category.id === selected.physicalCategoryId) || selected
+        : selected;
+    }
     const stored = categoriesRepo.getById(db, selectedCategoryId);
     if (stored) return { id: stored.id, name: stored.name, baseUrl: stored.base_url };
   }

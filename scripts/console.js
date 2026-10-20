@@ -1237,7 +1237,6 @@
           (Array.isArray(category.titleSearch)
             ? category.titleSearch.some(term => title.toLowerCase().includes(term.toLowerCase()))
             : title.toLowerCase().includes(category.titleSearch.toLowerCase()));
-
         if (title && matchesTitle && href) {
           const topicIdMatch = href.match(/t=(\d+)/);
           const topicId = topicIdMatch ? topicIdMatch[1] : null;
@@ -1740,6 +1739,13 @@
       console.log(`============================================================`);
       console.log(`Execute EcoHubScraper.getAuditLogs() para ver a auditoria de execuções.`);
       console.log(`Execute EcoHubScraper.downloadAll() para exportar os arquivos JSON.`);
+    }
+
+    setCategories(categories) {
+      if (!Array.isArray(categories)) throw new TypeError('Categories must be an array.');
+      const validCategories = categories.filter(category => category && typeof category.id === 'string' && category.id.trim());
+      CATEGORIES.splice(0, CATEGORIES.length, ...validCategories);
+      return CATEGORIES.length;
     }
 
     startFull() {
