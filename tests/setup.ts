@@ -223,12 +223,19 @@ function filterAndSortMockItems(options: GetItemsOptions = {}): GetItemsResponse
   const limit = options.limit || 48
   const pagedItems = result.slice(offset, offset + limit)
 
+  const page = Math.floor(offset / limit) + 1
+  const pageSize = limit
+  const totalPages = Math.max(1, Math.ceil(total / limit))
+
   return {
     items: pagedItems,
     total,
     hasMore: offset + limit < total,
     limit,
     offset,
+    page,
+    pageSize,
+    totalPages,
   }
 }
 
@@ -463,6 +470,7 @@ export const mockElectronBridge = {
     onStateChanged: vi.fn(() => () => {}),
     onProgress: vi.fn(() => () => {}),
     onLog: vi.fn(() => () => {}),
+    onPageCommitted: vi.fn(() => () => {}),
     onRunFinalized: vi.fn(() => () => {}),
   },
   companion: {
@@ -488,6 +496,21 @@ export const mockElectronBridge = {
       topicCount: 46,
       fetchedAt: new Date().toISOString(),
     })),
+  },
+  window: {
+    isMaximized: vi.fn(async () => false),
+    minimize: vi.fn(async () => {}),
+    toggleMaximize: vi.fn(async () => true),
+    close: vi.fn(async () => {}),
+    onMaximizedChange: vi.fn((_cb: (isMax: boolean) => void) => () => {}),
+  },
+  tools: {
+    openExternal: vi.fn(async (payload: any) => ({ success: true })),
+    getRegistry: vi.fn(async () => [
+      { id: "nscb-desktop", name: "NSCB Desktop", url: "https://github.com/cxfcxf/nscb-desktop" },
+      { id: "nx-firmware", name: "NX Firmware", url: "https://github.com/THZoria/NX_Firmware/releases" },
+      { id: "keys", name: "Keys", url: "https://edenprodkeys.com/" },
+    ]),
   },
 }
 

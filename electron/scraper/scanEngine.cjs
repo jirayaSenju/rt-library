@@ -126,6 +126,7 @@ async function scanLibrary({
     });
 
     const knownTopicIds = new Set(itemsRepo.getKnownTopicIds(db, 'rutracker', category.id));
+    const newlyAddedTopicIds = new Set();
     onLog({
       level: 'info',
       message: `[SCAN_ENGINE] Category "${category.id}": loaded ${knownTopicIds.size} existing known topic IDs from SQLite.`,
@@ -135,6 +136,9 @@ async function scanLibrary({
     let pageNum = 1;
     let totalPages = 1;
     let consecutiveKnownPages = 0;
+    let completedPages = 0;
+    let paginationKnown = false;
+    let completedEarly = false;
 
     while (pageNum <= totalPages) {
       while (isPaused() && !isCancelled()) {
@@ -181,9 +185,9 @@ async function scanLibrary({
         categoryName: category.name,
         categoryIndex: catIndex + 1,
         totalCategories: categories.length,
-        categoryStatuses: [...categoryStatuses],
-        currentPage: pageNum,
-        totalPages,
+        categoryStatuses: categoryStatuses.map(entry => ({ ...entry })),
+        currentPage: completedPages,
+        totalPages: paginationKnown ? totalPages : 0,
         totalItems: totalItemsScraped,
         newItems: totalNewItems,
         updatedItems: totalUpdatedItems,
@@ -241,9 +245,9 @@ async function scanLibrary({
               categoryName: category.name,
               categoryIndex: catIndex + 1,
               totalCategories: categories.length,
-              categoryStatuses: [...categoryStatuses],
-              currentPage: pageNum,
-              totalPages,
+              categoryStatuses: categoryStatuses.map(entry => ({ ...entry })),
+              currentPage: completedPages,
+              totalPages: paginationKnown ? totalPages : 0,
               totalItems: totalItemsScraped,
               newItems: totalNewItems,
               updatedItems: totalUpdatedItems,
@@ -283,6 +287,7 @@ async function scanLibrary({
 
       if (pageResult.pagination?.totalPages) {
         totalPages = Math.max(totalPages, pageResult.pagination.totalPages);
+        paginationKnown = true;
       }
 
       const rawTopics = pageResult.topics || [];
@@ -299,9 +304,9 @@ async function scanLibrary({
         categoryName: category.name,
         categoryIndex: catIndex + 1,
         totalCategories: categories.length,
-        categoryStatuses: [...categoryStatuses],
-        currentPage: pageNum,
-        totalPages,
+        categoryStatuses: categoryStatuses.map(entry => ({ ...entry })),
+        currentPage: completedPages,
+        totalPages: paginationKnown ? totalPages : 0,
         topicsDiscovered: rawTopics.length,
         newTopics: newCountOnPage,
         knownTopics: knownCountOnPage,
@@ -314,6 +319,11 @@ async function scanLibrary({
 
       // Check known topics for incremental early stop
       if (rawTopics.length > 0) {
+        for (const t of rawTopics) {
+          if (t.topicId && !knownTopicIds.has(t.topicId)) {
+            newlyAddedTopicIds.add(t.topicId);
+          }
+        }
         const knownCountOnPage = rawTopics.filter(t => knownTopicIds.has(t.topicId)).length;
         if (knownCountOnPage === rawTopics.length) {
           consecutiveKnownPages++;
@@ -323,6 +333,8 @@ async function scanLibrary({
               message: `[SCAN_ENGINE] Early stop triggered for category "${category.id}" after ${consecutiveKnownPages} consecutive fully known pages.`,
               timestamp: new Date().toISOString(),
             });
+            completedPages = pageNum;
+            completedEarly = true;
             break;
           }
         } else {
@@ -387,9 +399,9 @@ async function scanLibrary({
                   categoryName: category.name,
                   categoryIndex: catIndex + 1,
                   totalCategories: categories.length,
-                  categoryStatuses: [...categoryStatuses],
-                  currentPage: pageNum,
-                  totalPages,
+                  categoryStatuses: categoryStatuses.map(entry => ({ ...entry })),
+                  currentPage: completedPages,
+                  totalPages: paginationKnown ? totalPages : 0,
                   topicsDiscovered: rawTopics.length,
                   newTopics: newCountOnPage,
                   knownTopics: knownCountOnPage,
@@ -601,14 +613,15 @@ async function scanLibrary({
         }
       }
 
+      completedPages = pageNum;
       onProgress({
         category: category.id,
         categoryName: category.name,
         categoryIndex: catIndex + 1,
         totalCategories: categories.length,
-        categoryStatuses: [...categoryStatuses],
-        currentPage: pageNum,
-        totalPages,
+        categoryStatuses: categoryStatuses.map(entry => ({ ...entry })),
+        currentPage: completedPages,
+        totalPages: paginationKnown ? totalPages : 0,
         topicsDiscovered: rawTopics.length,
         newTopics: newCountOnPage,
         knownTopics: knownCountOnPage,
@@ -627,8 +640,244 @@ async function scanLibrary({
       }
     }
 
+    // Post-scan detail enrichment for newly added items lacking details (screenshots, size, file list)
+    const canEnrichPostScan = plan.enrichTopics !== false && typeof transport.fetchTopic === 'function';
+    if (canEnrichPostScan && !isCancelled()) {
+      try {
+        const targetTopicIds = newlyAddedTopicIds.size > 0 ? Array.from(newlyAddedTopicIds) : (plan.mode === 'full' ? null : []);
+        const pendingItems = (typeof itemsRepo.getItemsNeedingDetailEnrichment === 'function' && targetTopicIds !== null && targetTopicIds.length === 0)
+          ? []
+          : (typeof itemsRepo.getItemsNeedingDetailEnrichment === 'function'
+            ? itemsRepo.getItemsNeedingDetailEnrichment(db, category.id, { limit: 50, topicIds: targetTopicIds })
+            : []);
+        if (pendingItems && pendingItems.length > 0) {
+          onLog({
+            level: 'info',
+            message: `[SCAN_ENGINE] Category "${category.id}": starting post-scan enrichment for ${pendingItems.length} newly added items lacking details (screenshots, item sizes, file lists)...`,
+            timestamp: new Date().toISOString(),
+          });
+
+          const isEmbedded = transport.id === 'EMBEDDED_ELECTRON';
+          const defaultConcurrency = isEmbedded ? 1 : COMPANION_TOPIC_CONCURRENCY;
+          const concurrencyLimit = typeof plan.concurrency === 'number' && plan.concurrency > 0
+            ? plan.concurrency
+            : defaultConcurrency;
+
+          const queue = [...pendingItems];
+          let processedCount = 0;
+          let verificationError = null;
+          let activeVerificationPromise = null;
+
+          const worker = async () => {
+            while (queue.length > 0 && !isCancelled() && !verificationError) {
+              while (isPaused() && !isCancelled() && !verificationError) {
+                await sleep(250);
+              }
+              const item = queue.shift();
+              if (!item) break;
+
+              if (isEmbedded && processedCount > 0) {
+                await sleep(600);
+              }
+
+              const tStart = Date.now();
+              try {
+                const topicObj = {
+                  topicId: item.topicId,
+                  title: item.title,
+                  url: item.url || `https://rutracker.org/forum/viewtopic.php?t=${item.topicId}`,
+                  sizeStr: item.sizeStr,
+                };
+                const details = await transport.fetchTopic(topicObj, category);
+                const fetchDurationMs = Date.now() - tStart;
+                processedCount++;
+
+                onProgress({
+                  category: category.id,
+                  categoryName: category.name,
+                  categoryIndex: catIndex + 1,
+                  totalCategories: categories.length,
+                  categoryStatuses: [...categoryStatuses],
+                  currentPage: pageNum > 1 ? pageNum - 1 : 1,
+                  totalPages,
+                  topicsDiscovered: categoryTopicsFound,
+                  newTopics: categoryNewItems,
+                  knownTopics: knownTopicIds.size,
+                  detailsProcessed: processedCount,
+                  detailsTotal: pendingItems.length,
+                  totalItems: totalItemsScraped,
+                  newItems: totalNewItems,
+                  updatedItems: totalUpdatedItems,
+                  processedItems: categoryItemsScraped,
+                  status: 'enriching',
+                });
+
+                if (details && typeof details === 'object' && Object.keys(details).length > 0) {
+                  const enrichedTopic = {
+                    ...topicObj,
+                    ...details,
+                    title: details.canonicalTitle || details.topicTitle || topicObj.title,
+                    canonicalTitle: details.canonicalTitle || topicObj.title,
+                    canonicalTitleRaw: details.canonicalTitleRaw || topicObj.title,
+                    releaseGroup: details.releaseGroup || null,
+                    cover: details.cover || null,
+                    coverUrl: details.cover || null,
+                    screenshots: Array.isArray(details.screenshots) ? details.screenshots : [],
+                    magnet: details.magnet || null,
+                    fileList: details.fileList || null,
+                    developer: details.developer || null,
+                    publisher: details.publisher || null,
+                    genre: details.genre || null,
+                    releaseYear: details.releaseYear || null,
+                    version: details.version || null,
+                    interfaceLanguage: details.interfaceLanguage || details.language || null,
+                    voiceLanguage: details.voiceLanguage || null,
+                    imageFormat: details.imageFormat || null,
+                    multiplayer: details.multiplayer || null,
+                    region: details.region || null,
+                    sizeStr: details.size || topicObj.sizeStr || null,
+                    sizeBytes: details.sizeBytes ?? null,
+                    content: {
+                      cover: details.cover || null,
+                      screenshots: Array.isArray(details.screenshots) ? details.screenshots : [],
+                      magnet: details.magnet || null,
+                      size: details.size || topicObj.sizeStr || null,
+                      sizeBytes: details.sizeBytes ?? null,
+                      fileList: details.fileList || null,
+                    },
+                  };
+
+                  ingestRawBatch(db, category, [enrichedTopic], { batchDiscoveredAt: scanStartedAt });
+
+                  onLog({
+                    level: 'info',
+                    message: `[SCAN_ENGINE][POST_SCAN_ENRICH] (${processedCount}/${pendingItems.length}) Enriched "${item.title}" in ${fetchDurationMs}ms: cover=${Boolean(details.cover)} screenshots=${details.screenshots?.length || 0} size=${details.size || item.sizeStr} files=${Array.isArray(details.fileList) ? details.fileList.length : (details.fileList ? 'yes' : 'no')}`,
+                    timestamp: new Date().toISOString(),
+                  });
+                }
+              } catch (fetchErr) {
+                if (fetchErr.code === 'INTERACTION_REQUIRED' || fetchErr.status === 'CHALLENGE_REQUIRED') {
+                  if (typeof onVerificationRequired === 'function') {
+                    try {
+                      let vRes;
+                      if (activeVerificationPromise) {
+                        vRes = await activeVerificationPromise;
+                      } else {
+                        activeVerificationPromise = onVerificationRequired({ category, pageNum, topic: item, error: fetchErr })
+                          .finally(() => { activeVerificationPromise = null; });
+                        vRes = await activeVerificationPromise;
+                      }
+                      if (vRes && vRes.resumed) {
+                        try {
+                          const topicObj = {
+                            topicId: item.topicId,
+                            title: item.title,
+                            url: item.url || `https://rutracker.org/forum/viewtopic.php?t=${item.topicId}`,
+                            sizeStr: item.sizeStr,
+                          };
+                          const details = await transport.fetchTopic(topicObj, category);
+                          processedCount++;
+                          if (details && typeof details === 'object' && Object.keys(details).length > 0) {
+                            const enrichedTopic = {
+                              ...topicObj,
+                              ...details,
+                              title: details.canonicalTitle || details.topicTitle || topicObj.title,
+                              canonicalTitle: details.canonicalTitle || topicObj.title,
+                              canonicalTitleRaw: details.canonicalTitleRaw || topicObj.title,
+                              releaseGroup: details.releaseGroup || null,
+                              cover: details.cover || null,
+                              coverUrl: details.cover || null,
+                              screenshots: Array.isArray(details.screenshots) ? details.screenshots : [],
+                              magnet: details.magnet || null,
+                              fileList: details.fileList || null,
+                              developer: details.developer || null,
+                              publisher: details.publisher || null,
+                              genre: details.genre || null,
+                              releaseYear: details.releaseYear || null,
+                              version: details.version || null,
+                              interfaceLanguage: details.interfaceLanguage || details.language || null,
+                              voiceLanguage: details.voiceLanguage || null,
+                              imageFormat: details.imageFormat || null,
+                              multiplayer: details.multiplayer || null,
+                              region: details.region || null,
+                              sizeStr: details.size || topicObj.sizeStr || null,
+                              sizeBytes: details.sizeBytes ?? null,
+                              content: {
+                                cover: details.cover || null,
+                                screenshots: Array.isArray(details.screenshots) ? details.screenshots : [],
+                                magnet: details.magnet || null,
+                                size: details.size || topicObj.sizeStr || null,
+                                sizeBytes: details.sizeBytes ?? null,
+                                fileList: details.fileList || null,
+                              },
+                            };
+                            ingestRawBatch(db, category, [enrichedTopic], { batchDiscoveredAt: scanStartedAt });
+                          }
+                          continue;
+                        } catch (retryErr) {
+                          verificationError = retryErr;
+                          return;
+                        }
+                      }
+                    } catch (vErr) {
+                      verificationError = vErr;
+                      return;
+                    }
+                  }
+                  categoryStatuses[catIndex].status = 'paused';
+                  verificationError = fetchErr;
+                  return;
+                }
+                onLog({
+                  level: 'warn',
+                  message: `[SCAN_ENGINE] Post-scan detail fetch failed for "${item.title}" (${fetchErr.message}).`,
+                  timestamp: new Date().toISOString(),
+                });
+              }
+            }
+          };
+
+          const workerCount = Math.min(concurrencyLimit, pendingItems.length);
+          const workers = Array.from({ length: workerCount }, () => worker());
+          await Promise.all(workers);
+
+          if (isCancelled()) {
+            onLog({ level: 'info', message: '[SCAN_ENGINE] Scan cancelled by user during post-scan topic enrichment.', timestamp: new Date().toISOString() });
+            return { success: false, cancelled: true, totalItems: totalItemsScraped, newItems: totalNewItems, updatedItems: totalUpdatedItems, categories: categoriesScraped };
+          }
+
+          if (verificationError) {
+            throw verificationError;
+          }
+        }
+      } catch (postEnrichErr) {
+        if (postEnrichErr.code === 'INTERACTION_REQUIRED' || postEnrichErr.status === 'CHALLENGE_REQUIRED') {
+          throw postEnrichErr;
+        }
+        onLog({
+          level: 'warn',
+          message: `[SCAN_ENGINE] Error in post-scan enrichment for "${category.id}": ${postEnrichErr.message}`,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+
     categoryStatuses[catIndex].status = 'completed';
     categoryStatuses[catIndex].itemsCount = categoryItemsScraped;
+    onProgress({
+      category: category.id,
+      categoryName: category.name,
+      categoryIndex: catIndex + 1,
+      totalCategories: categories.length,
+      categoryStatuses: categoryStatuses.map(entry => ({ ...entry })),
+      currentPage: completedPages,
+      totalPages: paginationKnown ? totalPages : 0,
+      totalItems: totalItemsScraped,
+      newItems: totalNewItems,
+      updatedItems: totalUpdatedItems,
+      processedItems: categoryItemsScraped,
+      status: completedEarly ? 'category_completed_early_stop' : 'category_completed',
+    });
 
     if (syncRunId) {
       try {

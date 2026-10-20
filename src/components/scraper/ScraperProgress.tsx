@@ -1,3 +1,4 @@
+import { getCategoryProgress } from "@/utils/categoryProgress"
 import React, { useState } from 'react';
 import { 
   ScraperCategoryAccess, 
@@ -85,10 +86,9 @@ export const ScraperProgress: React.FC<ScraperProgressProps> = ({
   };
 
   // Determine if total pages is known
-  const hasKnownTotal = Boolean(progress && progress.totalPages && progress.totalPages > 1);
-  const percent = hasKnownTotal
-    ? Math.min(100, Math.round(((progress?.currentPage || 1) / (progress?.totalPages || 1)) * 100))
-    : 0;
+  const categoryPercent = getCategoryProgress(progress);
+  const hasKnownTotal = categoryPercent !== null;
+  const percent = categoryPercent === null ? 0 : Math.round(categoryPercent);
 
   // Sanitize raw error string into standard error category (Requirements 10 & 11)
   const resolveStandardizedError = (rawError?: string | null): { category: string; message: string } => {
@@ -247,7 +247,7 @@ export const ScraperProgress: React.FC<ScraperProgressProps> = ({
               {t('settings.scraper.pageTotal')}
             </span>
             <span className="text-xs font-semibold text-foreground block mt-1 font-mono">
-              {progress?.currentPage ? formatNumber(progress.currentPage) : 1} / {hasKnownTotal ? formatNumber(progress!.totalPages!) : '—'}
+              {formatNumber(progress?.currentPage ?? 0)} / {hasKnownTotal ? formatNumber(progress!.totalPages!) : '—'}
             </span>
           </div>
 
@@ -301,7 +301,9 @@ export const ScraperProgress: React.FC<ScraperProgressProps> = ({
           <div className="flex justify-between text-xs text-muted-foreground font-medium">
             <span>{t('settings.scraper.progressLabel')}</span>
             <span className="text-emerald-400 font-bold font-mono">
-              {hasKnownTotal ? `${percent}%` : t('settings.scraper.scanningLabel')}
+              {hasKnownTotal
+                ? `${percent}%`
+                : (progress?.status === 'enriching' ? (t('settings.scraper.enrichingLabel') || 'Obtendo detalhes...') : t('settings.scraper.scanningLabel'))}
             </span>
           </div>
           {hasKnownTotal ? (
@@ -433,7 +435,7 @@ export const ScraperProgress: React.FC<ScraperProgressProps> = ({
               {t('settings.scraper.pageTotal')}
             </span>
             <span className="text-xs font-semibold text-foreground block mt-1 font-mono">
-              {progress?.currentPage ? formatNumber(progress.currentPage) : 1} / {hasKnownTotal ? formatNumber(progress!.totalPages!) : '—'}
+              {formatNumber(progress?.currentPage ?? 0)} / {hasKnownTotal ? formatNumber(progress!.totalPages!) : '—'}
             </span>
           </div>
 
