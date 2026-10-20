@@ -1,3 +1,4 @@
+import { getCategoryProgress } from "@/utils/categoryProgress"
 import React, { useState, useEffect } from "react"
 import { 
   Loader2, 
@@ -125,10 +126,7 @@ export const GlobalSyncStatus: React.FC<GlobalSyncStatusProps> = ({ onOpenSettin
     }
   }
 
-  const progressPercent = 
-    progress?.totalPages && progress.totalPages > 0 && progress.currentPage != null
-      ? Math.min(100, Math.round((progress.currentPage / progress.totalPages) * 100))
-      : 0
+  const progressPercent = getCategoryProgress(progress)
 
   const itemsSaved = progress?.newItems ?? progress?.processedItems ?? 0
   const elapsedSec = progress?.elapsedMs ? Math.round(progress.elapsedMs / 1000) : 0
@@ -198,9 +196,7 @@ export const GlobalSyncStatus: React.FC<GlobalSyncStatusProps> = ({ onOpenSettin
               </div>
             )}
 
-            {progress.totalPages != null && progress.totalPages > 0 && (
-              <Progress value={progressPercent} className="h-1.5" />
-            )}
+            <Progress value={progressPercent} className="h-1.5" />
 
             <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] text-muted-foreground border-t border-border/50">
               <div>
