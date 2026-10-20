@@ -105,6 +105,9 @@ export interface GetItemsResponse {
   hasMore: boolean
   limit: number
   offset: number
+  page?: number
+  pageSize?: number
+  totalPages?: number
 }
 
 export type LibraryReadinessState = 'LOADING' | 'MIGRATING' | 'SCRAPER_REQUIRED' | 'READY' | 'ERROR'

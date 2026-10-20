@@ -86,6 +86,16 @@ describe("Pure RuTracker HTML Parser (V3-56 Phase 1)", () => {
       expect(result.topics.map((t: any) => t.topicId)).toEqual(["6001002", "6001003"])
     })
 
+    it("keeps Switch Ports in the physical Nintendo Switch forum scan", () => {
+      const html = `
+        <table>
+          <tr><td><a class="torTopic" href="viewtopic.php?t=7001">[Nintendo Switch] Ported Game порт</a></td></tr>
+          <tr><td><a class="torTopic" href="viewtopic.php?t=7002">[Nintendo Switch] Native Game</a></td></tr>
+        </table>`
+      const switchGames = parseCategoryHtml(html, { categoryId: "switch", titleSearch: ["[Nintendo Switch]"] })
+      expect(switchGames.topics.map((topic: any) => topic.topicId)).toEqual(["7001", "7002"])
+    })
+
     it("handles empty page gracefully without throwing", () => {
       const emptyHtml = fs.readFileSync(path.join(fixturesDir, "empty-page.html"), "utf8")
       const result = parseCategoryHtml(emptyHtml, { categoryId: "887" })

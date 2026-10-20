@@ -6,6 +6,10 @@ import {
   LayoutGrid, 
   Grid2X2, 
   List, 
+  Minus,
+  Square,
+  Copy,
+  Wrench,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,6 +22,7 @@ import { FilterOptions, LibraryFilters } from "@/types"
 import { FilterPopover } from "@/components/layout/FilterPopover"
 import { GlobalSyncStatus } from "@/components/layout/GlobalSyncStatus"
 import { useI18n } from "@/i18n"
+import { useWindowState } from "@/hooks/useWindowState"
 
 interface TopbarProps {
   searchQuery: string
@@ -36,6 +41,7 @@ interface TopbarProps {
   onViewModeChange?: (mode: "grid" | "list") => void
   onOpenSettings?: (section?: any, subview?: string | null) => void
   selectedCategory?: string
+  activeView?: "library" | "tools"
 }
 
 const BYTES_IN_GB = 1024 * 1024 * 1024
@@ -67,8 +73,10 @@ export const Topbar: React.FC<TopbarProps> = ({
   onViewModeChange,
   onOpenSettings,
   selectedCategory,
+  activeView = "library",
 }) => {
   const { t } = useI18n()
+  const { isMaximized, isElectron, minimize, toggleMaximize, close } = useWindowState()
 
   const hasActiveFilters =
     filters.minSeeds != null ||
@@ -90,118 +98,291 @@ export const Topbar: React.FC<TopbarProps> = ({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <header className="flex flex-col border-b border-border bg-background/90 backdrop-blur shrink-0">
+      <header
+        className="flex flex-col border-b border-border bg-background/90 backdrop-blur shrink-0 select-none"
+        style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+        onDoubleClick={toggleMaximize}
+      >
         {/* Main Toolbar Row */}
-        <div className="h-16 px-4 sm:px-6 flex items-center justify-between gap-4">
-          {/* Left Slot (Balances the layout and shows GlobalSyncStatus) */}
-          <div className="flex-1 min-w-0 hidden md:flex items-center">
-            <GlobalSyncStatus onOpenSettings={onOpenSettings} />
-          </div>
-
-          {/* Centered Search Box */}
-          <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl relative min-w-0 mx-auto">
-            <div className="relative group">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder={t("topbar.searchPlaceholder")}
-                className="w-full h-10 pl-10 pr-20 bg-card border border-border hover:border-border/80 focus:border-primary/50 focus:ring-1 focus:ring-primary/30 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors truncate shadow-sm leading-normal"
-                aria-label={t("topbar.searchAria")}
-              />
-              {searchQuery ? (
-                <button
-                  type="button"
-                  onClick={() => onSearchChange("")}
-                  className="absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors"
-                  aria-label={t("topbar.clearAllFilters")}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={onOpenCommandPalette}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground bg-secondary hover:bg-secondary/80 border border-border rounded shadow-sm select-none cursor-pointer transition-colors"
-                title="Command Palette (Ctrl+K)"
-              >
-                ⌘K
-              </button>
+        {activeView === "tools" ? (
+          <div className="h-16 px-4 sm:px-6 flex items-center justify-between gap-4">
+            {/* Left Slot: Tools title indicator */}
+            <div
+              className="flex-1 min-w-0 flex items-center gap-2"
+              style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            >
+              <div className="flex items-center gap-2.5 text-sm font-semibold text-foreground">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 shadow-2xs">
+                  <Wrench className="h-4 w-4" />
+                </div>
+                <span>{t("navigation.tools")}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Right Slot: Grouped Controls */}
-          <div className="flex-1 min-w-0 flex items-center justify-end gap-2.5 shrink-0">
-            {/* Filter Popover (includes Sorting section inside) */}
-            <FilterPopover
-              filters={filters}
-              onApplyFilters={onApplyFilters}
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              onSortChange={onSortChange}
-              categoryId={selectedCategory || filters.categoryId || undefined}
-            />
+            {/* Centered Area (Draggable Window Area) */}
+            <div className="flex-1 min-w-0" />
 
-            {/* Subtle Divider */}
-            <div className="h-5 w-[1px] bg-border hidden sm:block" />
-
-            {/* View Mode & Density Group */}
-            <div className="flex items-center rounded-xl border border-border bg-card/60 p-0.5 shadow-sm">
-              {onViewModeChange && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 rounded-lg"
-                      onClick={() => onViewModeChange(viewMode === "grid" ? "list" : "grid")}
-                      aria-label={viewMode === "grid" ? t("topbar.viewModeListTooltip") : t("topbar.viewModeGridTooltip")}
-                    >
-                      {viewMode === "grid" ? (
-                        <List className="h-4 w-4" />
-                      ) : (
-                        <LayoutGrid className="h-4 w-4 text-primary" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {viewMode === "grid" ? t("topbar.viewModeListTooltip") : t("topbar.viewModeGridTooltip")}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {viewMode === "grid" && onToggleDensity && (
-                <>
-                  <div className="h-4 w-[1px] bg-border" />
+            {/* Right Slot: Window Controls */}
+            <div
+              className="flex-1 min-w-0 flex items-center justify-end gap-2.5 shrink-0"
+              style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            >
+              {isElectron && (
+                <div
+                  className="flex items-center rounded-xl border border-border bg-card/60 p-0.5 shadow-sm"
+                  data-testid="window-controls-group"
+                >
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 rounded-lg"
-                        onClick={onToggleDensity}
-                        aria-label={density === "compact" ? t("topbar.densityComfortableTooltip") : t("topbar.densityCompactTooltip")}
+                        onClick={minimize}
+                        aria-label={t("topbar.windowMinimize")}
+                        data-testid="window-control-minimize"
                       >
-                        {density === "compact" ? (
-                          <Grid2X2 className="h-4 w-4 text-primary" />
+                        <Minus className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {t("topbar.windowMinimize")}
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 rounded-lg"
+                        onClick={toggleMaximize}
+                        aria-label={isMaximized ? t("topbar.windowRestore") : t("topbar.windowMaximize")}
+                        data-testid="window-control-maximize"
+                      >
+                        {isMaximized ? (
+                          <Copy className="h-3 w-3 rotate-180" />
                         ) : (
-                          <LayoutGrid className="h-4 w-4" />
+                          <Square className="h-3 w-3" />
                         )}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
-                      {density === "compact" ? t("topbar.densityCompactTooltip") : t("topbar.densityComfortableTooltip")}
+                      {isMaximized ? t("topbar.windowRestore") : t("topbar.windowMaximize")}
                     </TooltipContent>
                   </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-lg transition-colors"
+                        onClick={close}
+                        aria-label={t("topbar.windowClose")}
+                        data-testid="window-control-close"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {t("topbar.windowClose")}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="h-16 px-4 sm:px-6 flex items-center justify-between gap-4">
+            {/* Left Slot (Balances the layout and shows GlobalSyncStatus) */}
+            <div
+              className="flex-1 min-w-0 hidden md:flex items-center"
+              style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            >
+              <GlobalSyncStatus onOpenSettings={onOpenSettings} />
+            </div>
+
+            {/* Centered Search Box */}
+            <div
+              className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl relative min-w-0 mx-auto"
+              style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            >
+              <div className="relative group">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  placeholder={t("topbar.searchPlaceholder")}
+                  className="w-full h-10 pl-10 pr-20 bg-card border border-border hover:border-border/80 focus:border-primary/50 focus:ring-1 focus:ring-primary/30 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors truncate shadow-sm leading-normal"
+                  aria-label={t("topbar.searchAria")}
+                />
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => onSearchChange("")}
+                    className="absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors"
+                    aria-label={t("topbar.clearAllFilters")}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onOpenCommandPalette}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-mono font-medium text-muted-foreground bg-secondary hover:bg-secondary/80 border border-border rounded shadow-sm select-none cursor-pointer transition-colors"
+                  title="Command Palette (Ctrl+K)"
+                >
+                  ⌘K
+                </button>
+              </div>
+            </div>
+
+            {/* Right Slot: Grouped Controls */}
+            <div
+              className="flex-1 min-w-0 flex items-center justify-end gap-2.5 shrink-0"
+              style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            >
+              {/* Filter Popover (includes Sorting section inside) */}
+              <FilterPopover
+                filters={filters}
+                onApplyFilters={onApplyFilters}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSortChange={onSortChange}
+                categoryId={selectedCategory || filters.categoryId || undefined}
+              />
+
+              {/* Subtle Divider */}
+              <div className="h-5 w-[1px] bg-border hidden sm:block" />
+
+              {/* View Mode & Density Group */}
+              <div className="flex items-center rounded-xl border border-border bg-card/60 p-0.5 shadow-sm">
+                {onViewModeChange && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 rounded-lg"
+                        onClick={() => onViewModeChange(viewMode === "grid" ? "list" : "grid")}
+                        aria-label={viewMode === "grid" ? t("topbar.viewModeListTooltip") : t("topbar.viewModeGridTooltip")}
+                      >
+                        {viewMode === "grid" ? (
+                          <List className="h-4 w-4" />
+                        ) : (
+                          <LayoutGrid className="h-4 w-4 text-primary" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {viewMode === "grid" ? t("topbar.viewModeListTooltip") : t("topbar.viewModeGridTooltip")}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {viewMode === "grid" && onToggleDensity && (
+                  <>
+                    <div className="h-4 w-[1px] bg-border" />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 rounded-lg"
+                          onClick={onToggleDensity}
+                          aria-label={density === "compact" ? t("topbar.densityComfortableTooltip") : t("topbar.densityCompactTooltip")}
+                        >
+                          {density === "compact" ? (
+                            <Grid2X2 className="h-4 w-4 text-primary" />
+                          ) : (
+                            <LayoutGrid className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        {density === "compact" ? t("topbar.densityCompactTooltip") : t("topbar.densityComfortableTooltip")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </>
+                )}
+              </div>
+
+              {/* Window Controls (Minimize, Maximize / Restore, Close) */}
+              {isElectron && (
+                <>
+                  <div className="h-5 w-[1px] bg-border hidden sm:block" />
+                  <div
+                    className="flex items-center rounded-xl border border-border bg-card/60 p-0.5 shadow-sm"
+                    data-testid="window-controls-group"
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 rounded-lg"
+                          onClick={minimize}
+                          aria-label={t("topbar.windowMinimize")}
+                          data-testid="window-control-minimize"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        {t("topbar.windowMinimize")}
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 rounded-lg"
+                          onClick={toggleMaximize}
+                          aria-label={isMaximized ? t("topbar.windowRestore") : t("topbar.windowMaximize")}
+                          data-testid="window-control-maximize"
+                        >
+                          {isMaximized ? (
+                            <Copy className="h-3 w-3 rotate-180" />
+                          ) : (
+                            <Square className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        {isMaximized ? t("topbar.windowRestore") : t("topbar.windowMaximize")}
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-lg transition-colors"
+                          onClick={close}
+                          aria-label={t("topbar.windowClose")}
+                          data-testid="window-control-close"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        {t("topbar.windowClose")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </>
               )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Active Filter Chips Bar */}
-        {hasActiveFilters && (
+        {activeView !== "tools" && hasActiveFilters && (
           <div className="h-9 px-5 border-t border-border/80 bg-card/40 flex items-center gap-2 text-xs overflow-x-auto custom-scrollbar">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
               {t("topbar.activeFiltersLabel")}

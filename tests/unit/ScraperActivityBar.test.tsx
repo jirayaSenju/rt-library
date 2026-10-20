@@ -282,4 +282,41 @@ describe("ScraperActivityBar unit tests", () => {
   })
 })
 
+describe("category page progress", () => {
+  const view = (progress: ScraperProgress, state: any = 'running') => (
+    <I18nProvider><ScraperActivityBar state={state} progress={progress} onOpenDetails={vi.fn()} onCancel={vi.fn()} /></I18nProvider>
+  )
+
+  it('keeps PS2 page text, width and accessible percentage consistent independently of item counts', () => {
+    const progress = { category: 'ps2', categoryName: 'Playstation 2', currentPage: 5, totalPages: 71, newItems: 24 }
+    const { rerender } = render(view(progress))
+    expect(screen.getByText(/Page 5 of 71/)).toBeInTheDocument()
+    expect(screen.getByText('7%')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '7')
+    expect(parseFloat((screen.getByRole('progressbar').firstChild as HTMLElement).style.width)).toBeCloseTo(7.04225)
+    rerender(view({ ...progress, newItems: 9999, totalPages: 100 }))
+    expect(screen.getByText('5%')).toBeInTheDocument()
+  })
+
+  it('resets atomically from completion to another category and handles early completion', () => {
+    const { rerender } = render(view({ category: 'switch', currentPage: 145, totalPages: 145, status: 'category_completed' }))
+    expect(screen.getByText('100%')).toBeInTheDocument()
+    rerender(view({ category: 'ps2', categoryName: 'Playstation 2', currentPage: 1, totalPages: 71, status: 'saving' }))
+    expect(screen.getByText('1%')).toBeInTheDocument()
+    expect(screen.getByText(/Page 1 of 71/)).toBeInTheDocument()
+    rerender(view({ category: 'ps2', currentPage: 6, totalPages: 145, status: 'category_completed_early_stop' }))
+    expect(screen.getByText('100%')).toBeInTheDocument()
+  })
+
+  it.each(['paused', 'resuming', 'cancelling', 'failed'])('preserves 20 percent when %s', state => {
+    render(view({ currentPage: 20, totalPages: 100 }, state))
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '20')
+  })
+
+  it('renders zero completed pages as determinate when total is known', () => {
+    render(view({ currentPage: 0, totalPages: 100 }))
+    expect(screen.getByText('0%')).toBeInTheDocument()
+  })
+})
+
 

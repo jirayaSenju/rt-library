@@ -534,7 +534,7 @@ class EmbeddedElectronTransport {
     let targetCategory = category;
     if (!targetCategory || !targetCategory.baseUrl) {
       const { CategoryManager } = require('./categoryManager.cjs');
-      const cats = CategoryManager.getInstance().getResolvedCategories();
+      const cats = CategoryManager.getInstance().getScraperCategories();
       targetCategory = cats.find(c => c.enabled !== false) || cats[0];
     }
     if (!targetCategory || !targetCategory.baseUrl) {

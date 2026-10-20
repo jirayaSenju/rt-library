@@ -6,6 +6,7 @@ import { Star, Gamepad2, ArrowUp, ArrowDown, HardDrive } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useI18n } from "@/i18n"
+import { getLibraryCategoryLabel } from "@/utils/libraryCategoryLabel"
 
 function formatBytes(bytes: number | null | undefined): string | null {
   if (!bytes || isNaN(bytes) || bytes <= 0) return null
@@ -33,6 +34,7 @@ export const ItemListRow = React.memo<ItemListRowProps>(({
   onToggleSelect,
 }) => {
   const { t } = useI18n()
+  const categoryLabel = getLibraryCategoryLabel(item)
   const [imgSrc, setImgSrc] = useState<string | null>(null)
   const [imgError, setImgError] = useState(false)
 
@@ -157,7 +159,7 @@ export const ItemListRow = React.memo<ItemListRowProps>(({
           variant="secondary"
           className="bg-secondary text-secondary-foreground border border-border text-[10px] uppercase font-bold px-2 py-0.5 tracking-wider truncate max-w-full shadow-none"
         >
-          {item.categoryId}
+          {categoryLabel}
         </Badge>
       </div>
 

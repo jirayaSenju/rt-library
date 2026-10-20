@@ -188,6 +188,17 @@ export interface RTLibraryAPI {
     install: () => Promise<void>;
     onStatusChanged: (callback: (status: UpdaterStatus) => void) => () => void;
   };
+  window?: {
+    isMaximized: () => Promise<boolean>;
+    minimize: () => Promise<boolean>;
+    toggleMaximize: () => Promise<boolean>;
+    close: () => Promise<boolean>;
+    onMaximizedChange: (callback: (isMaximized: boolean) => void) => () => void;
+  };
+  tools?: {
+    openExternal: (payload: string | { toolId?: string; url?: string }) => Promise<{ success: boolean; error?: string }>;
+    getRegistry: () => Promise<Array<{ id: string; name: string; url: string }>>;
+  };
 }
 
 export type UpdaterState =

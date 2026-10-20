@@ -73,15 +73,19 @@ async function ensureConfigDir() {
   return dir;
 }
 
+const { registerWindowIPCHandlers, attachWindowStateListeners } = require('./ipc/windowIPC.cjs');
+const { registerToolsIPCHandlers } = require('./ipc/toolsIPC.cjs');
+
 function createWindow() {
   const appIcon = getAppIconPath();
-  const isHeadless = process.env.HEADLESS === 'true' || (!process.env.DISPLAY && process.platform === 'linux');
+  const isHeadless = process.env.HEADLESS === 'true' || (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY && process.platform === 'linux');
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     show: !isHeadless,
     title: "RT Library - Local Game & Catalog Viewer",
     autoHideMenuBar: true,
+    ...(process.platform === 'linux' ? { frame: false } : { titleBarStyle: 'hidden' }),
     ...(appIcon ? { icon: appIcon } : {}),
     webPreferences: {
       nodeIntegration: false,
@@ -90,6 +94,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs')
     }
   });
+
+  attachWindowStateListeners(win);
 
   win.webContents.on('render-process-gone', (event, details) => {
     console.error('[MAIN] Renderer process gone / crashed:', details);
@@ -302,6 +308,9 @@ function registerSystemIPCHandlers() {
       return false;
     }
   });
+
+  registerWindowIPCHandlers(ipcMain, BrowserWindow);
+  registerToolsIPCHandlers(ipcMain, shell);
 }
 
 const dbMain = require('./database/dbMain.cjs');
@@ -345,7 +354,7 @@ const browserCompanion = new BrowserCompanionBridge({
       console.info(`[COMPANION][PARSE_STARTED] requestId=${requestId || 'unknown'} kind=${kind}`);
       try {
         const { parseCategoryHtml } = require('../scraper/parsers/rutrackerHtmlParser.cjs');
-        const categories = require('./scraper/categoryManager.cjs').CategoryManager.getInstance().getResolvedCategories();
+        const categories = require('./scraper/categoryManager.cjs').CategoryManager.getInstance().getScraperCategories();
         const category = categories.find(item => item.id === request?.categoryId) || {
           id: request?.categoryId || 'category',
           name: request?.categoryId || 'Category',
@@ -356,6 +365,8 @@ const browserCompanion = new BrowserCompanionBridge({
           categoryName: category.name,
           categoryBaseUrl: category.baseUrl,
           titleSearch: category.titleSearch,
+          topicTitleIncludes: category.topicTitleIncludes,
+          topicTitleExcludes: category.topicTitleExcludes,
           pageNum: request?.pageNum || 1,
           pageUrl: url,
         });

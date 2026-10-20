@@ -96,6 +96,11 @@ describe('scanEngine (Universal Scraper Scan Engine)', () => {
     expect(result.newItems).toBe(3)
     expect(transport.fetchCategory).toHaveBeenCalledTimes(2)
     expect(db._appState.get('initial_scan_completed')).toBe('true')
+    expect(progressUpdates[0]).toMatchObject({ currentPage: 0, totalPages: 0, status: 'scanning' })
+    expect(progressUpdates.filter(p => p.status === 'scanning').map(p => p.currentPage)).toEqual([0, 0, 1, 1])
+    expect(progressUpdates.filter(p => p.status === 'saving').map(p => p.currentPage)).toEqual([1, 2])
+    expect(progressUpdates.at(-1)).toMatchObject({ currentPage: 2, totalPages: 2, status: 'category_completed' })
+    expect(progressUpdates[0].categoryStatuses[0].status).toBe('in_progress')
   })
 
   it('triggers early stop on incremental scan after 3 consecutive known pages', async () => {
@@ -139,17 +144,20 @@ describe('scanEngine (Universal Scraper Scan Engine)', () => {
     }
 
     const logs: any[] = []
+    const progressUpdates: any[] = []
     const result = await scanLibrary({
       transport,
       plan,
       db,
       onLog: (l) => logs.push(l),
+      onProgress: (p) => progressUpdates.push(p),
       pageDelayMs: 0,
     })
 
     expect(result.success).toBe(true)
     expect(transport.fetchCategory).toHaveBeenCalledTimes(3)
     expect(logs.some(l => l.message.includes('Early stop triggered'))).toBe(true)
+    expect(progressUpdates.at(-1)).toMatchObject({ currentPage: 3, totalPages: 10, status: 'category_completed_early_stop' })
   })
 
   it('stops cleanly and idempotently when cancelled', async () => {

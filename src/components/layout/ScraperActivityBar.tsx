@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getCategoryProgress } from "@/utils/categoryProgress"
 import { ProgressMascot } from "./ProgressMascot"
 
 export interface ScraperActivityBarProps {
@@ -71,10 +72,10 @@ export const ScraperActivityBar: React.FC<ScraperActivityBarProps> = ({
   const isSessionRequired = state === "session_required" || state === "interaction_required"
 
   // Calculate percentage if available
+  const percent = getCategoryProgress(progress)
+  const roundedPercent = percent === null ? null : Math.round(percent)
   const hasTotalPages = !!(progress?.totalPages && progress.totalPages > 0)
-  const percent = hasTotalPages && progress?.currentPage
-    ? Math.min(100, Math.max(0, Math.round((progress.currentPage / progress.totalPages!) * 100)))
-    : null
+  const showProgress = isRunning || isCancelling || isCompleted || isFailed || ['paused', 'pausing', 'resuming', 'cancelled'].includes(state)
 
   // Format mode label
   const getModeLabel = () => {
@@ -135,7 +136,7 @@ export const ScraperActivityBar: React.FC<ScraperActivityBarProps> = ({
           </span>
 
           {/* Details during run */}
-          {(isRunning || isCancelling) && (
+          {(showProgress && !isCompleted) && (
             <>
               {/* Category Name */}
               {progress?.categoryName && progress.categoryName !== "ALL" && (
@@ -157,8 +158,12 @@ export const ScraperActivityBar: React.FC<ScraperActivityBarProps> = ({
                   : t("activityBar.discoveringPages")}
               </span>
 
+              {progress?.status === 'category_completed_early_stop' && (
+                <span className="text-muted-foreground">{t("activityBar.completed")}</span>
+              )}
+
               {/* Items Counter */}
-              {progress?.newItems !== undefined && progress.newItems > 0 && (
+              {!isCompleted && progress?.newItems !== undefined && progress.newItems > 0 && (
                 <span className="text-primary font-mono font-medium shrink-0 hidden md:inline">
                   +{formatNumber(progress.newItems)}
                 </span>
@@ -183,12 +188,12 @@ export const ScraperActivityBar: React.FC<ScraperActivityBarProps> = ({
       </div>
 
       {/* Center / Right: Progress Bar (when running or starting) */}
-      {(isRunning || isCancelling) && (
+      {showProgress && (
         <div className="hidden sm:flex items-center gap-2.5 shrink-0">
-          <div className="relative flex items-center w-28 sm:w-36 md:w-44 py-1">
+          <div key={progress?.category} className="relative flex items-center w-28 sm:w-36 md:w-44 py-1">
             <div
               role="progressbar"
-              aria-valuenow={percent !== null ? percent : undefined}
+              aria-valuenow={roundedPercent ?? undefined}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-label={t("activityBar.updatingLibrary")}
@@ -239,7 +244,7 @@ export const ScraperActivityBar: React.FC<ScraperActivityBarProps> = ({
               />
             </div>
           </div>
-          {percent !== null ? (
+          {roundedPercent !== null ? (
             <span
               className={cn(
                 "text-[11px] font-mono font-bold w-9 text-right",
@@ -249,7 +254,7 @@ export const ScraperActivityBar: React.FC<ScraperActivityBarProps> = ({
                 color: !progressTheme.isDefault && progressTheme.textColor !== "inherit" ? progressTheme.textColor : undefined,
               }}
             >
-              {percent}%
+              {roundedPercent}%
             </span>
           ) : (
             <span className="text-[11px] text-muted-foreground animate-pulse">...</span>

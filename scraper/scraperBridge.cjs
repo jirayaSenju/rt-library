@@ -15,14 +15,14 @@ function getConsoleScriptPath() {
   throw new Error('console.js script not found in scripts/ or root directory');
 }
 
-function getResolvedCategories() {
+function getScraperCategories() {
   try {
     const { CategoryManager } = require('../electron/scraper/categoryManager.cjs');
-    return CategoryManager.getInstance().getResolvedCategories();
+    return CategoryManager.getInstance().getScraperCategories();
   } catch (_) {
     try {
       const { DEFAULT_CATEGORIES } = require('../electron/scraper/defaultCategories.cjs');
-      return DEFAULT_CATEGORIES;
+      return DEFAULT_CATEGORIES.filter((category) => category.virtual !== true);
     } catch (__) {
       const scriptPath = getConsoleScriptPath();
       const metadata = { exports: {} };
@@ -30,13 +30,14 @@ function getResolvedCategories() {
         filename: scriptPath,
         timeout: 1000,
       });
-      return Array.isArray(metadata.exports) ? metadata.exports : metadata.exports?.CATEGORIES || [];
+      const categories = Array.isArray(metadata.exports) ? metadata.exports : metadata.exports?.CATEGORIES || [];
+      return categories.filter((category) => category.virtual !== true);
     }
   }
 }
 
 function getScraperCategory(category = null) {
-  const list = getResolvedCategories();
+  const list = getScraperCategories();
   const selected = category
     ? list.find(c => c.id === category && c.enabled !== false)
     : list.find(c => c.enabled !== false);
@@ -76,7 +77,14 @@ async function injectConsoleScript(page, options = {}) {
     throw new Error('Script injection failed: window.EcoHubScraper is undefined');
   }
 
-  console.log('[SCRAPER] EcoHubScraper injected and verified successfully.');
+  const categories = getScraperCategories();
+  await page.evaluate((resolvedCategories) => {
+    if (window.EcoHubScraper?.setCategories) {
+      window.EcoHubScraper.setCategories(resolvedCategories);
+    }
+  }, categories);
+
+  console.log(`[SCRAPER] EcoHubScraper injected with ${categories.length} resolved categories.`);
 }
 
 async function waitForScraperIdle(page, options = {}) {

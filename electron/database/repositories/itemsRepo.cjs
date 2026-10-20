@@ -23,6 +23,33 @@ function escapeLike(str) {
   return str.replace(/[%_\\]/g, '\\$&');
 }
 
+function resolveCategoryQuery(categoryId) {
+  if (categoryId === 'switch') {
+    return { physicalCategoryId: 'switch', topicTitleMode: 'exclude-port' };
+  }
+  if (categoryId === 'switch-ports') {
+    return { physicalCategoryId: 'switch', topicTitleMode: 'include-port' };
+  }
+  return { physicalCategoryId: categoryId, topicTitleMode: null };
+}
+
+function getPortFilterCondition(mode, tableAlias = 'items') {
+  if (!mode) return null;
+  // SQLite's built-in lower() is ASCII-only. Fold the Cyrillic letters
+  // used by порт and хоумбрю so mixed-case titles classify consistently.
+  const containsTerm = (field, term) => {
+    const foldedText = ['П', 'О', 'Р', 'Т', 'Х', 'У', 'М', 'Б', 'Ю'].reduce(
+      (expression, upper) => `replace(${expression}, '${upper}', '${upper.toLowerCase()}')`,
+      `COALESCE(${tableAlias}.${field}, '')`,
+    );
+    return `instr(${foldedText}, '${term}') > 0`;
+  };
+  const matchesPort = `(${['порт', 'хоумбрю'].flatMap(term =>
+    ['topic_title', 'title'].map(field => containsTerm(field, term)),
+  ).join(' OR ')})`;
+  return mode === 'include-port' ? matchesPort : `NOT ${matchesPort}`;
+}
+
 function getById(db, id) {
   if (!id) return null;
   const stmt = db.prepare(`
@@ -271,9 +298,9 @@ function upsertBatch(db, items) {
       cover_url = COALESCE(excluded.cover_url, items.cover_url),
       size_str = COALESCE(excluded.size_str, items.size_str),
       size_bytes = COALESCE(excluded.size_bytes, items.size_bytes),
-      has_cover = excluded.has_cover,
-      has_screenshots = excluded.has_screenshots,
-      has_magnet = excluded.has_magnet,
+      has_cover = CASE WHEN excluded.has_cover = 1 THEN 1 ELSE items.has_cover END,
+      has_screenshots = CASE WHEN excluded.has_screenshots = 1 THEN 1 ELSE items.has_screenshots END,
+      has_magnet = CASE WHEN excluded.has_magnet = 1 THEN 1 ELSE items.has_magnet END,
       discovered_at = COALESCE(items.discovered_at, excluded.discovered_at),
       scraped_at = COALESCE(excluded.scraped_at, items.scraped_at),
       updated_at = excluded.updated_at
@@ -288,7 +315,7 @@ function upsertBatch(db, items) {
     ON CONFLICT(item_id) DO UPDATE SET
       magnet = COALESCE(excluded.magnet, item_details.magnet),
       file_list_json = COALESCE(excluded.file_list_json, item_details.file_list_json),
-      screenshots_json = COALESCE(excluded.screenshots_json, item_details.screenshots_json),
+      screenshots_json = COALESCE(NULLIF(excluded.screenshots_json, '[]'), item_details.screenshots_json),
       source_json = COALESCE(excluded.source_json, item_details.source_json),
       scraping_json = COALESCE(excluded.scraping_json, item_details.scraping_json)
   `);
@@ -344,11 +371,28 @@ function upsertBatch(db, items) {
       });
 
       const details = item.details || {};
+      let fileListJson = null;
+      if (Array.isArray(fileList)) {
+        fileListJson = JSON.stringify(fileList);
+      } else if (typeof fileList === 'string' && fileList.trim()) {
+        const lines = fileList.split('\n').map(l => l.trim()).filter(Boolean);
+        fileListJson = JSON.stringify(lines.length > 0 ? lines : [fileList.trim()]);
+      } else if (details.fileList) {
+        if (Array.isArray(details.fileList)) {
+          fileListJson = JSON.stringify(details.fileList);
+        } else if (typeof details.fileList === 'string' && details.fileList.trim()) {
+          const lines = details.fileList.split('\n').map(l => l.trim()).filter(Boolean);
+          fileListJson = JSON.stringify(lines.length > 0 ? lines : [details.fileList.trim()]);
+        }
+      }
+
+      const rawScreenshotsJson = screenshots.length > 0 ? JSON.stringify(screenshots) : null;
+
       detailsStmt.run({
         itemId: item.id,
         magnet: magnet || details.magnet || null,
-        fileListJson: Array.isArray(fileList) ? JSON.stringify(fileList) : null,
-        screenshotsJson: item.preserveMissingFields && screenshots.length === 0 ? null : JSON.stringify(screenshots),
+        fileListJson,
+        screenshotsJson: item.preserveMissingFields && screenshots.length === 0 ? null : rawScreenshotsJson,
         sourceJson: details.source ? JSON.stringify(details.source) : null,
         scrapingJson: details.scraping ? JSON.stringify(details.scraping) : null,
       });
@@ -363,8 +407,12 @@ function upsertBatch(db, items) {
 
 function deleteByCategory(db, categoryId) {
   if (!categoryId) return 0;
+  if (categoryId === 'switch-ports') {
+    throw new Error('Cannot delete the virtual Nintendo Switch Ports category.');
+  }
+  const { physicalCategoryId } = resolveCategoryQuery(categoryId);
   const stmt = db.prepare('DELETE FROM items WHERE category_id = ?');
-  const res = stmt.run(categoryId);
+  const res = stmt.run(physicalCategoryId);
   return res.changes;
 }
 
@@ -377,6 +425,14 @@ function countByCategory(db, categoryId) {
     const stmt = db.prepare('SELECT COUNT(*) as total FROM items WHERE is_favorite = 1');
     return stmt.get().total;
   }
+  const { physicalCategoryId, topicTitleMode } = resolveCategoryQuery(categoryId);
+  const titleCondition = getPortFilterCondition(topicTitleMode, 'items');
+  const stmt = db.prepare(`SELECT COUNT(*) as total FROM items WHERE category_id = ?${titleCondition ? ` AND ${titleCondition}` : ''}`);
+  return stmt.get(physicalCategoryId).total;
+}
+
+function countPhysicalByCategory(db, categoryId) {
+  if (!categoryId || categoryId === 'all') return getTotalItemCount(db);
   const stmt = db.prepare('SELECT COUNT(*) as total FROM items WHERE category_id = ?');
   return stmt.get(categoryId).total;
 }
@@ -410,8 +466,11 @@ function getPaginated(db, options = {}) {
   const params = [];
 
   if (categoryId) {
-    whereConditions.push('category_id = ?');
-    params.push(categoryId);
+    const { physicalCategoryId, topicTitleMode } = resolveCategoryQuery(categoryId);
+    whereConditions.push('items.category_id = ?');
+    params.push(physicalCategoryId);
+    const titleCondition = getPortFilterCondition(topicTitleMode, 'items');
+    if (titleCondition) whereConditions.push(titleCondition);
   }
 
   if (favoritesOnly) {
@@ -591,19 +650,27 @@ function getPaginated(db, options = {}) {
   const rows = itemsStmt.all([...params, limit, offset]);
   const items = rows.map(normalizeRow);
 
+  const page = Math.floor(offset / limit) + 1;
+  const pageSize = limit;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
   return {
     items,
     total,
     hasMore: offset + items.length < total,
     limit,
     offset,
+    page,
+    pageSize,
+    totalPages,
   };
 }
 
 function getKnownTopicIds(db, source = 'rutracker', categoryId = null) {
   if (categoryId && categoryId !== 'all') {
+    const { physicalCategoryId } = resolveCategoryQuery(categoryId);
     const stmt = db.prepare('SELECT topic_id FROM items WHERE source = ? AND category_id = ? AND topic_id IS NOT NULL');
-    return stmt.all(source, categoryId).map(r => String(r.topic_id));
+    return stmt.all(source, physicalCategoryId).map(r => String(r.topic_id));
   }
   const stmt = db.prepare('SELECT topic_id FROM items WHERE source = ? AND topic_id IS NOT NULL');
   return stmt.all(source).map(r => String(r.topic_id));
@@ -684,8 +751,11 @@ function getFilterFacets(db, options = {}) {
   const whereParts = [];
   const catParams = [];
   if (categoryId) {
+    const { physicalCategoryId, topicTitleMode } = resolveCategoryQuery(categoryId);
     whereParts.push('category_id = ?');
-    catParams.push(categoryId);
+    catParams.push(physicalCategoryId);
+    const titleCondition = getPortFilterCondition(topicTitleMode, 'items');
+    if (titleCondition) whereParts.push(titleCondition);
   }
   if (isFavorites) {
     whereParts.push('is_favorite = 1');
@@ -856,16 +926,53 @@ function getFilterFacets(db, options = {}) {
   };
 }
 
+function getItemsNeedingDetailEnrichment(db, categoryId, { limit = 50, topicIds = null } = {}) {
+  const { physicalCategoryId } = resolveCategoryQuery(categoryId);
+  if (Array.isArray(topicIds)) {
+    if (topicIds.length === 0) return [];
+    const placeholders = topicIds.map(() => '?').join(',');
+    const stmt = db.prepare(`
+      SELECT i.id, i.category_id as categoryId, i.source, i.topic_id as topicId,
+             i.title, i.topic_title as topicTitle, i.url, i.size_str as sizeStr, i.size_bytes as sizeBytes,
+             i.has_screenshots as hasScreenshots
+      FROM items i
+      LEFT JOIN item_details d ON d.item_id = i.id
+      WHERE i.category_id = ?
+        AND i.topic_id IN (${placeholders})
+        AND (i.has_screenshots = 0 OR i.size_bytes IS NULL OR d.file_list_json IS NULL)
+      ORDER BY i.discovered_at DESC, i.id DESC
+      LIMIT ?
+    `);
+    return stmt.all(physicalCategoryId, ...topicIds, limit);
+  }
+
+  const stmt = db.prepare(`
+    SELECT i.id, i.category_id as categoryId, i.source, i.topic_id as topicId,
+           i.title, i.topic_title as topicTitle, i.url, i.size_str as sizeStr, i.size_bytes as sizeBytes,
+           i.has_screenshots as hasScreenshots
+    FROM items i
+    LEFT JOIN item_details d ON d.item_id = i.id
+    WHERE i.category_id = ?
+      AND i.topic_id IS NOT NULL
+      AND (i.has_screenshots = 0 OR i.size_bytes IS NULL OR d.file_list_json IS NULL)
+    ORDER BY i.discovered_at DESC, i.id DESC
+    LIMIT ?
+  `);
+  return stmt.all(physicalCategoryId, limit);
+}
+
 module.exports = {
   getById,
   upsert,
   upsertBatch,
   deleteByCategory,
   countByCategory,
+  countPhysicalByCategory,
   getPaginated,
   getFilterFacets,
   getKnownTopicIds,
   getTotalItemCount,
   findDuplicates,
   computeItemTitles,
+  getItemsNeedingDetailEnrichment,
 };

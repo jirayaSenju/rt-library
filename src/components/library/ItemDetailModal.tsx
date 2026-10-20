@@ -176,6 +176,21 @@ export const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
       }
       setDetailItem(merged)
 
+      // Refresh torrent metadata and swarm stats whenever the item is opened.
+      // The main process deduplicates active work for the same item/hash.
+      const magnetForRefresh = fullDetail.magnet || item.magnetLink || item.magnet
+      if (magnetForRefresh) {
+        setIsRefreshingTorrent(true)
+        torrentMetadataService
+          .refreshItemMetadata(item.id, magnetForRefresh)
+          .then((success) => {
+            if (isMounted && !success) setIsRefreshingTorrent(false)
+          })
+          .catch(() => {
+            if (isMounted) setIsRefreshingTorrent(false)
+          })
+      }
+
       setModalScreenshots(uniqueScreenshotUrls(fullDetail.screenshots))
       setScreenshotsLoading(false)
 

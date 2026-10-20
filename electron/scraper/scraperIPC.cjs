@@ -112,7 +112,7 @@ function registerScraperIPCHandlers(browserCompanion) {
   ipcMain.handle('companion:status', async () => browserCompanion.getConnection());
   ipcMain.handle('companion:open-rutracker', async (_event, options = {}) => {
     const { shell } = require('electron');
-    const categories = catManager.getResolvedCategories();
+    const categories = catManager.getScraperCategories();
     const targetCategory = options.categoryId
       ? categories.find(c => c.id === options.categoryId)
       : (categories.find(c => c.enabled !== false) || categories[0]);
@@ -121,14 +121,14 @@ function registerScraperIPCHandlers(browserCompanion) {
     return true;
   });
   ipcMain.handle('companion:check-access', async (_event, options = {}) => {
-    const categories = catManager.getResolvedCategories();
+    const categories = catManager.getScraperCategories();
     const targetCategory = options?.categoryId
       ? categories.find(c => c.id === options.categoryId)
       : (categories.find(c => c.enabled !== false) || categories[0]);
     return await companionTransport.checkAccess(targetCategory);
   });
   ipcMain.handle('companion:fetch-xbox-page', async () => {
-    const xbox = catManager.getResolvedCategories().find(category => category.id === 'xbox');
+    const xbox = catManager.getScraperCategories().find(category => category.id === 'xbox');
     if (!xbox || !/^https:\/\/rutracker\.org\/forum\/viewforum\.php\?f=887$/.test(xbox.baseUrl)) throw new Error('XBOX_CATEGORY_URL_INVALID');
     return browserCompanion.requestPage({ kind: 'category', categoryId: xbox.id, url: xbox.baseUrl });
   });
@@ -139,7 +139,7 @@ function registerScraperIPCHandlers(browserCompanion) {
     const topicId = match[1];
     const targetUrl = `https://rutracker.org/forum/viewtopic.php?t=${topicId}`;
 
-    const categories = catManager.getResolvedCategories();
+    const categories = catManager.getScraperCategories();
     let targetCategory = options.categoryId ? categories.find(c => c.id === options.categoryId) : null;
 
     let parsed = null;
@@ -318,7 +318,7 @@ function registerScraperIPCHandlers(browserCompanion) {
   });
 
   ipcMain.handle(SCRAPER_IPC_MESSAGES.CHANNEL_GET_CATEGORIES, async () => {
-    return catManager.getResolvedCategories();
+    return catManager.getScraperCategories();
   });
 
   ipcMain.handle(SCRAPER_IPC_MESSAGES.CHANNEL_CREATE_CATEGORY, async (_event, data) => {

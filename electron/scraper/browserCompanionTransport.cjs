@@ -33,7 +33,7 @@ class BrowserCompanionTransport {
   async checkAccess(category) {
     if (!category || !category.baseUrl) {
       const { CategoryManager } = require('./categoryManager.cjs');
-      const cats = CategoryManager.getInstance().getResolvedCategories();
+      const cats = CategoryManager.getInstance().getScraperCategories();
       category = cats.find(c => c.enabled !== false) || cats[0];
     }
     if (!category || !category.baseUrl) throw new Error('NO_CATEGORY_CONFIGURED');

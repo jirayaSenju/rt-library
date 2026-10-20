@@ -44,6 +44,7 @@ When online sync is unavailable, Scraper settings can import a RuTracker categor
 - **Metadata synchronization:** Synchronize game catalogs via Browser Companion (through your normal browser session) or direct Playwright scraper.
 - **Manual HTML Import:** Import saved RuTracker pages offline without network requests.
 - **Database tools:** Manage backups, check integrity, and rebuild indexes.
+- **External Tools Hub:** Quick access to useful external utilities and ecosystem resources (NSCB Desktop, NX Firmware, Keys). RT-Library only provides external shortcuts; third-party tools and resources are maintained independently.
 - **Customizable UI:** Choose from themes and English, Brazilian Portuguese, or Russian.
 - **No bundled catalog:** The application ships without pre-populated catalog data.
 

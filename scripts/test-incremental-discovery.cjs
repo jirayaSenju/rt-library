@@ -94,6 +94,32 @@ test('1. Página 100% conhecida -> nenhum detail fetch (SKIP_DETAILS)', async ()
   assert.equal(audits[0].topicDetailsFetched, 0);
 });
 
+test('Switch Ports remains a logical library category and is not scanned independently', () => {
+  const { scraper } = createScraperEnvironment();
+  const { DEFAULT_CATEGORIES } = require('../electron/scraper/defaultCategories.cjs');
+  const scraperCategories = DEFAULT_CATEGORIES.filter(category => category.virtual !== true);
+  scraper.setCategories(scraperCategories);
+
+  const topicTitles = [
+    '[Nintendo Switch] Ported Game портирование',
+    '[Nintendo Switch] Native Game',
+    '[Nintendo Switch] Another Port портирование',
+  ];
+  const doc = {
+    querySelectorAll: (selector) => selector === 'a.torTopic'
+      ? topicTitles.map((text, index) => ({
+          textContent: text,
+          getAttribute: (attribute) => attribute === 'href' ? `viewtopic.php?t=${7001 + index}` : '',
+        }))
+      : [],
+  };
+  const switchCategory = DEFAULT_CATEGORIES.find(category => category.id === 'switch');
+  const switchItems = scraper.extractTopicsFromDoc(doc, switchCategory, 1, switchCategory.baseUrl);
+
+  assert.equal(scraperCategories.some(category => category.id === 'switch-ports'), false);
+  assert.deepEqual(Array.from(switchItems, item => item.topicId), ['7001', '7002', '7003']);
+});
+
 test('2. Página com 1 item novo -> apenas 1 detail fetch (PROCESS_NEW)', async () => {
   const { scraper, logs } = createScraperEnvironment();
   scraper.setOptions({ delayPageMs: 0, delayTopicMs: 0, knownPageLimit: 3 });

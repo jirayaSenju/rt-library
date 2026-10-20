@@ -14,7 +14,7 @@ const renderWithI18n = (ui: React.ReactElement) => {
 
 describe("CatalogViews integration tests (Grid and List)", () => {
   describe("ItemCard (Grid View)", () => {
-    it("renders item title, platform badge, and metadata in Comfortable density", () => {
+    it("renders item title, platform badge, and size in Comfortable density without permanent year footer", () => {
       const item = mockLibraryItems[0] // Zelda TotK
       renderWithI18n(
         <ItemCard
@@ -27,8 +27,25 @@ describe("CatalogViews integration tests (Grid and List)", () => {
         />
       )
 
-      expect(screen.getByText("The Legend of Zelda: Tears of the Kingdom")).toBeInTheDocument()
-      expect(screen.getByText("2023")).toBeInTheDocument()
+      expect(screen.getAllByText("The Legend of Zelda: Tears of the Kingdom").length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/16\.3 GB/i).length).toBeGreaterThan(0)
+      // Year is removed from card face for minimal cover presentation
+      expect(screen.queryByText("2023")).not.toBeInTheDocument()
+    })
+
+    it.each(['ПОРТ', 'хоумбрю', 'ХОУМБРЮ'])("labels Switch forum %s as Switch Ports", (term) => {
+      const item = { ...mockLibraryItems[0], categoryId: "switch", topicTitle: "[Nintendo Switch] Jogo", title: `Jogo ${term}` }
+      renderWithI18n(
+        <ItemCard
+          item={item}
+          isFavorite={false}
+          isSelected={false}
+          onToggleFavorite={vi.fn()}
+          onClick={vi.fn()}
+        />
+      )
+
+      expect(screen.getByText("Switch Ports")).toBeInTheDocument()
     })
 
     it("triggers onClick when clicking the card body", async () => {
