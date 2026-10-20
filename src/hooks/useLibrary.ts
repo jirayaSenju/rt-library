@@ -10,6 +10,33 @@ import { perfTelemetry } from "@/utils/performanceTelemetry"
 export const ALLOWED_PAGE_SIZES = [24, 48, 96, 100, 200] as const
 export type PageSize = (typeof ALLOWED_PAGE_SIZES)[number]
 
+export type PaginationTriggerReason =
+  | 'INITIAL_BOOT'
+  | 'PAGE_CHANGE'
+  | 'PAGE_SIZE_CHANGE'
+  | 'CATEGORY_CHANGE'
+  | 'FILTER_CHANGE'
+  | 'SEARCH_CHANGE'
+  | 'SYNC_COMMIT'
+  | 'SYNC_FINALIZED'
+  | 'MANUAL_REFRESH'
+  | 'FAVORITE_TOGGLE'
+  | 'PAGE_CLAMP'
+  | 'DATABASE_RESTORE'
+  | 'SHOW_PENDING_NEW'
+
+const logNav = (event: string, payload: Record<string, any>) => {
+  if (process.env.NODE_ENV !== 'production' || process.env.RT_LIBRARY_PERF === '1') {
+    console.debug(`[NAV][${event}]`, payload)
+  }
+}
+
+const logLibrary = (event: string, payload: Record<string, any>) => {
+  if (process.env.NODE_ENV !== 'production' || process.env.RT_LIBRARY_PERF === '1') {
+    console.debug(`[LIBRARY][${event}]`, payload)
+  }
+}
+
 export function getStoredPageSize(): number {
   if (typeof window === "undefined") return 48
   try {
@@ -28,6 +55,10 @@ export function getStoredPageSize(): number {
 const DEFAULT_PAGE_SIZE = 48
 const queryCache = new Map<string, PaginatedResult<LibraryItem>>()
 
+export function clearQueryCache(): void {
+  queryCache.clear()
+}
+
 export function useLibrary() {
   const [bootState, setBootState] = useState<LibraryReadinessState>("LOADING")
   const [migrationProgress, setMigrationProgress] = useState<string>("")
@@ -37,11 +68,15 @@ export function useLibrary() {
   const [totalItems, setTotalItems] = useState<number>(0)
   const [hasMore, setHasMore] = useState<boolean>(false)
   const [currentPage, setCurrentPage] = useState<number>(1)
+  const [renderedDataPage, setRenderedDataPage] = useState<number>(1)
   const [pageSize, setPageSizeState] = useState<number>(getStoredPageSize)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isIndexing, setIsIndexing] = useState<boolean>(false)
   const [indexingProgress, setIndexingProgress] = useState<string>("")
   const [categoryScrollPositions, setCategoryScrollPositions] = useState<Record<string, number>>({})
+
+  const currentPageRef = useRef<number>(1)
+  currentPageRef.current = currentPage
 
   const [settings, setSettings] = useState<AppSettings>({
     libraryPath: null,
@@ -167,158 +202,240 @@ export function useLibrary() {
     }
   }, [checkReadinessAndBootstrap])
 
-  const fetchPage = useCallback(async (targetPage: number, targetSize: number) => {
-    const currentReqId = ++requestIdRef.current
-    const t0 = performance.now()
+  const fetchPage = useCallback(
+    async (
+      targetPage: number,
+      targetSize: number,
+      reason: PaginationTriggerReason = "PAGE_CHANGE"
+    ): Promise<boolean> => {
+      const currentReqId = ++requestIdRef.current
+      const t0 = performance.now()
 
-    const mapSortBy = (sort?: string): GetItemsOptions['sortBy'] => {
-      switch (sort) {
-        case 'title':
-        case 'title_asc':
-        case 'title_desc':
-          return 'title'
-        case 'releaseYear':
-        case 'year':
-          return 'releaseYear'
-        case 'size':
-        case 'sizeBytes':
-        case 'size_desc':
-          return 'sizeBytes'
-        case 'seeds':
-        case 'seeds_desc':
-          return 'seeds'
-        case 'leechers':
-          return 'leechers'
-        case 'discoveredAt':
-        case 'indexed_desc':
-          return 'discoveredAt'
-        case 'updatedAt':
-          return 'updatedAt'
-        default:
-          return 'discoveredAt'
-      }
-    }
-
-    const isFavoritesCategory = selectedCategory === "favorites"
-    const options: GetItemsOptions = {
-      categoryId: (selectedCategory === "all" || isFavoritesCategory) ? undefined : selectedCategory,
-      search: debouncedSearch.trim() ? debouncedSearch.trim() : undefined,
-      favoritesOnly: Boolean(filters.onlyFavorites || isFavoritesCategory),
-      sortBy: mapSortBy(filters.sortBy),
-      sortOrder: filters.sortOrder || "desc",
-      minSeeds: filters.minSeeds ?? undefined,
-      maxSeeds: filters.maxSeeds ?? undefined,
-      minLeechers: filters.minLeechers ?? undefined,
-      maxLeechers: filters.maxLeechers ?? undefined,
-      yearFrom: filters.yearFrom ?? undefined,
-      yearTo: filters.yearTo ?? undefined,
-      minSizeBytes: filters.minSizeBytes ?? undefined,
-      maxSizeBytes: filters.maxSizeBytes ?? undefined,
-      hasMagnet: filters.hasMagnet ?? undefined,
-      hasScreenshots: filters.hasScreenshots ?? undefined,
-      discoveredPreset: filters.discoveredPreset ?? undefined,
-      developers: filters.developers && filters.developers.length > 0 ? filters.developers : undefined,
-      publishers: filters.publishers && filters.publishers.length > 0 ? filters.publishers : undefined,
-      genres: filters.genres && filters.genres.length > 0 ? filters.genres : undefined,
-      languages: filters.languages && filters.languages.length > 0 ? filters.languages : undefined,
-      imageFormats: filters.imageFormats && filters.imageFormats.length > 0 ? filters.imageFormats : undefined,
-      multiplayer: filters.multiplayer === "yes" || filters.multiplayer === "no" ? filters.multiplayer : undefined,
-      regions: filters.regions && filters.regions.length > 0 ? filters.regions : undefined,
-      limit: targetSize,
-      offset: (targetPage - 1) * targetSize,
-    }
-
-    const cacheKey = JSON.stringify(options)
-    if (queryCache.has(cacheKey)) {
-      const cached = queryCache.get(cacheKey)!
-      if (currentReqId === requestIdRef.current) {
-        setItems(cached.items)
-        setTotalItems(cached.total)
-        setHasMore(cached.hasMore)
-        return
-      }
-    }
-
-    try {
-      const response = await nativeLibraryService.getItems(options)
-      if (currentReqId !== requestIdRef.current) return
-
-      const mappedItems: LibraryItem[] = response.items.map((i) => ({
-        id: i.id,
-        topicId: i.topicId || undefined,
-        categoryId: i.categoryId,
-        categoryName: i.categoryId,
-        title: (i as any).canonicalTitle || i.cleanTitle || i.title,
-        canonicalTitle: (i as any).canonicalTitle || i.cleanTitle || i.title,
-        canonicalTitleRaw: (i as any).canonicalTitleRaw || i.title,
-        topicTitle: (i as any).topicTitle || i.title,
-        normalizedTitle: (i as any).normalizedTitle,
-        releaseGroup: (i as any).releaseGroup,
-        cleanTitle: i.cleanTitle || i.title,
-        genre: i.genre || undefined,
-        developer: i.developer || undefined,
-        releaseYear: i.releaseYear ? String(i.releaseYear) : undefined,
-        coverUrl: i.coverUrl || undefined,
-        coverImage: i.coverUrl || undefined,
-        size: i.sizeStr || undefined,
-        sizeBytes: i.sizeBytes || undefined,
-        hasMagnet: i.hasMagnet,
-        magnet: i.magnet || undefined,
-        magnetLink: i.magnetLink || i.magnet || undefined,
-        hasScreenshots: i.hasScreenshots,
-        isFavorite: i.isFavorite,
-        discoveredAt: i.discoveredAt || undefined,
-        seeders: i.seeds ?? undefined,
-        leechers: i.leechers ?? undefined,
-        infoHash: (i as any).infoHash,
-        torrent: {
-          infoHash: (i as any).infoHash || '',
-          files: [],
-          trackers: [],
-          status: 'available',
-          seeders: i.seeds ?? undefined,
-          leechers: i.leechers ?? undefined,
-          totalSize: i.sizeBytes ?? undefined,
-        },
-      }))
-
-      queryCache.set(cacheKey, {
-        items: mappedItems,
-        total: response.total,
-        hasMore: response.hasMore,
-        offset: (targetPage - 1) * targetSize,
-        limit: targetSize,
+      logLibrary("LOAD_START", {
+        requestId: currentReqId,
+        reason,
+        requestedPage: targetPage,
+        selectedPage: currentPageRef.current,
+        pageSize: targetSize,
+        category: selectedCategoryRef.current,
       })
 
-      setItems(mappedItems)
-      setTotalItems(response.total)
-      setHasMore(response.hasMore)
-
-      if (perfTelemetry.isEnabled()) {
-        const queryDuration = performance.now() - t0
-        perfTelemetry.measure("SEARCH", "Query Duration", queryDuration, { count: response.items.length })
+      const mapSortBy = (sort?: string): GetItemsOptions["sortBy"] => {
+        switch (sort) {
+          case "title":
+          case "title_asc":
+          case "title_desc":
+            return "title"
+          case "releaseYear":
+          case "year":
+            return "releaseYear"
+          case "size":
+          case "sizeBytes":
+          case "size_desc":
+            return "sizeBytes"
+          case "seeds":
+          case "seeds_desc":
+            return "seeds"
+          case "leechers":
+            return "leechers"
+          case "discoveredAt":
+          case "indexed_desc":
+            return "discoveredAt"
+          case "updatedAt":
+            return "updatedAt"
+          default:
+            return "discoveredAt"
+        }
       }
-    } catch (err) {
-      if (currentReqId === requestIdRef.current) {
-        console.error("[useLibrary] Failed to fetch page:", err)
-        toast.error("Failed to load catalog page")
-      }
-    }
-  }, [debouncedSearch, filters, selectedCategory])
 
-  const loadInitialItems = useCallback(async () => {
-    setIsLoading(true)
-    await fetchPage(1, pageSize)
-    setCurrentPage(1)
-    setIsLoading(false)
-  }, [fetchPage, pageSize])
+      const isFavoritesCategory = selectedCategory === "favorites"
+      const options: GetItemsOptions = {
+        categoryId: (selectedCategory === "all" || isFavoritesCategory) ? undefined : selectedCategory,
+        search: debouncedSearch.trim() ? debouncedSearch.trim() : undefined,
+        favoritesOnly: Boolean(filters.onlyFavorites || isFavoritesCategory),
+        sortBy: mapSortBy(filters.sortBy),
+        sortOrder: filters.sortOrder || "desc",
+        minSeeds: filters.minSeeds ?? undefined,
+        maxSeeds: filters.maxSeeds ?? undefined,
+        minLeechers: filters.minLeechers ?? undefined,
+        maxLeechers: filters.maxLeechers ?? undefined,
+        yearFrom: filters.yearFrom ?? undefined,
+        yearTo: filters.yearTo ?? undefined,
+        minSizeBytes: filters.minSizeBytes ?? undefined,
+        maxSizeBytes: filters.maxSizeBytes ?? undefined,
+        hasMagnet: filters.hasMagnet ?? undefined,
+        hasScreenshots: filters.hasScreenshots ?? undefined,
+        discoveredPreset: filters.discoveredPreset ?? undefined,
+        developers: filters.developers && filters.developers.length > 0 ? filters.developers : undefined,
+        publishers: filters.publishers && filters.publishers.length > 0 ? filters.publishers : undefined,
+        genres: filters.genres && filters.genres.length > 0 ? filters.genres : undefined,
+        languages: filters.languages && filters.languages.length > 0 ? filters.languages : undefined,
+        imageFormats: filters.imageFormats && filters.imageFormats.length > 0 ? filters.imageFormats : undefined,
+        multiplayer: filters.multiplayer === "yes" || filters.multiplayer === "no" ? filters.multiplayer : undefined,
+        regions: filters.regions && filters.regions.length > 0 ? filters.regions : undefined,
+        limit: targetSize,
+        offset: (targetPage - 1) * targetSize,
+      }
+
+      const cacheKey = JSON.stringify(options)
+      if (queryCache.has(cacheKey)) {
+        const cached = queryCache.get(cacheKey)!
+        if (currentReqId === requestIdRef.current) {
+          logLibrary("CACHE_HIT", { requestId: currentReqId, page: targetPage })
+          setItems(cached.items)
+          setTotalItems(cached.total)
+          setHasMore(cached.hasMore)
+          setRenderedDataPage(targetPage)
+          logLibrary("RENDER_APPLY", {
+            requestId: currentReqId,
+            reason,
+            requestedPage: targetPage,
+            selectedPage: currentPageRef.current,
+            renderedDataPage: targetPage,
+            fromCache: true,
+          })
+          return true
+        }
+      }
+
+      try {
+        const response = await nativeLibraryService.getItems(options)
+        if (currentReqId !== requestIdRef.current) {
+          logLibrary("STALE_RESULT", {
+            requestId: currentReqId,
+            latestRequestId: requestIdRef.current,
+            requestedPage: targetPage,
+            selectedPage: currentPageRef.current,
+            ignored: true,
+          })
+          return false
+        }
+
+        logLibrary("LOAD_DONE", {
+          requestId: currentReqId,
+          page: targetPage,
+          items: response.items.length,
+          total: response.total,
+        })
+
+        // Central Invariant check
+        const responsePage =
+          response.page ?? Math.floor((response.offset || 0) / (response.limit || targetSize)) + 1
+        if (responsePage !== targetPage) {
+          console.warn(
+            `[LIBRARY][INVARIANT_VIOLATION] Response page (${responsePage}) does not match requested page (${targetPage})`
+          )
+        }
+
+        const mappedItems: LibraryItem[] = response.items.map((i) => ({
+          id: i.id,
+          topicId: i.topicId || undefined,
+          categoryId: i.categoryId,
+          categoryName: i.categoryId,
+          title: (i as any).canonicalTitle || i.cleanTitle || i.title,
+          canonicalTitle: (i as any).canonicalTitle || i.cleanTitle || i.title,
+          canonicalTitleRaw: (i as any).canonicalTitleRaw || i.title,
+          topicTitle: (i as any).topicTitle || i.title,
+          normalizedTitle: (i as any).normalizedTitle,
+          releaseGroup: (i as any).releaseGroup,
+          cleanTitle: i.cleanTitle || i.title,
+          genre: i.genre || undefined,
+          developer: i.developer || undefined,
+          releaseYear: i.releaseYear ? String(i.releaseYear) : undefined,
+          coverUrl: i.coverUrl || undefined,
+          coverImage: i.coverUrl || undefined,
+          size: i.sizeStr || undefined,
+          sizeBytes: i.sizeBytes || undefined,
+          hasMagnet: i.hasMagnet,
+          magnet: i.magnet || undefined,
+          magnetLink: i.magnetLink || i.magnet || undefined,
+          hasScreenshots: i.hasScreenshots,
+          isFavorite: i.isFavorite,
+          discoveredAt: i.discoveredAt || undefined,
+          seeders: i.seeds ?? undefined,
+          leechers: i.leechers ?? undefined,
+          infoHash: (i as any).infoHash,
+          torrent: {
+            infoHash: (i as any).infoHash || "",
+            files: [],
+            trackers: [],
+            status: "available",
+            seeders: i.seeds ?? undefined,
+            leechers: i.leechers ?? undefined,
+            totalSize: i.sizeBytes ?? undefined,
+          },
+        }))
+
+        queryCache.set(cacheKey, {
+          items: mappedItems,
+          total: response.total,
+          hasMore: response.hasMore,
+          offset: (targetPage - 1) * targetSize,
+          limit: targetSize,
+        })
+
+        setItems(mappedItems)
+        setTotalItems(response.total)
+        setHasMore(response.hasMore)
+        setRenderedDataPage(targetPage)
+
+        logLibrary("RENDER_APPLY", {
+          requestId: currentReqId,
+          reason,
+          requestedPage: targetPage,
+          selectedPage: currentPageRef.current,
+          renderedDataPage: targetPage,
+          itemCount: mappedItems.length,
+          total: response.total,
+        })
+
+        // Guard against page count shrinkage (clamp out of bounds page)
+        const calculatedTotalPages = Math.max(1, Math.ceil(response.total / targetSize))
+        if (currentPageRef.current > calculatedTotalPages) {
+          const clamped = calculatedTotalPages
+          logNav("PAGE_CLAMP", { from: currentPageRef.current, to: clamped, total: response.total })
+          setCurrentPage(clamped)
+          currentPageRef.current = clamped
+          fetchPage(clamped, targetSize, "PAGE_CLAMP")
+        }
+
+        if (perfTelemetry.isEnabled()) {
+          const queryDuration = performance.now() - t0
+          perfTelemetry.measure("SEARCH", "Query Duration", queryDuration, { count: response.items.length })
+        }
+        return true
+      } catch (err) {
+        if (currentReqId === requestIdRef.current) {
+          console.error("[useLibrary] Failed to fetch page:", err)
+          toast.error("Failed to load catalog page")
+        }
+        return false
+      }
+    },
+    [debouncedSearch, filters, selectedCategory]
+  )
+
+  const loadInitialItems = useCallback(
+    async (reason: PaginationTriggerReason = "INITIAL_BOOT") => {
+      setIsLoading(true)
+      setCurrentPage(1)
+      currentPageRef.current = 1
+      try {
+        await fetchPage(1, pageSize, reason)
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [fetchPage, pageSize]
+  )
 
   useEffect(() => {
     const unsubscribe = window.rtLibrary?.database?.onRestored(() => {
       queryCache.clear()
       setCurrentPage(1)
+      currentPageRef.current = 1
       loadCategories()
-      loadInitialItems()
+      loadInitialItems("DATABASE_RESTORE")
     })
     return unsubscribe
   }, [loadCategories, loadInitialItems])
@@ -334,9 +451,12 @@ export function useLibrary() {
       const isRelevant = currentCat === "all" || currentCat === event.categoryId
       if (!isRelevant) return
 
-      // 3. Check scroll position
+      // 3. Check scroll position and active page
       const currentScroll = scrollPositionsRef.current[currentCat] || 0
-      if (currentScroll > 40) {
+      const activePage = currentPageRef.current
+
+      // If user is on page 1 and scrolled down, queue new items badge
+      if (activePage === 1 && currentScroll > 40) {
         if ((event.inserted || 0) > 0) {
           setPendingNewItemsCount((prev) => prev + event.inserted)
         }
@@ -346,7 +466,8 @@ export function useLibrary() {
         }
         pageCommittedDebounceRef.current = setTimeout(async () => {
           queryCache.clear()
-          await fetchPage(1, pageSize)
+          // PRESERVE CURRENT PAGE: Refresh active page, NEVER force page 1!
+          await fetchPage(currentPageRef.current, pageSize, "SYNC_COMMIT")
         }, 200)
       }
     })
@@ -363,26 +484,34 @@ export function useLibrary() {
     setPendingNewItemsCount(0)
     queryCache.clear()
     setCurrentPage(1)
+    currentPageRef.current = 1
     if (selectedCategoryRef.current) {
       scrollPositionsRef.current[selectedCategoryRef.current] = 0
       setCategoryScrollPositions((prev) => ({ ...prev, [selectedCategoryRef.current]: 0 }))
     }
-    await fetchPage(1, pageSize)
+    await fetchPage(1, pageSize, "SHOW_PENDING_NEW")
   }, [fetchPage, pageSize])
 
   // Reload items on filter/category changes when ready
   useEffect(() => {
     if (bootState === "READY") {
-      loadInitialItems()
+      loadInitialItems("FILTER_CHANGE")
     }
   }, [bootState, selectedCategory, debouncedSearch, filters, loadInitialItems])
 
   const goToPage = async (page: number) => {
-    if (page < 1 || page === currentPage) return
-    setIsLoading(true)
-    await fetchPage(page, pageSize)
+    if (page < 1) return
+    if (page === currentPageRef.current && renderedDataPage === page) return
+
+    logNav("PAGE_STATE", { from: currentPageRef.current, to: page })
     setCurrentPage(page)
-    setIsLoading(false)
+    currentPageRef.current = page
+    setIsLoading(true)
+    try {
+      await fetchPage(page, pageSize, "PAGE_CHANGE")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const changePageSize = async (newSize: number) => {
@@ -394,26 +523,38 @@ export function useLibrary() {
       // ignore
     }
     setPageSizeState(validSize)
-    setIsLoading(true)
-    await fetchPage(1, validSize)
     setCurrentPage(1)
-    setIsLoading(false)
+    currentPageRef.current = 1
+    setIsLoading(true)
+    try {
+      await fetchPage(1, validSize, "PAGE_SIZE_CHANGE")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const updateFilters = (newFilters: Partial<FilterOptions>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }))
   }
 
+  const refreshCurrentQuery = useCallback(
+    async (reason: PaginationTriggerReason = "MANUAL_REFRESH") => {
+      queryCache.clear()
+      await loadCategories()
+      await fetchPage(currentPageRef.current, pageSize, reason)
+    },
+    [loadCategories, fetchPage, pageSize]
+  )
+
   const refreshLibrary = async () => {
-    queryCache.clear()
-    await loadCategories()
-    await loadInitialItems()
+    // Preserves current page
+    await refreshCurrentQuery("MANUAL_REFRESH")
   }
 
   const unlockLibrary = async () => {
     setBootState("READY")
     await loadCategories()
-    await loadInitialItems()
+    await loadInitialItems("INITIAL_BOOT")
   }
 
   const saveSettings = async (newSettings: AppSettings) => {
@@ -454,6 +595,7 @@ export function useLibrary() {
         }))
       }
       setCurrentPage(1)
+      currentPageRef.current = 1
     },
     []
   )
@@ -468,6 +610,7 @@ export function useLibrary() {
     setSelectedCategory: (catId: string) => {
       setSelectedCategory(catId)
       setCurrentPage(1)
+      currentPageRef.current = 1
       setPendingNewItemsCount(0)
       updateFilters({ categoryId: catId })
     },
@@ -475,6 +618,7 @@ export function useLibrary() {
     totalItems,
     hasMore,
     currentPage,
+    renderedDataPage,
     pageSize,
     totalPages: Math.ceil(totalItems / (pageSize > 0 ? pageSize : 24)) || 1,
     goToPage,
@@ -486,6 +630,7 @@ export function useLibrary() {
     isIndexing,
     indexingProgress,
     refreshLibrary,
+    refreshCurrentQuery,
     settings,
     saveSettings,
     reloadItems: loadInitialItems,

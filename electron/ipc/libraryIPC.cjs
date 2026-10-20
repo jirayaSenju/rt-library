@@ -86,11 +86,27 @@ function registerLibraryIPCHandlers() {
       const t0 = performance.now();
       const db = getDbOrThrow();
       const rows = categoriesRepo.getAll(db);
+      const storedById = new Map(rows.map((category) => [category.id, category]));
+      const { CategoryManager } = require('../scraper/categoryManager.cjs');
+      const configuredCategories = CategoryManager.getInstance().getResolvedCategories();
+      const configuredIds = new Set(configuredCategories.map((category) => category.id));
+      const mergedRows = [
+        ...configuredCategories.map((category) => {
+          const stored = storedById.get(category.id);
+          return stored ? { ...stored, name: category.name, item_count: itemsRepo.countByCategory(db, category.id) } : {
+            id: category.id,
+            name: category.name,
+            item_count: itemsRepo.countByCategory(db, category.id),
+            last_scraped_at: null,
+          };
+        }),
+        ...rows.filter((category) => !configuredIds.has(category.id)),
+      ];
       const duration = performance.now() - t0;
       if (process.env.RT_LIBRARY_PERF === '1') {
-        console.log(`[PERF][IPC] library:getCategories: ${duration.toFixed(2)}ms (${rows.length} categories)`);
+        console.log(`[PERF][IPC] library:getCategories: ${duration.toFixed(2)}ms (${mergedRows.length} categories)`);
       }
-      return rows.map((c) => ({
+      return mergedRows.map((c) => ({
         id: c.id,
         name: c.name,
         itemCount: c.item_count,
@@ -228,16 +244,25 @@ function registerLibraryIPCHandlers() {
         swarmFetchedAt: item.swarmFetchedAt,
       }));
 
+      const safeLimit = result.limit || limit || 100;
+      const safeOffset = result.offset || offset || 0;
+      const page = result.page || (Math.floor(safeOffset / safeLimit) + 1);
+      const pageSize = result.pageSize || safeLimit;
+      const totalPages = result.totalPages || Math.max(1, Math.ceil(result.total / safeLimit));
+
       return {
         items: lightItems,
         total: result.total,
         hasMore: result.hasMore,
-        limit: result.limit,
-        offset: result.offset,
+        limit: safeLimit,
+        offset: safeOffset,
+        page,
+        pageSize,
+        totalPages,
       };
     } catch (err) {
       console.error('[IPC][LIBRARY][ERROR] library:getItems failed:', err.message);
-      return { items: [], total: 0, hasMore: false, limit: 100, offset: 0 };
+      return { items: [], total: 0, hasMore: false, limit: 100, offset: 0, page: 1, pageSize: 100, totalPages: 1 };
     }
   });
 
