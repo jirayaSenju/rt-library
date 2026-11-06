@@ -10,6 +10,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [1.3.0] - 2026-11-06
+
+### Added
+- Nintendo Switch 2 (NSW2) category support and title parsing for modern RuTracker forum layouts.
+- Dynamic Ecologica theme presets with animated mascot progress indicators and themed application icons.
+
+### Fixed
+- Restored dynamic topic file tree extraction via `viewtorrent.php` for Browser Companion and Embedded Electron transports.
+- Implemented `isAvailable()` on `BrowserCompanionBridge` and added defensive transport fallbacks.
+- Improved database persistence and deserialization in `detailsRepo` to prevent empty file lists on legacy entries.
+- Added comprehensive end-to-end integration tests for the complete topic file data pipeline.
+
+---
+
 ## [1.2.0] - 2026-10-20
 
 ### Added
