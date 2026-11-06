@@ -234,7 +234,39 @@ async function fetchInPage(command) {
           },
         });
         const bytes = await response.arrayBuffer();
-        const html = new TextDecoder('windows-1251').decode(bytes);
+        let html = new TextDecoder('windows-1251').decode(bytes);
+
+        // For topic pages with dynamic filelist (#tor-filelist-btn), fetch the file tree via viewtorrent.php
+        const topicMatch = targetUrl.match(/[?&]t=(\d+)/);
+        if (topicMatch && html.includes('id="tor-filelist-btn"') && !html.includes('class="ftree"')) {
+          try {
+            console.info(`[COMPANION][VIEW_TORRENT] Fetching file list for topic ${topicMatch[1]}`);
+            const vtRes = await fetch('https://rutracker.org/forum/viewtorrent.php', {
+              method: 'POST',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              },
+              body: `t=${topicMatch[1]}`,
+            });
+            if (vtRes.ok) {
+              const vtBytes = await vtRes.arrayBuffer();
+              const vtHtml = new TextDecoder('windows-1251').decode(vtBytes);
+              if (vtHtml && (vtHtml.includes('class="ftree"') || vtHtml.includes('id="tor-filelist"'))) {
+                console.info(`[COMPANION][VIEW_TORRENT] Successfully retrieved file list (${vtHtml.length} chars)`);
+                if (html.includes('id="tor-fl-wrap"')) {
+                  html = html.replace('<div id="tor-fl-wrap">', '<div id="tor-fl-wrap">' + vtHtml);
+                } else {
+                  html += '\n<div id="tor-fl-wrap">' + vtHtml + '</div>';
+                }
+              }
+            }
+          } catch (vtErr) {
+            console.warn(`[COMPANION][VIEW_TORRENT_ERROR] Failed to fetch file list: ${vtErr.message}`);
+          }
+        }
+
         console.info(`[COMPANION][FETCH_RESULT] requestId=${requestId} status=${response.status} finalUrl=${response.url} htmlLength=${html.length} bytes=${bytes.byteLength}`);
         if (bytes.byteLength > 10 * 1024 * 1024) {
           return { tooLarge: true, httpStatus: response.status, url: response.url, html: '' };

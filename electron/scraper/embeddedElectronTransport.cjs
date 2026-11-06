@@ -471,6 +471,24 @@ class EmbeddedElectronTransport {
                           await new Promise(r => setTimeout(r, 100));
                         }
                       }
+                      if (list && !list.querySelector('ul.ftree')) {
+                        const m = window.location.href.match(/[?&]t=(\d+)/);
+                        if (m) {
+                          try {
+                            const res = await fetch('https://rutracker.org/forum/viewtorrent.php', {
+                              method: 'POST',
+                              credentials: 'include',
+                              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                              body: 't=' + m[1]
+                            });
+                            if (res.ok) {
+                              const bytes = await res.arrayBuffer();
+                              const text = new TextDecoder('windows-1251').decode(bytes);
+                              list.innerHTML = text;
+                            }
+                          } catch (_) {}
+                        }
+                      }
                       return document.documentElement ? document.documentElement.outerHTML : '';
                     })()
                   `).catch(() => '');

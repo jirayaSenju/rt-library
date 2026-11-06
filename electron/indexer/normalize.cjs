@@ -338,10 +338,28 @@ function normalizeItem(raw, fallbackCategoryId, fallbackCategoryName) {
   const sizeStr = (typeof rawSize === 'string' && rawSize !== 'N/A') ? rawSize.trim() : null;
   const sizeBytes = (raw.sizeBytes ?? raw.content?.sizeBytes ?? raw.content?.fileListTotalSizeBytes ?? raw.fileListTotalSizeBytes) || null;
 
-  const rawFileList = raw.content?.fileList ?? raw.fileList;
+  const rawFileList = raw.files || raw.content?.files || raw.content?.fileList || raw.fileList;
   let fileList = null;
   if (Array.isArray(rawFileList)) {
-    fileList = rawFileList.map(f => (typeof f === 'string' ? f.trim() : f)).filter(Boolean);
+    fileList = rawFileList.map(f => {
+      if (typeof f === 'string') return f.trim();
+      if (f && typeof f === 'object') {
+        const path = f.path || f.name || '';
+        const name = f.name || path.split('/').pop() || path;
+        const len = typeof f.sizeBytes === 'number' && f.sizeBytes >= 0
+          ? f.sizeBytes
+          : typeof f.length === 'number' && f.length >= 0
+          ? f.length
+          : null;
+        return {
+          name,
+          path,
+          size: f.size || null,
+          sizeBytes: len,
+        };
+      }
+      return null;
+    }).filter(Boolean);
   } else if (typeof rawFileList === 'string' && rawFileList.trim()) {
     const lines = rawFileList.split('\n').map(l => l.trim()).filter(Boolean);
     fileList = lines.length > 0 ? lines : [rawFileList.trim()];

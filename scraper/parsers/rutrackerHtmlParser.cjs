@@ -372,11 +372,13 @@ function parseTopicHtml(html, context = {}) {
 
   // File tree from #tor-filelist / ul.ftree or spoiler
   let fileList = null;
+  let parsedFiles = null;
   let ftreeTotalSizeBytes = null;
   const torFileListEl = doc.querySelector('#tor-filelist, #tor-fl-wrap, ul.ftree');
   if (torFileListEl) {
     const ftreeFiles = extractFtreeFiles(torFileListEl);
     if (ftreeFiles.length > 0) {
+      parsedFiles = ftreeFiles;
       fileList = ftreeFiles.map(f => f.path || f.name).join('\n');
       let sum = 0;
       let hasBytes = false;
@@ -529,6 +531,7 @@ function parseTopicHtml(html, context = {}) {
     screenshots,
     magnet,
     fileList,
+    ...(parsedFiles ? { files: parsedFiles } : {}),
     size: torrentSize || meta.size,
     sizeBytes: torrentSizeBytes,
     ...(ftreeTotalSizeBytes !== null ? { fileListTotalSizeBytes: ftreeTotalSizeBytes } : {}),
