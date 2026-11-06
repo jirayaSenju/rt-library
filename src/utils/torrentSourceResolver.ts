@@ -121,18 +121,19 @@ export function resolveTorrentDisplayData(params: {
     });
     filesSource = 'torrent';
   } else if (catalog && Array.isArray(catalog.fileList) && catalog.fileList.length > 0) {
-    resolvedFiles = catalog.fileList.map((f) => {
-      const pathStr = f.path || f.name || '';
-      const nameStr = f.name || pathStr.split('/').pop() || pathStr;
-      const len = typeof f.sizeBytes === 'number' && f.sizeBytes >= 0
+    resolvedFiles = catalog.fileList.map((f: any) => {
+      const isStr = typeof f === 'string';
+      const pathStr = isStr ? f : (f.path || f.name || '');
+      const nameStr = isStr ? (pathStr.split('/').pop() || pathStr) : (f.name || pathStr.split('/').pop() || pathStr);
+      const len = !isStr && typeof f.sizeBytes === 'number' && f.sizeBytes >= 0
         ? Math.floor(f.sizeBytes)
-        : typeof f.length === 'number' && f.length >= 0
+        : !isStr && typeof f.length === 'number' && f.length >= 0
         ? Math.floor(f.length)
-        : typeof f.size === 'number' && f.size >= 0
+        : !isStr && typeof f.size === 'number' && f.size >= 0
         ? Math.floor(f.size)
         : 0;
 
-      const sizeStr = typeof f.size === 'string' && f.size
+      const sizeStr = !isStr && typeof f.size === 'string' && f.size
         ? f.size
         : len > 0
         ? formatBytes(len)

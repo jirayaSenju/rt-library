@@ -166,4 +166,22 @@ describe("ProgressMascot (V3-26) Unit Tests", () => {
     )
     expect(container.firstChild).toBeNull()
   })
+
+  it("renders recycle mascot for eco-green and eco-red progress themes", () => {
+    const ecoGreen = PROGRESS_THEMES["eco-green"]
+    const { container, rerender } = render(
+      <ProgressMascot theme={ecoGreen} percent={40} state="running" />
+    )
+
+    let mascotWrapper = container.querySelector("[data-mascot='Recycle (Verde)']")
+    expect(mascotWrapper).toBeInTheDocument()
+    expect(mascotWrapper).toHaveAttribute("data-mascot-type", "glyph")
+    expect(container.querySelector("svg")).toBeInTheDocument()
+
+    const ecoRed = PROGRESS_THEMES["eco-red"]
+    rerender(<ProgressMascot theme={ecoRed} percent={60} state="running" />)
+    mascotWrapper = container.querySelector("[data-mascot='Recycle (Vermelho)']")
+    expect(mascotWrapper).toBeInTheDocument()
+    expect(container.querySelector("svg")).toBeInTheDocument()
+  })
 })

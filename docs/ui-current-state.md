@@ -34,7 +34,7 @@
 
 - **14 Supported Themes**:
   - Builtin: `RT Dark`, `RT Light`.
-  - Terminal: `Dracula`, `Nord`, `Gruvbox Dark`, `Catppuccin Mocha`, `Tokyo Night`, `Eco Green`, `Eco Red`.
+  - Terminal: `Dracula`, `Nord`, `Gruvbox Dark`, `Catppuccin Mocha`, `Tokyo Night`, `Ecologica Verde`, `Ecologica Vermelha`.
   - Community: `Pride`, `Trans Pride`, `Bi Pride`, `Lesbian Pride`, `Non-Binary Pride`.
 - **Accessibility Standards**:
   - All 14 themes meet **WCAG 2.1 AA** contrast standards across normal text (>= 4.5:1) and UI boundaries/interactive components (>= 3.0:1).

@@ -14,6 +14,15 @@ const DEFAULT_CATEGORIES = [
     builtIn: true,
   },
   {
+    id: "switch2",
+    name: "Nintendo Switch 2",
+    group: "nintendo",
+    baseUrl: "https://rutracker.org/forum/viewforum.php?f=1605",
+    titleSearch: ["[NSW2]"],
+    enabled: true,
+    builtIn: true,
+  },
+  {
     id: "switch-ports",
     name: "Nintendo Switch Ports",
     group: "nintendo",

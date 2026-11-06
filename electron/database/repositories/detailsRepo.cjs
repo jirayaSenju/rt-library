@@ -7,6 +7,10 @@ function safeJsonParse(jsonStr, fallback = null) {
   try {
     return JSON.parse(jsonStr);
   } catch (err) {
+    if (fallback === null || Array.isArray(fallback)) {
+      const lines = jsonStr.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length > 0) return lines;
+    }
     console.warn(`[DETAILS][WARN] Safe JSON parse fallback triggered:`, err.message);
     return fallback;
   }
@@ -35,11 +39,17 @@ function getByItemId(db, itemId) {
 function upsert(db, itemId, details) {
   if (!itemId || !details) return;
 
-  const fileListJson = Array.isArray(details.fileList)
-    ? JSON.stringify(details.fileList)
-    : typeof details.fileList === 'string'
-    ? details.fileList
-    : null;
+  let fileListJson = null;
+  if (Array.isArray(details.fileList)) {
+    fileListJson = JSON.stringify(details.fileList);
+  } else if (typeof details.fileList === 'string' && details.fileList.trim()) {
+    const trimmed = details.fileList.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      fileListJson = trimmed;
+    } else {
+      fileListJson = JSON.stringify(trimmed.split('\n').map(l => l.trim()).filter(Boolean));
+    }
+  }
 
   const screenshotsJson = Array.isArray(details.screenshots)
     ? JSON.stringify(details.screenshots)

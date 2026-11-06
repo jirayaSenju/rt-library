@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useI18n } from "@/i18n"
 import { openExternal } from "@/platform/shell"
+import { getLibraryCategoryLabel } from "@/utils/libraryCategoryLabel"
 
 export function getForumTopicUrl(item: LibraryItem): string | null {
   if (item.url && /^https?:\/\//i.test(item.url)) return item.url
@@ -61,9 +62,11 @@ export const ItemDetailHeader: React.FC<ItemDetailHeaderProps> = ({
   const rawForumTitle = item.topicTitle || item.title
   const hasAltTitle = rawForumTitle && rawForumTitle !== displayTitle
 
+  const categoryLabel = getLibraryCategoryLabel(item)
+
   // Build secondary metadata line: Platform · Year · Developer
   const metaParts: string[] = []
-  if (item.categoryId) metaParts.push(item.categoryId.toUpperCase())
+  if (categoryLabel) metaParts.push(categoryLabel.toUpperCase())
   if (item.releaseYear) metaParts.push(item.releaseYear)
   if (item.developer) metaParts.push(item.developer)
   if (item.releaseGroup) metaParts.push(`Release: ${item.releaseGroup}`)
@@ -83,14 +86,14 @@ export const ItemDetailHeader: React.FC<ItemDetailHeaderProps> = ({
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center p-3 text-muted-foreground">
               <Gamepad2 className="h-8 w-8 mb-1.5" />
-              <span className="text-[10px] uppercase tracking-wider font-semibold">{item.categoryId}</span>
+              <span className="text-[10px] uppercase tracking-wider font-semibold">{categoryLabel}</span>
             </div>
           )}
           <Badge
             variant="secondary"
             className="absolute top-1.5 left-1.5 bg-card/90 backdrop-blur-md text-primary border border-primary/30 text-[9px] uppercase font-bold px-1.5 py-0"
           >
-            {item.categoryId}
+            {categoryLabel}
           </Badge>
         </div>
 

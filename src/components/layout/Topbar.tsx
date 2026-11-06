@@ -10,6 +10,9 @@ import {
   Square,
   Copy,
   Wrench,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,6 +21,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { FilterOptions, LibraryFilters } from "@/types"
 import { FilterPopover } from "@/components/layout/FilterPopover"
 import { GlobalSyncStatus } from "@/components/layout/GlobalSyncStatus"
@@ -95,6 +105,36 @@ export const Topbar: React.FC<TopbarProps> = ({
     (filters.imageFormats && filters.imageFormats.length > 0) ||
     (filters.multiplayer && filters.multiplayer !== "any") ||
     (filters.regions && filters.regions.length > 0)
+
+  const currentSortField = (
+    sortBy === "size" ? "sizeBytes" :
+    sortBy === "seeders" ? "seeds" :
+    sortBy || "discoveredAt"
+  ) as string
+  const currentSortOrder = sortOrder || "desc"
+
+  const getSortLabel = (field: string) => {
+    switch (field) {
+      case "discoveredAt":
+        return t("topbar.sortFields.discoveredAt")
+      case "title":
+        return t("topbar.sortFields.title")
+      case "releaseYear":
+        return t("topbar.sortFields.releaseYear")
+      case "updatedAt":
+        return t("topbar.sortFields.updatedAt")
+      case "sizeBytes":
+      case "size":
+        return t("topbar.sortFields.sizeBytes")
+      case "seeds":
+      case "seeders":
+        return t("topbar.sortFields.seeds")
+      case "leechers":
+        return t("topbar.sortFields.leechers")
+      default:
+        return field
+    }
+  }
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -244,6 +284,59 @@ export const Topbar: React.FC<TopbarProps> = ({
               className="flex-1 min-w-0 flex items-center justify-end gap-2.5 shrink-0"
               style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
             >
+              {/* Quick Sort Selector */}
+              <div
+                className="hidden sm:flex items-center rounded-xl border border-border bg-card/60 p-0.5 shadow-sm"
+                data-testid="topbar-quick-sort"
+              >
+                <Select
+                  value={currentSortField}
+                  onValueChange={(val) => onSortChange?.(val as FilterOptions["sortBy"], currentSortOrder)}
+                >
+                  <SelectTrigger
+                    className="h-8 border-0 bg-transparent text-xs text-muted-foreground hover:text-foreground focus:ring-0 shadow-none px-2.5 gap-1.5 font-medium rounded-lg"
+                    aria-label={t("topbar.sortFieldAria")}
+                  >
+                    <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-foreground font-medium truncate max-w-[120px] lg:max-w-[150px]">
+                      {getSortLabel(currentSortField)}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent align="end" className="bg-popover border-border text-popover-foreground">
+                    <SelectItem value="discoveredAt">{t("topbar.sortFields.discoveredAt")}</SelectItem>
+                    <SelectItem value="title">{t("topbar.sortFields.title")}</SelectItem>
+                    <SelectItem value="releaseYear">{t("topbar.sortFields.releaseYear")}</SelectItem>
+                    <SelectItem value="updatedAt">{t("topbar.sortFields.updatedAt")}</SelectItem>
+                    <SelectItem value="sizeBytes">{t("topbar.sortFields.sizeBytes")}</SelectItem>
+                    <SelectItem value="seeds">{t("topbar.sortFields.seeds")}</SelectItem>
+                    <SelectItem value="leechers">{t("topbar.sortFields.leechers")}</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 rounded-lg"
+                      onClick={() => onSortChange?.(currentSortField as FilterOptions["sortBy"], currentSortOrder === "asc" ? "desc" : "asc")}
+                      aria-label={t("topbar.sortDirectionAria", {
+                        direction: currentSortOrder === "asc" ? t("topbar.sortAsc") : t("topbar.sortDesc"),
+                      })}
+                    >
+                      {currentSortOrder === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {currentSortOrder === "asc" ? t("topbar.sortAscTooltip") : t("topbar.sortDescTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+
               {/* Filter Popover (includes Sorting section inside) */}
               <FilterPopover
                 filters={filters}

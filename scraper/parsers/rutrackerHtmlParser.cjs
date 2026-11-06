@@ -28,6 +28,59 @@ function isTrackerDecorationOrSmile(url) {
          lower.includes('static.rutracker');
 }
 
+function extractFtreeFiles(container) {
+  if (!container) return [];
+  const ftree = (typeof container.matches === 'function' && container.matches('ul.ftree'))
+    ? container
+    : container.querySelector('ul.ftree');
+  if (!ftree) return [];
+
+  const files = [];
+
+  function walk(ul, currentDir = '') {
+    const items = Array.from(ul.children).filter(el => el.tagName === 'LI');
+    for (const item of items) {
+      if (item.classList.contains('dir')) {
+        const div = Array.from(item.children).find(el => el.tagName === 'DIV');
+        const dirB = div ? div.querySelector('b') : item.querySelector('b');
+        let dirName = (dirB?.textContent || '').trim().replace(/^\.\/?/, '').replace(/\/+$/, '');
+        const nextDir = currentDir ? `${currentDir}/${dirName}` : dirName;
+        const subUl = Array.from(item.children).find(el => el.tagName === 'UL');
+        if (subUl) {
+          walk(subUl, nextDir);
+        }
+      } else if (item.classList.contains('file')) {
+        const div = Array.from(item.children).find(el => el.tagName === 'DIV') || item;
+        const fileB = div.querySelector('b');
+        const fileName = (fileB?.textContent || '').trim();
+        const sizeS = div.querySelector('s');
+        const sizeStr = (sizeS?.textContent || '').trim() || null;
+        const bytesI = div.querySelector('i');
+        const bytesText = (bytesI?.textContent || '').trim();
+        let sizeBytes = null;
+        if (/^\d+$/.test(bytesText)) {
+          const b = Number(bytesText);
+          if (Number.isSafeInteger(b) && b >= 0) {
+            sizeBytes = b;
+          }
+        }
+        if (fileName) {
+          const fullPath = currentDir ? `${currentDir}/${fileName}` : fileName;
+          files.push({
+            name: fileName,
+            path: fullPath,
+            size: sizeStr,
+            sizeBytes,
+          });
+        }
+      }
+    }
+  }
+
+  walk(ftree, '');
+  return files;
+}
+
 function resolveRawImageUrl(url) {
   if (!url || typeof url !== 'string') return null;
   let clean = url.trim();
@@ -317,14 +370,43 @@ function parseTopicHtml(html, context = {}) {
     }
   }
 
-  // File tree from spoiler
+  // File tree from #tor-filelist / ul.ftree or spoiler
   let fileList = null;
-  postBody.querySelectorAll('.sp-wrap').forEach(wrap => {
-    const headText = (wrap.querySelector('.sp-head, .sp-tit')?.textContent || '').toLowerCase();
-    if (headText.includes('список файлов') || headText.includes('файлы в раздаче') || headText.includes('файлы')) {
-      fileList = (wrap.querySelector('.sp-body')?.textContent || '').trim();
+  let parsedFiles = null;
+  let ftreeTotalSizeBytes = null;
+  const torFileListEl = doc.querySelector('#tor-filelist, #tor-fl-wrap, ul.ftree');
+  if (torFileListEl) {
+    const ftreeFiles = extractFtreeFiles(torFileListEl);
+    if (ftreeFiles.length > 0) {
+      parsedFiles = ftreeFiles;
+      fileList = ftreeFiles.map(f => f.path || f.name).join('\n');
+      let sum = 0;
+      let hasBytes = false;
+      for (const f of ftreeFiles) {
+        if (typeof f.sizeBytes === 'number' && f.sizeBytes >= 0) {
+          sum += f.sizeBytes;
+          hasBytes = true;
+        }
+      }
+      if (hasBytes) {
+        ftreeTotalSizeBytes = sum;
+      }
     }
-  });
+  }
+
+  // Fallback to spoiler if fileList was not found in ftree
+  if (!fileList && postBody) {
+    postBody.querySelectorAll('.sp-wrap').forEach(wrap => {
+      const headText = (wrap.querySelector('.sp-head, .sp-tit')?.textContent || '').toLowerCase();
+      if (headText.includes('список файлов') || headText.includes('файлы в раздаче') || headText.includes('файлы')) {
+        fileList = (wrap.querySelector('.sp-body')?.textContent || '').trim();
+      }
+    });
+  }
+
+  if (torrentSizeBytes === null && ftreeTotalSizeBytes !== null) {
+    torrentSizeBytes = ftreeTotalSizeBytes;
+  }
 
   // Textual metadata fields
   const keyMap = {
@@ -449,8 +531,10 @@ function parseTopicHtml(html, context = {}) {
     screenshots,
     magnet,
     fileList,
+    ...(parsedFiles ? { files: parsedFiles } : {}),
     size: torrentSize || meta.size,
     sizeBytes: torrentSizeBytes,
+    ...(ftreeTotalSizeBytes !== null ? { fileListTotalSizeBytes: ftreeTotalSizeBytes } : {}),
     ...meta,
     ...normMeta,
   };
@@ -459,6 +543,7 @@ function parseTopicHtml(html, context = {}) {
 module.exports = {
   parseCategoryHtml,
   parseTopicHtml,
+  extractFtreeFiles,
   extractPaginationInfo,
   resolveRawImageUrl,
   isTrackerDecorationOrSmile,

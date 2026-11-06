@@ -62,8 +62,8 @@ describe("GlobalThemeSelector Unit Tests", () => {
     const searchInput = screen.getByPlaceholderText(/search themes\.\.\.|buscar temas\.\.\./i)
     await user.type(searchInput, "eco")
 
-    expect(screen.getByRole("option", { name: "Eco Green" })).toBeInTheDocument()
-    expect(screen.getByRole("option", { name: "Eco Red" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Ecologica Verde" })).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Ecologica Vermelha" })).toBeInTheDocument()
     expect(screen.queryByRole("option", { name: "Dracula" })).not.toBeInTheDocument()
   })
 

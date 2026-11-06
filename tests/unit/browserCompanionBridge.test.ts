@@ -118,6 +118,7 @@ describe('Browser Companion local bridge', () => {
     try {
       const hello = await request(connection.port, '/v1/hello', { token: connection.token, method: 'POST', body: { protocolVersion: PROTOCOL_VERSION, extensionVersion: '0.1' } })
       expect(bridge.getConnection().connected).toBe(true)
+      expect(bridge.isAvailable()).toBe(true)
 
       // Extension initiates manual disconnect
       const dcRes = await request(connection.port, '/v1/disconnect', { token: connection.token, session: hello.body.sessionId, method: 'POST' })
@@ -126,6 +127,7 @@ describe('Browser Companion local bridge', () => {
 
       // Bridge immediately reports disconnected
       expect(bridge.getConnection().connected).toBe(false)
+      expect(bridge.isAvailable()).toBe(false)
       expect(bridge.getConnection().sessionId).toBeNull()
 
       // Subsequent command polling is rejected with HANDSHAKE_REQUIRED
@@ -136,8 +138,10 @@ describe('Browser Companion local bridge', () => {
       // Reconnect and test app-side disconnect
       const hello2 = await request(connection.port, '/v1/hello', { token: connection.token, method: 'POST', body: { protocolVersion: PROTOCOL_VERSION, extensionVersion: '0.1' } })
       expect(bridge.getConnection().connected).toBe(true)
+      expect(bridge.isAvailable()).toBe(true)
       bridge.disconnect()
       expect(bridge.getConnection().connected).toBe(false)
+      expect(bridge.isAvailable()).toBe(false)
     } finally {
       await bridge.stop()
     }

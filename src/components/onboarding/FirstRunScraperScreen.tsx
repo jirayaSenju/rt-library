@@ -30,6 +30,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import appIcon from '@/assets/app-icon.png'
+import ecologicaVerdeLogo from '@/assets/ecologica_verde.png'
+import ecologicaVermelhaLogo from '@/assets/ecologica_vermelha.png'
 import { scraperService, ScraperAccessStatus, ScraperManagerStatus, ScraperLog } from '@/services/scraperService'
 import { nativeLibraryService } from '@/services/nativeLibrary'
 import { useI18n } from '@/i18n'
@@ -58,6 +60,14 @@ export const FirstRunScraperScreen: React.FC<FirstRunScraperScreenProps> = ({
   const { t } = useI18n()
   const statusVersion = useRef(0)
   const startInFlight = useRef(false)
+
+  const activeLogo = (() => {
+    if (typeof document === 'undefined') return appIcon
+    const theme = document.documentElement.getAttribute('data-theme') || ''
+    if (theme === 'eco-red') return ecologicaVermelhaLogo
+    if (theme === 'eco-green' || theme.startsWith('eco-')) return ecologicaVerdeLogo
+    return appIcon
+  })()
 
   // Step state
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(initialStep)
@@ -540,7 +550,7 @@ export const FirstRunScraperScreen: React.FC<FirstRunScraperScreenProps> = ({
         {currentStep !== 'READY' && (
           <div className="w-full flex items-center justify-between border-b border-neutral-800 pb-3 mb-1" aria-label="Onboarding Progress">
             <div className="flex items-center space-x-2">
-              <img src={appIcon} alt="" aria-hidden="true" className="h-7 w-7 object-contain" />
+              <img src={activeLogo} alt="" aria-hidden="true" className="h-7 w-7 object-contain" />
               <span className="text-xs font-bold tracking-tight text-neutral-300">RT-Library</span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-400">
@@ -563,7 +573,7 @@ export const FirstRunScraperScreen: React.FC<FirstRunScraperScreenProps> = ({
         {currentStep === 'WELCOME' && (
           <div className="w-full space-y-6 animate-in fade-in-50 duration-200">
             <div className="flex flex-col items-center space-y-2">
-              <img src={appIcon} alt="" aria-hidden="true" className="h-16 w-16 object-contain drop-shadow-xl" />
+              <img src={activeLogo} alt="" aria-hidden="true" className="h-16 w-16 object-contain drop-shadow-xl" />
               <h1 className="text-2xl font-bold tracking-tight text-neutral-100">
                 {t('onboarding.welcomeTitle')}
               </h1>

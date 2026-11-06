@@ -144,18 +144,31 @@ function registerScraperIPCHandlers(browserCompanion) {
 
     let parsed = null;
 
-    if (browserCompanion?.isAvailable()) {
-      const pageResult = await browserCompanion.requestPage({
-        kind: 'topic',
-        topicId,
-        url: targetUrl,
-      });
+    const isCompanionAvailable = Boolean(
+      typeof browserCompanion?.isAvailable === 'function'
+        ? browserCompanion.isAvailable()
+        : browserCompanion?.getConnection?.().connected
+    );
 
-      if (pageResult.status !== 'FORUM_READY') {
-        throw new Error(pageResult.error || `FETCH_FAILED: Status was ${pageResult.status}`);
+    if (isCompanionAvailable) {
+      try {
+        const pageResult = await browserCompanion.requestPage({
+          kind: 'topic',
+          topicId,
+          url: targetUrl,
+        });
+
+        if (pageResult && pageResult.status === 'FORUM_READY' && pageResult.parsedTopic) {
+          parsed = pageResult.parsedTopic;
+        } else if (pageResult?.error) {
+          console.warn('[SCRAPER_IPC] Companion fetch returned non-ready status:', pageResult.status, pageResult.error);
+        }
+      } catch (companionErr) {
+        console.warn('[SCRAPER_IPC] Companion fetch failed, falling back to embedded transport:', companionErr.message);
       }
-      parsed = pageResult.parsedTopic;
-    } else {
+    }
+
+    if (!parsed) {
       const embedded = manager.getEmbeddedTransport();
       parsed = await embedded.fetchTopic({ topicId, url: targetUrl }, targetCategory);
     }

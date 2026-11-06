@@ -21,10 +21,12 @@ describe("progressThemes registry tests", () => {
     "candy-rush",
     "cosmic-nebula",
     "soviet",
+    "eco-green",
+    "eco-red",
   ]
 
-  it("contains all 11 defined progress themes with unique IDs", () => {
-    expect(PROGRESS_THEME_IDS).toHaveLength(11)
+  it("contains all 13 defined progress themes with unique IDs", () => {
+    expect(PROGRESS_THEME_IDS).toHaveLength(13)
     expect(PROGRESS_THEME_IDS).toEqual(expect.arrayContaining(expectedThemeIds))
   })
 
@@ -197,5 +199,27 @@ describe("progressThemes registry tests", () => {
     expect(soviet.motion.animationClass).toBe("animate-mascot-soviet-pulse")
     expect(resolveProgressThemeId("communist")).toBe("soviet")
     expect(resolveProgressThemeId("ussr")).toBe("soviet")
+  })
+
+  it("configures eco-green with emerald gradient and recycle mascot", () => {
+    const ecoGreen = PROGRESS_THEMES["eco-green"]
+    expect(ecoGreen.fillBackground).toContain("#22c55e")
+    expect(ecoGreen.mascot.value).toBe("♻")
+    expect(ecoGreen.mascot.name).toBe("Recycle (Verde)")
+    expect(ecoGreen.mascot.type).toBe("glyph")
+    expect(ecoGreen.motion.animationClass).toBe("animate-mascot-recycle-spin")
+    expect(resolveProgressThemeId("ecologica-verde")).toBe("eco-green")
+    expect(resolveProgressThemeId("eco")).toBe("eco-green")
+  })
+
+  it("configures eco-red with crimson gradient and recycle mascot", () => {
+    const ecoRed = PROGRESS_THEMES["eco-red"]
+    expect(ecoRed.fillBackground).toContain("#dc2626")
+    expect(ecoRed.mascot.value).toBe("♻")
+    expect(ecoRed.mascot.name).toBe("Recycle (Vermelho)")
+    expect(ecoRed.mascot.type).toBe("glyph")
+    expect(ecoRed.motion.animationClass).toBe("animate-mascot-recycle-spin")
+    expect(resolveProgressThemeId("ecologica-vermelha")).toBe("eco-red")
+    expect(resolveProgressThemeId("ecological-red")).toBe("eco-red")
   })
 })

@@ -123,6 +123,11 @@ describe("Title Extraction & Normalization Unit Tests", () => {
 
     it("identifies release qualifier tokens accurately", () => {
       expect(isReleaseQualifierToken("[Nintendo Switch]")).toBe(true)
+      expect(isReleaseQualifierToken("[Nintendo Switch 2]")).toBe(true)
+      expect(isReleaseQualifierToken("[Switch 2]")).toBe(true)
+      expect(isReleaseQualifierToken("[NSW2]")).toBe(true)
+      expect(isReleaseQualifierToken("[NSW]")).toBe(true)
+      expect(isReleaseQualifierToken("[NUP]")).toBe(true)
       expect(isReleaseQualifierToken("[NSZ]")).toBe(true)
       expect(isReleaseQualifierToken("[ENG]")).toBe(true)
       expect(isReleaseQualifierToken("[RUS/ENG]")).toBe(true)
@@ -132,6 +137,19 @@ describe("Title Extraction & Normalization Unit Tests", () => {
       expect(isReleaseQualifierToken("[Repack]")).toBe(true)
       expect(isReleaseQualifierToken("Final Fantasy VII")).toBe(false)
       expect(isReleaseQualifierToken("Reloaded")).toBe(false)
+    })
+
+    it("normalizes Switch 2 / NSW2 titles with NUP format qualifiers accurately", () => {
+      const rawTitle = "[NSW2] The Legend of Zelda: Ocarina of Time (2026) [NUP][RUS/Multi16]"
+      const resultCJS = normalizeCJS(rawTitle)
+      expect(resultCJS.canonicalTitle).toBe("The Legend of Zelda: Ocarina of Time (2026)")
+      expect(resultCJS.qualifiers).toContain("NSW2")
+      expect(resultCJS.qualifiers).toContain("NUP")
+
+      const resultTS = normalizeTS(rawTitle)
+      expect(resultTS.canonicalTitle).toBe("The Legend of Zelda: Ocarina of Time (2026)")
+      expect(resultTS.qualifiers).toContain("NSW2")
+      expect(resultTS.qualifiers).toContain("NUP")
     })
   })
 

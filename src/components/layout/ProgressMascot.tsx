@@ -2,6 +2,7 @@ import React from "react"
 import { ProgressTheme } from "@/theme/progressThemes"
 import { ScraperState } from "@/services/scraperService"
 import { cn } from "@/lib/utils"
+import { Recycle } from "lucide-react"
 
 export type ProgressMascotSize = "sm" | "md" | "lg" | "card" | "preview" | "runtime"
 
@@ -52,20 +53,20 @@ export const ProgressMascot: React.FC<ProgressMascotProps> = ({
 
   const sizeConfigs = {
     sm: {
-      badgeClass: "w-5 h-5 text-xs",
-      glyphClass: "text-[10px] font-mono font-bold tracking-tight px-0.5",
+      badgeClass: "w-5 h-5 text-[30px]",
+      glyphClass: "text-[25px] font-mono font-bold tracking-tight",
       offset: 10,
       total: 20,
     },
     md: {
-      badgeClass: "w-7 h-7 text-base",
-      glyphClass: "text-xs font-mono font-bold tracking-tight px-1",
+      badgeClass: "w-7 h-7 text-[40px]",
+      glyphClass: "text-[30px] font-mono font-bold tracking-tight",
       offset: 14,
       total: 28,
     },
     lg: {
-      badgeClass: "w-[30px] h-[30px] text-lg",
-      glyphClass: "text-sm font-mono font-bold tracking-tight px-1",
+      badgeClass: "w-[30px] h-[30px] text-[45px]",
+      glyphClass: "text-[35px] font-mono font-bold tracking-tight",
       offset: 15,
       total: 30,
     },
@@ -129,28 +130,32 @@ export const ProgressMascot: React.FC<ProgressMascotProps> = ({
         </>
       )}
 
-      {/* Mascot Badge / Backplate */}
+      {/* Mascot Icon / Glyph (without circular backplate frame) */}
       <span
         className={cn(
-          "inline-flex items-center justify-center rounded-full border transition-transform leading-none shrink-0 shadow-md backdrop-blur-xs",
-          "bg-background/90 dark:bg-black/85 border-border/80",
+          "inline-flex items-center justify-center transition-transform leading-none shrink-0 drop-shadow-md select-none",
           currentSize.badgeClass,
           isGlyph && currentSize.glyphClass,
           motionClass
         )}
         style={{
-          backgroundColor: theme.mascot.backplateBg || (isGlyph ? theme.trackBg || "rgba(15, 23, 42, 0.9)" : "rgba(15, 23, 42, 0.85)"),
-          borderColor: theme.mascot.backplateBorder || theme.trackBorder || "rgba(255, 255, 255, 0.3)",
-          color: isGlyph && theme.textColor ? theme.textColor : undefined,
-          boxShadow: theme.mascot.glow
-            ? `${theme.mascot.glow}, 0 2px 6px rgba(0, 0, 0, 0.6)`
-            : theme.glow
-            ? `${theme.glow}, 0 2px 6px rgba(0, 0, 0, 0.6)`
-            : "0 2px 6px rgba(0, 0, 0, 0.6)",
-          textShadow: theme.mascot.glow ? `0 0 6px ${theme.mascot.backplateBorder || "currentColor"}` : undefined,
+          color: (isGlyph && theme.textColor) || theme.mascot.backplateBorder || undefined,
+          textShadow: theme.mascot.glow
+            ? `0 0 8px ${theme.mascot.backplateBorder || theme.textColor || "currentColor"}`
+            : undefined,
+          filter: theme.mascot.glow
+            ? `drop-shadow(0 0 4px ${theme.mascot.backplateBorder || theme.textColor || "rgba(255, 255, 255, 0.4)"})`
+            : undefined,
         }}
       >
-        {theme.mascot.value}
+        {theme.mascot.value === "recycle" || theme.mascot.value === "♻" || theme.mascot.type === "icon" ? (
+          <span className="flex items-center justify-center w-full h-full" aria-hidden="true">
+            <Recycle className="w-[1.15em] h-[1.15em] shrink-0" strokeWidth={2.4} />
+            <span className="sr-only">{theme.mascot.value}</span>
+          </span>
+        ) : (
+          theme.mascot.value
+        )}
       </span>
     </div>
   )

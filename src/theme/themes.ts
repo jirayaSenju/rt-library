@@ -493,7 +493,7 @@ export const THEMES: Record<ThemeId, AppTheme> = {
 
   "eco-green": {
     id: "eco-green",
-    name: "Eco Green",
+    name: "Ecologica Verde",
     type: "dark",
     group: "terminal",
     description: "Deep ecol terminal inspired by lush nature and clean sustainable technology.",
@@ -555,7 +555,7 @@ export const THEMES: Record<ThemeId, AppTheme> = {
 
   "eco-red": {
     id: "eco-red",
-    name: "Eco Red",
+    name: "Ecologica Vermelha",
     type: "dark",
     group: "terminal",
     description: "Deep industrial terminal with warm amber accents and revolutionary red hues.",
@@ -943,6 +943,12 @@ export function resolveThemeId(storedValue: string | null | undefined): ThemeId 
   return DEFAULT_THEME_ID
 }
 
+export function getThemeIconFilename(themeId?: string): string {
+  if (themeId === "eco-red") return "ecologica_vermelha.png"
+  if (themeId === "eco-green" || themeId?.startsWith("eco-")) return "ecologica_verde.png"
+  return "app-icon.png"
+}
+
 export function applyTheme(themeId: ThemeId): AppTheme {
   const resolved = resolveThemeId(themeId)
   const theme = THEMES[resolved] || THEMES[DEFAULT_THEME_ID]
@@ -963,6 +969,19 @@ export function applyTheme(themeId: ThemeId): AppTheme {
     // Apply all CSS variables directly to root element
     for (const [key, value] of Object.entries(theme.cssVars)) {
       root.style.setProperty(key, value)
+    }
+
+    // Update favicon and desktop window icon dynamically for ecologica themes
+    const iconFile = getThemeIconFilename(theme.id)
+    const linkEl = document.querySelector<HTMLLinkElement>("link[rel~='icon']")
+    if (linkEl) {
+      linkEl.href = `./${iconFile}`
+    }
+
+    if (typeof window !== "undefined" && (window as any).rtLibrary?.window?.setIcon) {
+      try {
+        (window as any).rtLibrary.window.setIcon(iconFile)
+      } catch (_) {}
     }
   }
 

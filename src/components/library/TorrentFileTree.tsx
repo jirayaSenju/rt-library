@@ -50,13 +50,14 @@ export const TorrentFileTree: React.FC<TorrentFileTreeProps> = ({
 
   const processedFiles = useMemo(() => {
     if (!files || !Array.isArray(files)) return []
-    return files.map((file) => {
-      const pathStr = file.path || file.name || ""
-      const nameStr = file.name || pathStr.split("/").pop() || pathStr
+    return files.map((file: any) => {
+      const isStr = typeof file === "string"
+      const pathStr = isStr ? file : (file.path || file.name || "")
+      const nameStr = isStr ? (pathStr.split("/").pop() || pathStr) : (file.name || pathStr.split("/").pop() || pathStr)
       const dirPath = extractDirName(pathStr, nameStr)
-      const rawLen = file.length ?? file.sizeBytes ?? (typeof file.size === "number" ? file.size : undefined)
+      const rawLen = !isStr ? (file.length ?? file.sizeBytes ?? (typeof file.size === "number" ? file.size : undefined)) : undefined
       const fileLen = typeof rawLen === "number" && rawLen >= 0 ? rawLen : 0
-      const displaySizeStr = typeof file.size === "string" && file.size ? file.size : formatBytes(fileLen)
+      const displaySizeStr = !isStr && typeof file.size === "string" && file.size ? file.size : formatBytes(fileLen)
       const extension = extractFileExtension(nameStr)
 
       return {

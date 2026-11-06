@@ -283,5 +283,51 @@ describe("Minimal Cover-Only Card Redesign (V3-CARD-MINIMAL)", () => {
     // Safe area padding ensures the inner cover does not occlude the outer ring/border
     expect(selectedCard?.className).toContain("p-1.5")
   })
+
+  it("12. Recent item badge & addition date: displays 'Novo' / 'New' badge and relative time for newly discovered items", () => {
+    const recentItem: LibraryItem = {
+      ...mockItem,
+      discoveredAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+    }
+
+    renderWithI18n(
+      <ItemCard
+        item={recentItem}
+        isFavorite={false}
+        onToggleFavorite={vi.fn()}
+        onClick={vi.fn()}
+      />
+    )
+
+    // Should show "Novo" / "New" badge
+    expect(screen.getByText(/novo|new/i)).toBeInTheDocument()
+
+    // Should display relative time in resting state and/or overlay
+    const overlay = screen.getByTestId("item-card-title-overlay")
+    expect(overlay).toHaveTextContent(/2h|2 hours|2 horas/i)
+  })
+
+  it("13. Switch 2 platform badge: renders 'Switch 2' platform badge for switch2 items", () => {
+    const switch2Item: LibraryItem = {
+      ...mockItem,
+      categoryId: "switch2",
+      title: "Mario Kart World",
+      canonicalTitle: "Mario Kart World",
+      coverImage: "https://example.com/cover.jpg",
+    }
+
+    renderWithI18n(
+      <ItemCard
+        item={switch2Item}
+        isFavorite={false}
+        onToggleFavorite={vi.fn()}
+        onClick={vi.fn()}
+      />
+    )
+
+    const badge = screen.getByText("Switch 2")
+    expect(badge).toBeInTheDocument()
+    expect(badge.className).toContain("uppercase")
+  })
 })
 

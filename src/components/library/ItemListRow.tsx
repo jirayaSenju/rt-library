@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { LibraryItem } from "@/types"
 import { resolveImageUrl } from "@/utils/imageResolver"
 import { imageCacheService } from "@/services/imageCache"
-import { Star, Gamepad2, ArrowUp, ArrowDown, HardDrive } from "lucide-react"
+import { Star, Gamepad2, ArrowUp, ArrowDown, HardDrive, Clock, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useI18n } from "@/i18n"
@@ -14,6 +14,28 @@ function formatBytes(bytes: number | null | undefined): string | null {
   const sizes = ["B", "KB", "MB", "GB", "TB"]
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
+}
+
+function formatItemRelativeTime(
+  dateStr: string | null | undefined,
+  t: (key: string, vars?: any) => string
+): string | null {
+  if (!dateStr) return null
+  const parsed = new Date(dateStr).getTime()
+  if (isNaN(parsed)) return null
+  const diffMs = Date.now() - parsed
+  if (diffMs < 0) return t("itemDetail.timeJustNow")
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return t("itemDetail.timeJustNow")
+  if (diffMin < 60) return t("itemDetail.timeMinutesAgo", { count: diffMin, minutes: diffMin })
+  const diffHours = Math.floor(diffMin / 60)
+  if (diffHours < 24) return t("itemDetail.timeHoursAgo", { count: diffHours, hours: diffHours })
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 30) return t("itemDetail.timeDaysAgo", { count: diffDays, days: diffDays })
+  const diffMonths = Math.floor(diffDays / 30)
+  if (diffMonths < 12) return t("catalog.timeMonthsAgo", { count: diffMonths })
+  const diffYears = Math.floor(diffDays / 365)
+  return t("catalog.timeYearsAgo", { count: diffYears })
 }
 
 interface ItemListRowProps {
@@ -78,6 +100,18 @@ export const ItemListRow = React.memo<ItemListRowProps>(({
   const seeds = item.seeders ?? item.torrent?.seeders ?? null
   const leechers = item.leechers ?? item.torrent?.leechers ?? null
   const displayYear = item.releaseYear || "—"
+
+  const formattedTimeAgo = useMemo(() => {
+    return formatItemRelativeTime(item.discoveredAt, t)
+  }, [item.discoveredAt, t])
+
+  const isRecent = useMemo(() => {
+    if (!item.discoveredAt) return false
+    const parsed = new Date(item.discoveredAt).getTime()
+    if (isNaN(parsed)) return false
+    const diffMs = Date.now() - parsed
+    return diffMs >= 0 && diffMs < 7 * 24 * 60 * 60 * 1000
+  }, [item.discoveredAt])
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onToggleSelect?.(e as unknown as React.MouseEvent)
@@ -146,11 +180,28 @@ export const ItemListRow = React.memo<ItemListRowProps>(({
         >
           {displayTitle}
         </span>
-        {item.developer && (
-          <span className="text-[10px] text-muted-foreground truncate block font-medium">
-            {item.developer}
-          </span>
-        )}
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          {item.developer && (
+            <span className="text-[10px] text-muted-foreground truncate font-medium">
+              {item.developer}
+            </span>
+          )}
+          {formattedTimeAgo && (
+            <span className="text-[10px] text-muted-foreground/75 flex items-center gap-1 font-mono">
+              <Clock className="h-2.5 w-2.5 text-muted-foreground/60" />
+              <span>{formattedTimeAgo}</span>
+            </span>
+          )}
+          {isRecent && (
+            <Badge
+              variant="default"
+              className="bg-emerald-500/90 text-white font-bold uppercase tracking-wider text-[8px] px-1 py-0 h-4 flex items-center gap-0.5 shadow-none"
+            >
+              <Sparkles className="h-2 w-2" />
+              <span>{t("catalog.newBadge")}</span>
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* 3. Platform Badge */}

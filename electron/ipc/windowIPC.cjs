@@ -1,4 +1,6 @@
-const { BrowserWindow: DefaultBrowserWindow } = require('electron');
+const { BrowserWindow: DefaultBrowserWindow, nativeImage } = require('electron');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * Window IPC channels and window chrome management
@@ -49,6 +51,48 @@ function registerWindowIPCHandlers(ipcMainInstance, BrowserWindowClass = Default
         win.close();
       }
       return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMainInstance.handle('window:set-icon', (event, iconName) => {
+    try {
+      const win = BrowserWindowClass.fromWebContents ? BrowserWindowClass.fromWebContents(event.sender) : null;
+      if (!win || typeof win.setIcon !== 'function') return false;
+
+      const safeName = typeof iconName === 'string' ? path.basename(iconName) : 'app-icon.png';
+      const candidates = [
+        path.join(__dirname, '..', '..', 'public', safeName),
+        path.join(__dirname, '..', 'public', safeName),
+        path.join(__dirname, '..', '..', 'dist', safeName),
+        path.join(__dirname, '..', 'dist', safeName),
+        path.join(process.resourcesPath || '', safeName),
+        path.join(process.resourcesPath || '', 'build', 'icons', safeName),
+      ];
+
+      const found = candidates.find((p) => {
+        try {
+          return fs.existsSync(p);
+        } catch (_) {
+          return false;
+        }
+      });
+
+      if (found) {
+        if (nativeImage && typeof nativeImage.createFromPath === 'function') {
+          try {
+            const img = nativeImage.createFromPath(found);
+            if (!img.isEmpty()) {
+              win.setIcon(img);
+              return true;
+            }
+          } catch (_) {}
+        }
+        win.setIcon(found);
+        return true;
+      }
+      return false;
     } catch {
       return false;
     }

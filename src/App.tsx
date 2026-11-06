@@ -318,6 +318,7 @@ export function App() {
         onOpenSettings={(section) => handleOpenSettings(section || "library")}
         activeView={activeView}
         onSelectTools={() => setActiveView("tools")}
+        themeId={themeId}
       />
 
       <main className="flex-1 min-h-0 flex flex-col h-screen overflow-hidden bg-background">

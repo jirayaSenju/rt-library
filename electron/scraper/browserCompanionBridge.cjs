@@ -75,6 +75,10 @@ class BrowserCompanionBridge {
     return this.start();
   }
 
+  isAvailable() {
+    return Boolean(this.getConnection().connected);
+  }
+
   getConnection() {
     return {
       port: this.port,
