@@ -40,6 +40,7 @@ describe("Window Chrome & Maximized Titlebar Redundancy Removal", () => {
           isMax = false
         }),
         close: vi.fn(),
+        setIcon: vi.fn(),
       }
 
       const mockBrowserWindowClass = {
@@ -52,6 +53,7 @@ describe("Window Chrome & Maximized Titlebar Redundancy Removal", () => {
       expect(mockIpcMain.handle).toHaveBeenCalledWith("window:minimize", expect.any(Function))
       expect(mockIpcMain.handle).toHaveBeenCalledWith("window:toggle-maximize", expect.any(Function))
       expect(mockIpcMain.handle).toHaveBeenCalledWith("window:close", expect.any(Function))
+      expect(mockIpcMain.handle).toHaveBeenCalledWith("window:set-icon", expect.any(Function))
 
       const mockEvent = { sender: {} }
 
@@ -73,6 +75,10 @@ describe("Window Chrome & Maximized Titlebar Redundancy Removal", () => {
       // close
       expect(handlers["window:close"](mockEvent)).toBe(true)
       expect(mockWin.close).toHaveBeenCalledTimes(1)
+
+      // set-icon
+      const setIconResult = handlers["window:set-icon"](mockEvent, "ecologica_verde.png")
+      expect(typeof setIconResult === "boolean").toBe(true)
     })
 
     it("attaches maximize and unmaximize event listeners to dispatch state changes to webContents", () => {
@@ -220,6 +226,38 @@ describe("Window Chrome & Maximized Titlebar Redundancy Removal", () => {
       // Button accessible name updates to Restore
       const restoreBtn = await screen.findByRole("button", { name: /restore|restaurar|восстановить/i })
       expect(restoreBtn).toBeInTheDocument()
+    })
+
+    it("renders quick sort selector in Topbar and triggers onSortChange", async () => {
+      const user = userEvent.setup()
+      const onSortChange = vi.fn()
+
+      render(
+        <I18nProvider>
+          <Topbar
+            searchQuery=""
+            onSearchChange={vi.fn()}
+            onOpenCommandPalette={vi.fn()}
+            sortBy="discoveredAt"
+            sortOrder="desc"
+            onSortChange={onSortChange}
+            filters={defaultFilters}
+            onApplyFilters={vi.fn()}
+            onClearFilters={vi.fn()}
+            onRemoveFilter={vi.fn()}
+          />
+        </I18nProvider>
+      )
+
+      const quickSortGroup = screen.getByTestId("topbar-quick-sort")
+      expect(quickSortGroup).toBeInTheDocument()
+      expect(quickSortGroup).toHaveTextContent(/Adicionados recentemente|Recently Added/i)
+
+      // Toggle sort direction button
+      const sortDirBtn = screen.getByRole("button", { name: /direção de ordenação|sort direction/i })
+      await user.click(sortDirBtn)
+
+      expect(onSortChange).toHaveBeenCalledWith("discoveredAt", "asc")
     })
   })
 })

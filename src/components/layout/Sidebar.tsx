@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from "react"
 import { Category } from "@/types"
 import { useI18n } from "@/i18n"
 import appLogo from "@/assets/app-icon.png"
+import ecologicaVerdeLogo from "@/assets/ecologica_verde.png"
+import ecologicaVermelhaLogo from "@/assets/ecologica_vermelha.png"
 import { 
   Library, 
   Star, 
@@ -35,6 +37,7 @@ interface SidebarProps {
   onOpenSettings?: (section?: any) => void
   activeView?: "library" | "tools"
   onSelectTools?: () => void
+  themeId?: string
 }
 
 interface PlatformGroup {
@@ -112,6 +115,7 @@ function groupCategories(categories: Category[], t: (key: string) => string): Pl
 
 function getPlatformAbbreviation(name: string, id: string): string {
   const lowerName = name.toLowerCase()
+  if (lowerName.includes("switch 2") || id === "switch2" || id === "switch-2" || lowerName.includes("nsw2")) return "NSW2"
   if (lowerName.includes("switch")) return "NSW"
   if (lowerName.includes("wii u")) return "WIIU"
   if (lowerName.includes("wii")) return "WII"
@@ -142,11 +146,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenSettings,
   activeView = "library",
   onSelectTools,
+  themeId,
 }: SidebarProps) => {
   const { t, formatNumber } = useI18n()
   const { status: updaterStatus } = useUpdater()
   const hasUpdateReady = updaterStatus.state === 'UPDATE_AVAILABLE' || updaterStatus.state === 'DOWNLOADED'
   const platformGroups = useMemo(() => groupCategories(categories, t), [categories, t])
+
+  const [activeThemeId, setActiveThemeId] = useState<string>(() => {
+    if (themeId) return themeId
+    if (typeof document !== "undefined") {
+      return document.documentElement.getAttribute("data-theme") || ""
+    }
+    return ""
+  })
+
+  useEffect(() => {
+    if (themeId) {
+      setActiveThemeId(themeId)
+      return
+    }
+    if (typeof document === "undefined") return
+    const updateThemeFromDom = () => {
+      setActiveThemeId(document.documentElement.getAttribute("data-theme") || "")
+    }
+    updateThemeFromDom()
+    const observer = new MutationObserver(updateThemeFromDom)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] })
+    return () => observer.disconnect()
+  }, [themeId])
+
+  const currentAppLogo = activeThemeId === "eco-red"
+    ? ecologicaVermelhaLogo
+    : (activeThemeId === "eco-green" || activeThemeId.startsWith("eco-"))
+      ? ecologicaVerdeLogo
+      : appLogo
 
   // Track expanded groups in accordion (collapsed by default)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
@@ -185,7 +219,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           <div className="flex items-center space-x-2.5">
             <div className="h-9 w-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center p-1 shadow-sm shadow-primary/10 shrink-0 overflow-hidden">
-              <img src={appLogo} alt="RT Library Logo" className="h-7 w-7 object-contain drop-shadow-sm select-none pointer-events-none" />
+              <img src={currentAppLogo} alt="RT Library Logo" className="h-7 w-7 object-contain drop-shadow-sm select-none pointer-events-none" />
             </div>
             {!isCollapsed && (
               <div className="overflow-hidden">

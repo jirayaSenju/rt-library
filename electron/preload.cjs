@@ -219,6 +219,7 @@ const rtLibrary = {
     minimize: () => ipcRenderer.invoke('window:minimize'),
     toggleMaximize: () => ipcRenderer.invoke('window:toggle-maximize'),
     close: () => ipcRenderer.invoke('window:close'),
+    setIcon: (iconName) => ipcRenderer.invoke('window:set-icon', iconName),
     onMaximizedChange: (callback) => {
       if (typeof callback !== 'function') return () => {};
       const handler = (_event, isMaximized) => callback(isMaximized);
