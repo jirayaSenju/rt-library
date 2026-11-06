@@ -98,6 +98,7 @@ export interface Translations {
     sortFields: {
       title: string
       discoveredAt: string
+      releaseYear: string
       updatedAt: string
       sizeBytes: string
       seeds: string
@@ -189,6 +190,10 @@ export interface Translations {
     newItemsAvailablePlural: string
     showNewItems: string
     loadingMore: string
+    newBadge: string
+    addedAt: string
+    timeMonthsAgo: string
+    timeYearsAgo: string
     viewDetailsAria: string
     magnetButton: string
     magnetAria: string
@@ -922,6 +927,10 @@ export interface Translations {
         cosmicNebulaDesc: string
         soviet: string
         sovietDesc: string
+        ecoGreen: string
+        ecoGreenDesc: string
+        ecoRed: string
+        ecoRedDesc: string
       }
     }
   }

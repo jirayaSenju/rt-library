@@ -10,6 +10,8 @@ export type ProgressThemeId =
   | "candy-rush"
   | "cosmic-nebula"
   | "soviet"
+  | "eco-green"
+  | "eco-red"
 
 export type ProgressDecorationType = "none" | "rainbow" | "scanline" | "cat-marker" | "glow" | "pixel-blocks"
 
@@ -419,6 +421,72 @@ export const PROGRESS_THEMES: Record<ProgressThemeId, ProgressTheme> = {
     },
     decoration: "glow",
   },
+  "eco-green": {
+    id: "eco-green",
+    name: "Ecologica Verde",
+    description: "Deep lush nature aesthetic with emerald gradient and animated rotating recycle mascot.",
+    trackBg: "#07130d",
+    trackBorder: "rgba(34, 197, 94, 0.45)",
+    fillBackground: "linear-gradient(90deg, #15803d, #22c55e, #4ade80)",
+    fillBackgroundSize: "200% 100%",
+    glow: "0 0 10px rgba(34, 197, 94, 0.55), 0 0 4px rgba(74, 222, 128, 0.4)",
+    textColor: "#4ade80",
+    hasAnimation: true,
+    animationClass: "animate-progress-rainbow",
+    marker: null,
+    mascot: {
+      type: "glyph",
+      value: "♻",
+      name: "Recycle (Verde)",
+      position: "progress-edge",
+      glow: "0 0 14px rgba(34, 197, 94, 0.9), 0 0 6px rgba(74, 222, 128, 0.7)",
+      backplate: true,
+      backplateBg: "rgba(7, 19, 13, 0.9)",
+      backplateBorder: "rgba(34, 197, 94, 0.7)",
+      trail: "glow",
+    },
+    motion: {
+      type: "pulse",
+      duration: 1000,
+      intensity: "normal",
+      animationClass: "animate-mascot-recycle-spin",
+      indeterminateClass: "animate-mascot-indeterminate-sweep",
+    },
+    decoration: "glow",
+  },
+  "eco-red": {
+    id: "eco-red",
+    name: "Ecologica Vermelha",
+    description: "Warm industrial crimson aesthetic with red gradient and animated rotating recycle mascot.",
+    trackBg: "#160707",
+    trackBorder: "rgba(220, 38, 38, 0.45)",
+    fillBackground: "linear-gradient(90deg, #991b1b, #dc2626, #f87171)",
+    fillBackgroundSize: "200% 100%",
+    glow: "0 0 10px rgba(220, 38, 38, 0.55), 0 0 4px rgba(248, 113, 113, 0.4)",
+    textColor: "#fca5a5",
+    hasAnimation: true,
+    animationClass: "animate-progress-rainbow",
+    marker: null,
+    mascot: {
+      type: "glyph",
+      value: "♻",
+      name: "Recycle (Vermelho)",
+      position: "progress-edge",
+      glow: "0 0 14px rgba(220, 38, 38, 0.9), 0 0 6px rgba(248, 113, 113, 0.7)",
+      backplate: true,
+      backplateBg: "rgba(22, 7, 7, 0.9)",
+      backplateBorder: "rgba(220, 38, 38, 0.7)",
+      trail: "glow",
+    },
+    motion: {
+      type: "pulse",
+      duration: 1000,
+      intensity: "normal",
+      animationClass: "animate-mascot-recycle-spin",
+      indeterminateClass: "animate-mascot-indeterminate-sweep",
+    },
+    decoration: "glow",
+  },
 }
 
 export const PROGRESS_THEME_IDS = Object.keys(PROGRESS_THEMES) as ProgressThemeId[]
@@ -434,6 +502,8 @@ export function resolveProgressThemeId(rawId?: string | null): ProgressThemeId {
   if (rawId === "lava") return "lava-lamp"
   if (rawId === "ocean") return "ocean-wave"
   if (rawId === "communist" || rawId === "ussr" || rawId === "soviet-red") return "soviet"
+  if (rawId === "ecologica-verde" || rawId === "ecological-green" || rawId === "eco") return "eco-green"
+  if (rawId === "ecologica-vermelha" || rawId === "ecological-red") return "eco-red"
   return DEFAULT_PROGRESS_THEME_ID
 }
 

@@ -124,6 +124,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       "candy-rush": t("settings.appearance.progressThemes.candyRush"),
       "cosmic-nebula": t("settings.appearance.progressThemes.cosmicNebula"),
       "soviet": t("settings.appearance.progressThemes.soviet"),
+      "eco-green": t("settings.appearance.progressThemes.ecoGreen"),
+      "eco-red": t("settings.appearance.progressThemes.ecoRed"),
     }
     return map[id] || PROGRESS_THEMES[id]?.name || id
   }

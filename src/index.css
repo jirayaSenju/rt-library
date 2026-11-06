@@ -689,6 +689,18 @@
   }
 }
 
+@keyframes mascot-recycle-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
 @keyframes mascot-celebrate {
   0% {
     transform: scale(1);
@@ -807,6 +819,10 @@
   animation: mascot-soviet-pulse 0.9s ease-in-out infinite;
 }
 
+.animate-mascot-recycle-spin {
+  animation: mascot-recycle-spin 2.4s ease-in-out infinite;
+}
+
 .animate-mascot-celebrate {
   animation: mascot-celebrate 0.6s ease-out 2;
 }
@@ -846,6 +862,7 @@
   .animate-mascot-swim,
   .animate-mascot-rocket-glide,
   .animate-mascot-soviet-pulse,
+  .animate-mascot-recycle-spin,
   .animate-mascot-celebrate,
   .animate-mascot-indeterminate-sweep,
   .animate-trail-rainbow,

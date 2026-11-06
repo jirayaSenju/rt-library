@@ -159,9 +159,9 @@ describe("ProgressThemeSelector Unit Tests", () => {
     fireEvent.keyDown(searchInput, { key: "ArrowUp" })
     expect(handlePreview).toHaveBeenCalledWith("claude-code")
 
-    // Press End to move to last progress theme (soviet)
+    // Press End to move to last progress theme (eco-red)
     fireEvent.keyDown(searchInput, { key: "End" })
-    expect(handlePreview).toHaveBeenCalledWith("soviet")
+    expect(handlePreview).toHaveBeenCalledWith("eco-red")
 
     // Press Home to move to first progress theme (nyan-cat)
     fireEvent.keyDown(searchInput, { key: "Home" })

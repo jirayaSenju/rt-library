@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { ProgressMascot } from "@/components/layout/ProgressMascot"
-import { Check, ChevronDown, Search } from "lucide-react"
+import { Check, ChevronDown, Search, Recycle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface ProgressThemeSelectorProps {
@@ -48,6 +48,8 @@ export const ProgressThemeSelector: React.FC<ProgressThemeSelectorProps> = ({
       "candy-rush": t("settings.appearance.progressThemes.candyRush"),
       "cosmic-nebula": t("settings.appearance.progressThemes.cosmicNebula"),
       "soviet": t("settings.appearance.progressThemes.soviet"),
+      "eco-green": t("settings.appearance.progressThemes.ecoGreen"),
+      "eco-red": t("settings.appearance.progressThemes.ecoRed"),
     }
     return map[id] || PROGRESS_THEMES[id]?.name || id
   }
@@ -162,7 +164,14 @@ export const ProgressThemeSelector: React.FC<ProgressThemeSelectorProps> = ({
           >
             <div className="flex items-center gap-2 truncate min-w-0 flex-1">
               <span aria-hidden="true" className="text-sm shrink-0 leading-none">
-                {currentPreviewTheme.mascot.value}
+                {currentPreviewTheme.mascot.value === "recycle" || currentPreviewTheme.mascot.value === "♻" ? (
+                  <span className="flex items-center justify-center">
+                    <Recycle className="h-4 w-4" strokeWidth={2.4} />
+                    <span className="sr-only">♻</span>
+                  </span>
+                ) : (
+                  currentPreviewTheme.mascot.value
+                )}
               </span>
               <span className="font-semibold text-xs text-foreground truncate">
                 {getLocalizedName(currentPreviewTheme.id)}
