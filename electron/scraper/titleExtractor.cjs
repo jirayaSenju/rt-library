@@ -7,7 +7,8 @@
  * Release qualifier dictionary and regex patterns
  */
 const KNOWN_PLATFORMS = [
-  'nintendo switch', 'switch', 'ns',
+  'nintendo switch 2', 'switch 2', 'nsw2',
+  'nintendo switch', 'switch', 'ns', 'nsw',
   'playstation 1', 'playstation 2', 'playstation 3', 'playstation 4', 'playstation 5',
   'ps1', 'psx', 'ps2', 'ps3', 'ps4', 'ps5', 'psp', 'ps vita', 'psvita', 'psv',
   'xbox 360', 'xbox360', 'x360', 'original xbox', 'xbox',
@@ -19,7 +20,7 @@ const KNOWN_PLATFORMS = [
 ];
 
 const KNOWN_FORMATS = [
-  'nsz', 'nsp', 'xci', 'iso', 'wbfs', 'god', 'pkg', 'cia', 'cso', 'gcm',
+  'nsz', 'nsp', 'xci', 'nup', 'iso', 'wbfs', 'god', 'pkg', 'cia', 'cso', 'gcm',
   'cdi', 'gdi', 'rom', 'vpk', 'freeboot', 'jtag', 'cfi', 'eboot', 'chd',
   'cuesheet', 'bin/cue', 'rvz', 'wua', 'nkit', 'cxi',
 ];

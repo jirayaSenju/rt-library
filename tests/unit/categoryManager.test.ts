@@ -35,10 +35,11 @@ describe("categoryManager unit tests", () => {
 
   it("resolves built-in default categories when no config file exists", () => {
     const categories = categoryManager.getResolvedCategories()
-    expect(categories).toHaveLength(17)
+    expect(categories).toHaveLength(18)
 
     const expectedIds = [
       "switch",
+      "switch2",
       "switch-ports",
       "psx",
       "ps2",
@@ -59,6 +60,15 @@ describe("categoryManager unit tests", () => {
 
     const actualIds = categories.map((c: any) => c.id)
     expect(actualIds).toEqual(expectedIds)
+
+    const switch2 = categories.find((c: any) => c.id === "switch2")
+    expect(switch2).toBeDefined()
+    expect(switch2.name).toBe("Nintendo Switch 2")
+    expect(switch2.group).toBe("nintendo")
+    expect(switch2.baseUrl).toBe("https://rutracker.org/forum/viewforum.php?f=1605")
+    expect(switch2.titleSearch).toEqual(["[NSW2]"])
+    expect(switch2.enabled).toBe(true)
+    expect(switch2.builtIn).toBe(true)
 
     const switchPorts = categories.find((c: any) => c.id === "switch-ports")
     expect(switchPorts.name).toBe("Nintendo Switch Ports")
@@ -97,8 +107,8 @@ describe("categoryManager unit tests", () => {
     const cjsDefaults = (await import("../../electron/scraper/defaultCategories.cjs")).DEFAULT_CATEGORIES
     const tsDefaults = (await import("../../src/scraper/defaultCategories")).DEFAULT_CATEGORIES
 
-    expect(cjsDefaults).toHaveLength(17)
-    expect(tsDefaults).toHaveLength(17)
+    expect(cjsDefaults).toHaveLength(18)
+    expect(tsDefaults).toHaveLength(18)
     expect(cjsDefaults).toEqual(tsDefaults)
   })
 
@@ -259,7 +269,7 @@ describe("categoryManager unit tests", () => {
     fs.writeFileSync(configFile, "INVALID_JSON_CORRUPTED_DATA{{{", "utf8")
 
     const resolved = categoryManager.getResolvedCategories()
-    expect(resolved).toHaveLength(17)
+    expect(resolved).toHaveLength(18)
     const ps2 = resolved.find((c: any) => c.id === "ps2")
     expect(ps2).toBeDefined()
     expect(ps2.name).toBe("Playstation 2")

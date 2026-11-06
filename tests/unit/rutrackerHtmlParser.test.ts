@@ -6,6 +6,7 @@ import path from "path"
 const {
   parseCategoryHtml,
   parseTopicHtml,
+  extractFtreeFiles,
   extractPaginationInfo,
   resolveRawImageUrl,
   isTrackerDecorationOrSmile,
@@ -164,6 +165,80 @@ describe("Pure RuTracker HTML Parser (V3-56 Phase 1)", () => {
       // File list
       expect(result.fileList).toContain("default.xex")
       expect(result.fileList).toContain("halo3_odst.iso")
+    })
+
+    it("extracts fileList and sizeBytes from #tor-filelist ftree (Nintendo Switch 2 / modern RuTracker format)", () => {
+      const switch2Html = `
+        <h1 class="maintitle">
+          <a id="topic-title" href="https://rutracker.org/forum/viewtopic.php?t=6933053">[NSW2] The Legend of Zelda: Ocarina of Time (2026) [NUP][RUS/Multi16]</a>
+        </h1>
+        <div style="padding-top: 6px;">
+          <input id="tor-filelist-btn" type="button" class="lite" value="Список файлов">
+        </div>
+        <span id="tor-size-humn" title="25020741061">23.3&nbsp;GB</span>
+        <a href="magnet:?xt=urn:btih:6506209D75146BA74F4289A33A4ADEED12345678" class="magnet-link"></a>
+        <div id="tor-fl-wrap">
+          <div id="tor-filelist" class="med ftree-windowed">
+            <ul class="ftree">
+              <li class="dir">
+                <div><b>./The Legend of Zelda Ocarina of Time [NUP]</b><s> 23.30 GB</s></div>
+                <ul>
+                  <li class="file">
+                    <div><b>The Legend of Zelda Ocarina of Time [0400486024DEC000][v131072].nup</b><s> 23.30 GB </s><i>25020741061</i></div>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="post_body" id="p-6933053">
+          <span style="font-size: 24px; line-height: normal;">The Legend of Zelda: Ocarina of Time</span><br>
+          <var class="postImg" title="https://i128.fastpic.org/big/2026/zelda_cover.jpg"></var><br>
+          <span class="post-b">Год выпуска</span>: 2026<br>
+          <span class="post-b">Жанр</span>: Action / Adventure<br>
+          <span class="post-b">Разработчик</span>: Nintendo<br>
+          <span class="post-b">Формат образа</span>: NUP<br>
+        </div>
+      `
+
+      const result = parseTopicHtml(switch2Html, {
+        topicTitle: "[NSW2] The Legend of Zelda: Ocarina of Time (2026) [NUP][RUS/Multi16]",
+        topicUrl: "https://rutracker.org/forum/viewtopic.php?t=6933053",
+      })
+
+      expect(result.canonicalTitle).toBe("The Legend of Zelda: Ocarina of Time")
+      expect(result.imageFormat).toBe("NUP")
+      expect(result.releaseYear).toBe(2026)
+      expect(result.sizeBytes).toBe(25020741061)
+      expect(result.fileListTotalSizeBytes).toBe(25020741061)
+      expect(result.fileList).toContain("The Legend of Zelda Ocarina of Time [0400486024DEC000][v131072].nup")
+      expect(result.fileList).toContain("The Legend of Zelda Ocarina of Time [NUP]/The Legend of Zelda Ocarina of Time [0400486024DEC000][v131072].nup")
+    })
+
+    it("extractFtreeFiles extracts multi-file and multi-directory structures cleanly", () => {
+      const { JSDOM } = require("jsdom")
+      const dom = new JSDOM(`
+        <div id="tor-filelist">
+          <ul class="ftree">
+            <li class="dir">
+              <div><b>./Game</b><s> 10.00 GB</s></div>
+              <ul>
+                <li class="file"><div><b>base.nup</b><s> 8.00 GB </s><i>8589934592</i></div></li>
+                <li class="file"><div><b>update.nup</b><s> 2.00 GB </s><i>2147483648</i></div></li>
+              </ul>
+            </li>
+            <li class="file"><div><b>instructions.txt</b><s> 1.00 KB </s><i>1024</i></div></li>
+          </ul>
+        </div>
+      `)
+      const files = extractFtreeFiles(dom.window.document.querySelector("#tor-filelist"))
+      expect(files).toHaveLength(3)
+      expect(files[0].path).toBe("Game/base.nup")
+      expect(files[0].sizeBytes).toBe(8589934592)
+      expect(files[1].path).toBe("Game/update.nup")
+      expect(files[1].sizeBytes).toBe(2147483648)
+      expect(files[2].path).toBe("instructions.txt")
+      expect(files[2].sizeBytes).toBe(1024)
     })
 
     it("returns empty object when post_body is absent", () => {

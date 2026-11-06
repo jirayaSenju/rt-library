@@ -455,6 +455,31 @@ class EmbeddedElectronTransport {
 
             if (contentStatus.forumDetected) {
               this.stats.successfulForumLoads++;
+
+              // If this is a topic page with #tor-filelist-btn and #tor-filelist is not yet loaded, expand it
+              if (finalHtml.includes('id="tor-filelist-btn"') && !finalHtml.includes('class="ftree"')) {
+                try {
+                  const expandedHtml = await worker.window.webContents.executeJavaScript(`
+                    (async () => {
+                      const btn = document.getElementById('tor-filelist-btn');
+                      const list = document.getElementById('tor-filelist');
+                      if (btn && list && !list.querySelector('ul.ftree')) {
+                        btn.click();
+                        const start = Date.now();
+                        while (Date.now() - start < 1500) {
+                          if (list.querySelector('ul.ftree')) break;
+                          await new Promise(r => setTimeout(r, 100));
+                        }
+                      }
+                      return document.documentElement ? document.documentElement.outerHTML : '';
+                    })()
+                  `).catch(() => '');
+                  if (expandedHtml && typeof expandedHtml === 'string' && expandedHtml.length > 0) {
+                    finalHtml = expandedHtml;
+                  }
+                } catch (_) {}
+              }
+
               cleanupJob();
               return resolve({
                 html: finalHtml,

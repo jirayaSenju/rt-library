@@ -19,9 +19,11 @@ describe('Category URL Query String Preservation (V3-48)', () => {
 
   it('verifies exact category URLs for key console categories', () => {
     const switchCat = DEFAULT_CATEGORIES.find((c) => c.id === 'switch');
+    const switch2Cat = DEFAULT_CATEGORIES.find((c) => c.id === 'switch2');
     const ps2Cat = DEFAULT_CATEGORIES.find((c) => c.id === 'ps2');
 
     expect(switchCat?.baseUrl).toBe('https://rutracker.org/forum/viewforum.php?f=1605');
+    expect(switch2Cat?.baseUrl).toBe('https://rutracker.org/forum/viewforum.php?f=1605');
     expect(ps2Cat?.baseUrl).toBe('https://rutracker.org/forum/viewforum.php?f=357');
   });
 });

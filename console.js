@@ -22,6 +22,7 @@
 (function () {
   const CATEGORIES = [
     { id: "switch", name: "Nintendo Switch", group: "nintendo", baseUrl: "https://rutracker.org/forum/viewforum.php?f=1605", titleSearch: ["[Nintendo Switch]"], enabled: true, builtIn: true },
+    { id: "switch2", name: "Nintendo Switch 2", group: "nintendo", baseUrl: "https://rutracker.org/forum/viewforum.php?f=1605", titleSearch: ["[NSW2]"], enabled: true, builtIn: true },
     { id: "psx", name: "Playstation 1", group: "playstation", baseUrl: "https://rutracker.org/forum/viewforum.php?f=908", titleSearch: ["[PS]"], enabled: true, builtIn: true },
     { id: "ps2", name: "Playstation 2", group: "playstation", baseUrl: "https://rutracker.org/forum/viewforum.php?f=357", titleSearch: ["[PS2]"], enabled: true, builtIn: true },
     { id: "psp", name: "Playstation Portable", group: "playstation", baseUrl: "https://rutracker.org/forum/viewforum.php?f=1352", titleSearch: ["[PSP]"], enabled: true, builtIn: true },
@@ -161,7 +162,8 @@
   }
 
   const KNOWN_PLATFORMS = [
-    'nintendo switch', 'switch', 'ns',
+    'nintendo switch 2', 'switch 2', 'nsw2',
+    'nintendo switch', 'switch', 'ns', 'nsw',
     'playstation 1', 'playstation 2', 'playstation 3', 'playstation 4', 'playstation 5',
     'ps1', 'psx', 'ps2', 'ps3', 'ps4', 'ps5', 'psp', 'ps vita', 'psvita', 'psv',
     'xbox 360', 'xbox360', 'x360', 'original xbox', 'xbox',
@@ -173,7 +175,7 @@
   ];
 
   const KNOWN_FORMATS = [
-    'nsz', 'nsp', 'xci', 'iso', 'wbfs', 'god', 'pkg', 'cia', 'cso', 'gcm',
+    'nsz', 'nsp', 'xci', 'nup', 'iso', 'wbfs', 'god', 'pkg', 'cia', 'cso', 'gcm',
     'cdi', 'gdi', 'rom', 'vpk', 'freeboot', 'jtag', 'cfi', 'eboot', 'chd',
     'cuesheet', 'bin/cue', 'rvz', 'wua', 'nkit', 'cxi',
   ];
@@ -807,13 +809,117 @@
         }
         const infoHash = extractBTIH(magnet);
 
-        let fileList = null;
-        postBody.querySelectorAll('.sp-wrap').forEach(wrap => {
-          const headText = (wrap.querySelector('.sp-head, .sp-tit')?.textContent || '').toLowerCase();
-          if (headText.includes('список файлов') || headText.includes('файлы в раздаче') || headText.includes('файлы')) {
-            fileList = (wrap.querySelector('.sp-body')?.textContent || '').trim();
+        let torrentSize = null;
+        let torrentSizeBytes = null;
+        const torrentSizeEl = doc.querySelector('#tor-size-humn');
+        if (torrentSizeEl) {
+          torrentSize = cleanText(torrentSizeEl.textContent || '');
+          const exactBytes = (torrentSizeEl.getAttribute('title') || '').trim();
+          if (/^\d+$/.test(exactBytes)) {
+            const parsedBytes = Number(exactBytes);
+            if (Number.isSafeInteger(parsedBytes) && parsedBytes >= 0) {
+              torrentSizeBytes = parsedBytes;
+            }
           }
-        });
+        }
+
+        let fileList = null;
+        let fileListTotalSizeBytes = null;
+
+        function extractFtree(container) {
+          if (!container) return [];
+          const ftree = (typeof container.matches === 'function' && container.matches('ul.ftree'))
+            ? container
+            : container.querySelector('ul.ftree');
+          if (!ftree) return [];
+          const files = [];
+          function walk(ul, currentDir = '') {
+            const items = Array.from(ul.children).filter(el => el.tagName === 'LI');
+            for (const item of items) {
+              if (item.classList.contains('dir')) {
+                const div = Array.from(item.children).find(el => el.tagName === 'DIV');
+                const dirB = div ? div.querySelector('b') : item.querySelector('b');
+                let dirName = (dirB?.textContent || '').trim().replace(/^\.\/?/, '').replace(/\/+$/, '');
+                const nextDir = currentDir ? `${currentDir}/${dirName}` : dirName;
+                const subUl = Array.from(item.children).find(el => el.tagName === 'UL');
+                if (subUl) {
+                  walk(subUl, nextDir);
+                }
+              } else if (item.classList.contains('file')) {
+                const div = Array.from(item.children).find(el => el.tagName === 'DIV') || item;
+                const fileB = div.querySelector('b');
+                const fileName = (fileB?.textContent || '').trim();
+                const sizeS = div.querySelector('s');
+                const sizeStr = (sizeS?.textContent || '').trim() || null;
+                const bytesI = div.querySelector('i');
+                const bytesText = (bytesI?.textContent || '').trim();
+                let sizeBytes = null;
+                if (/^\d+$/.test(bytesText)) {
+                  const b = Number(bytesText);
+                  if (Number.isSafeInteger(b) && b >= 0) {
+                    sizeBytes = b;
+                  }
+                }
+                if (fileName) {
+                  const fullPath = currentDir ? `${currentDir}/${fileName}` : fileName;
+                  files.push({
+                    name: fileName,
+                    path: fullPath,
+                    size: sizeStr,
+                    sizeBytes,
+                  });
+                }
+              }
+            }
+          }
+          walk(ftree, '');
+          return files;
+        }
+
+        const torFileListEl = doc.querySelector('#tor-filelist, #tor-fl-wrap, ul.ftree');
+        let ftreeFiles = torFileListEl ? extractFtree(torFileListEl) : [];
+
+        if (ftreeFiles.length === 0 && doc.querySelector('#tor-filelist-btn')) {
+          const tMatch = topicUrl.match(/[?&]t=(\d+)/);
+          if (tMatch) {
+            try {
+              const resp = await fetch(`viewtorrent.php?t=${tMatch[1]}`);
+              if (resp.ok) {
+                const ftText = await resp.text();
+                const ftDoc = new DOMParser().parseFromString(ftText, 'text/html');
+                ftreeFiles = extractFtree(ftDoc.body || ftDoc);
+              }
+            } catch (_) {}
+          }
+        }
+
+        if (ftreeFiles.length > 0) {
+          fileList = ftreeFiles.map(f => f.path || f.name).join('\n');
+          let sum = 0;
+          let hasBytes = false;
+          for (const f of ftreeFiles) {
+            if (typeof f.sizeBytes === 'number' && f.sizeBytes >= 0) {
+              sum += f.sizeBytes;
+              hasBytes = true;
+            }
+          }
+          if (hasBytes) {
+            fileListTotalSizeBytes = sum;
+          }
+        }
+
+        if (!fileList && postBody) {
+          postBody.querySelectorAll('.sp-wrap').forEach(wrap => {
+            const headText = (wrap.querySelector('.sp-head, .sp-tit')?.textContent || '').toLowerCase();
+            if (headText.includes('список файлов') || headText.includes('файлы в раздаче') || headText.includes('файлы')) {
+              fileList = (wrap.querySelector('.sp-body')?.textContent || '').trim();
+            }
+          });
+        }
+
+        if (torrentSizeBytes === null && fileListTotalSizeBytes !== null) {
+          torrentSizeBytes = fileListTotalSizeBytes;
+        }
 
         const keyMap = {
           releaseYear: ['год выпуска', 'год выхода', 'дата выпуска', 'дата выхода', 'год релиза', 'год'],
@@ -937,7 +1043,9 @@
           screenshots,
           magnet,
           fileList,
-          size: meta.size,
+          size: torrentSize || meta.size,
+          sizeBytes: torrentSizeBytes,
+          ...(fileListTotalSizeBytes !== null ? { fileListTotalSizeBytes } : {}),
           ...meta,
           ...normMeta,
         };

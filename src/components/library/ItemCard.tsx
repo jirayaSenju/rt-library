@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { LibraryItem } from "@/types"
 import { resolveImageUrl } from "@/utils/imageResolver"
 import { imageCacheService } from "@/services/imageCache"
-import { Star, Gamepad2, HardDrive, Check } from "lucide-react"
+import { Star, Gamepad2, HardDrive, Check, Clock, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -15,6 +15,28 @@ function formatBytes(bytes: number | null | undefined): string | null {
   const sizes = ["B", "KB", "MB", "GB", "TB"]
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
+}
+
+function formatItemRelativeTime(
+  dateStr: string | null | undefined,
+  t: (key: string, vars?: any) => string
+): string | null {
+  if (!dateStr) return null
+  const parsed = new Date(dateStr).getTime()
+  if (isNaN(parsed)) return null
+  const diffMs = Date.now() - parsed
+  if (diffMs < 0) return t("itemDetail.timeJustNow")
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return t("itemDetail.timeJustNow")
+  if (diffMin < 60) return t("itemDetail.timeMinutesAgo", { count: diffMin, minutes: diffMin })
+  const diffHours = Math.floor(diffMin / 60)
+  if (diffHours < 24) return t("itemDetail.timeHoursAgo", { count: diffHours, hours: diffHours })
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 30) return t("itemDetail.timeDaysAgo", { count: diffDays, days: diffDays })
+  const diffMonths = Math.floor(diffDays / 30)
+  if (diffMonths < 12) return t("catalog.timeMonthsAgo", { count: diffMonths })
+  const diffYears = Math.floor(diffDays / 365)
+  return t("catalog.timeYearsAgo", { count: diffYears })
 }
 
 interface ItemCardProps {
@@ -87,6 +109,18 @@ export const ItemCard = React.memo<ItemCardProps>(({
   const originalTitle = item.title && item.title !== fullTitle ? item.title : null
   const categoryLabel = getLibraryCategoryLabel(item)
 
+  const formattedTimeAgo = useMemo(() => {
+    return formatItemRelativeTime(item.discoveredAt, t)
+  }, [item.discoveredAt, t])
+
+  const isRecent = useMemo(() => {
+    if (!item.discoveredAt) return false
+    const parsed = new Date(item.discoveredAt).getTime()
+    if (isNaN(parsed)) return false
+    const diffMs = Date.now() - parsed
+    return diffMs >= 0 && diffMs < 7 * 24 * 60 * 60 * 1000
+  }, [item.discoveredAt])
+
   const handleSelectClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (onToggleSelect) {
@@ -146,7 +180,7 @@ export const ItemCard = React.memo<ItemCardProps>(({
                   isCompact ? "p-1" : "p-1.5"
                 )}
               >
-                <div className="flex items-center gap-1.5 min-w-0 max-w-[75%]">
+                <div className="flex items-center gap-1.5 min-w-0 max-w-[calc(100%-34px)]">
                   <button
                     type="button"
                     role="checkbox"
@@ -181,12 +215,26 @@ export const ItemCard = React.memo<ItemCardProps>(({
                   <Badge
                     variant="secondary"
                     className={cn(
-                      "bg-black/65 backdrop-blur-md text-white/95 border border-white/10 uppercase font-bold tracking-wider shadow-sm truncate",
+                      "bg-black/75 backdrop-blur-md text-white/95 border border-white/15 uppercase font-bold tracking-wider shadow-sm shrink-0 truncate max-w-[130px]",
                       isCompact ? "text-[8.5px] px-1.5 py-0" : "text-[9.5px] px-2 py-0.5"
                     )}
                   >
                     {categoryLabel}
                   </Badge>
+
+                  {isRecent && (
+                    <Badge
+                      variant="default"
+                      className={cn(
+                        "bg-emerald-500/90 text-white font-bold uppercase tracking-wider shadow-sm shrink-0 flex items-center gap-0.5",
+                        isCompact ? "text-[8px] px-1 py-0" : "text-[8.5px] px-1.5 py-0"
+                      )}
+                      title={formattedTimeAgo ? t("catalog.addedAt", { time: formattedTimeAgo }) : t("catalog.newBadge")}
+                    >
+                      <Sparkles className={cn(isCompact ? "h-2 w-2" : "h-2.5 w-2.5")} />
+                      <span>{t("catalog.newBadge")}</span>
+                    </Badge>
+                  )}
                 </div>
 
                 <button
@@ -213,7 +261,7 @@ export const ItemCard = React.memo<ItemCardProps>(({
                 </button>
               </div>
 
-              {/* 3. Bottom Size Badge (Always visible in normal resting state) */}
+              {/* 3. Bottom Badges (Always visible in normal resting state) */}
               {displaySize && (
                 <div
                   className={cn(
@@ -233,6 +281,25 @@ export const ItemCard = React.memo<ItemCardProps>(({
                 </div>
               )}
 
+              {formattedTimeAgo && (
+                <div
+                  className={cn(
+                    "absolute bottom-0 right-0 z-10 pointer-events-none transition-opacity duration-150 ease-out group-hover:opacity-0 group-focus-within:opacity-0 group-focus-visible:opacity-0",
+                    isCompact ? "p-1" : "p-1.5"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 font-mono font-medium rounded-md bg-black/65 backdrop-blur-md text-white/80 border border-white/10 shadow-sm",
+                      isCompact ? "text-[7.5px] px-1 py-0.5" : "text-[8.5px] px-1.5 py-0.5"
+                    )}
+                  >
+                    <Clock className={cn("text-white/60", isCompact ? "h-2 w-2" : "h-2.5 w-2.5")} />
+                    <span>{formattedTimeAgo}</span>
+                  </span>
+                </div>
+              )}
+
               {/* 4. Bottom Title + Size Overlay (Appears on Hover / Keyboard Focus) */}
               <div
                 data-testid="item-card-title-overlay"
@@ -241,8 +308,8 @@ export const ItemCard = React.memo<ItemCardProps>(({
                   isCompact ? "pt-7 pb-1.5 px-1.5 gap-1" : "pt-9 pb-2 px-2 gap-1.5"
                 )}
               >
-                {displaySize && (
-                  <div className="flex items-center">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {displaySize && (
                     <span
                       className={cn(
                         "inline-flex items-center gap-1 font-mono font-medium rounded-md bg-white/10 backdrop-blur-md text-white/90 border border-white/10 shadow-sm",
@@ -252,8 +319,19 @@ export const ItemCard = React.memo<ItemCardProps>(({
                       <HardDrive className={cn("text-white/60", isCompact ? "h-2 w-2" : "h-2.5 w-2.5")} />
                       <span>{displaySize}</span>
                     </span>
-                  </div>
-                )}
+                  )}
+                  {formattedTimeAgo && (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 font-mono font-medium rounded-md bg-white/10 backdrop-blur-md text-white/80 border border-white/10 shadow-sm",
+                        isCompact ? "text-[7.5px] px-1 py-0.5" : "text-[8px] px-1.5 py-0.5"
+                      )}
+                    >
+                      <Clock className={cn("text-white/60", isCompact ? "h-2 w-2" : "h-2.5 w-2.5")} />
+                      <span>{formattedTimeAgo}</span>
+                    </span>
+                  )}
+                </div>
 
                 <h3
                   className={cn(
@@ -276,6 +354,12 @@ export const ItemCard = React.memo<ItemCardProps>(({
           {originalTitle && (
             <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2 font-mono break-all leading-tight opacity-90">
               {originalTitle}
+            </p>
+          )}
+          {formattedTimeAgo && (
+            <p className="text-[10px] text-muted-foreground/80 mt-1 flex items-center justify-center gap-1 font-mono">
+              <Clock className="h-2.5 w-2.5" />
+              <span>{t("catalog.addedAt", { time: formattedTimeAgo })}</span>
             </p>
           )}
         </TooltipContent>
